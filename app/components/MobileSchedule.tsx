@@ -1,11 +1,44 @@
 import { DAYS, dateLabel } from "@/app/lib/calendar";
 import { formatTime } from "@/app/lib/time";
-import type { ScheduleItem } from "@/app/types/calendar";
+import type { CalendarEvent, ScheduleItem } from "@/app/types/calendar";
+
+const MINUTES_PER_DAY = 24 * 60;
+
+function normalizeDayMinutes(minutes: number) {
+  return ((minutes % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+}
+
+export function isCurrentMobileEvent(
+  event: CalendarEvent,
+  currentDay: number | null,
+  currentMinutes: number | null,
+) {
+  if (
+    currentDay === null ||
+    currentMinutes === null ||
+    event.day !== currentDay
+  ) {
+    return false;
+  }
+
+  const duration = event.end - event.start;
+  if (duration >= MINUTES_PER_DAY) return true;
+  if (duration === 0) return false;
+
+  const start = normalizeDayMinutes(event.start);
+  const end = normalizeDayMinutes(event.end);
+  const now = normalizeDayMinutes(currentMinutes);
+
+  if (start < end && duration > 0) {
+    return start <= now && now < end;
+  }
+
+  return start <= now || now < end;
+}
 
 type MobileScheduleProps = {
   currentTime: Date | null;
   currentDay: number | null;
-  currentMinutes: number | null;
   hasLoadedEvents: boolean;
   todaySchedule: ScheduleItem[];
 };
@@ -13,10 +46,16 @@ type MobileScheduleProps = {
 export default function MobileSchedule({
   currentTime,
   currentDay,
-  currentMinutes,
   hasLoadedEvents,
   todaySchedule,
 }: MobileScheduleProps) {
+  const currentMinutes =
+    currentTime === null
+      ? null
+      : currentTime.getHours() * 60 +
+        currentTime.getMinutes() +
+        currentTime.getSeconds() / 60;
+
   return (
     <section className="md:hidden">
       <header className="mb-3">
@@ -46,10 +85,11 @@ export default function MobileSchedule({
       ) : (
         <div className="grid gap-1.5">
           {todaySchedule.map(({ event, category }) => {
-            const isCurrent =
-              currentMinutes !== null &&
-              event.start <= currentMinutes &&
-              currentMinutes < event.end;
+            const isCurrent = isCurrentMobileEvent(
+              event,
+              currentDay,
+              currentMinutes,
+            );
             const displayTitle = event.title?.trim() || category.name;
 
             return (
@@ -58,7 +98,7 @@ export default function MobileSchedule({
                 aria-current={isCurrent ? "time" : undefined}
                 className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border border-l-4 px-3 py-2 text-left shadow-sm ${
                   isCurrent
-                    ? "border-rose-300 bg-rose-50 ring-2 ring-rose-300 ring-offset-1"
+                    ? "border-rose-400 bg-rose-50 outline outline-2 outline-rose-300 shadow-md"
                     : "border-slate-200 bg-white"
                 }`}
                 style={{ borderLeftColor: category.color }}

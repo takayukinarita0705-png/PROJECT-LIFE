@@ -873,7 +873,6 @@ export default function WeeklyCalendar() {
           <MobileSchedule
             currentTime={currentTime}
             currentDay={currentDay}
-            currentMinutes={currentMinutes}
             hasLoadedEvents={hasLoadedEvents}
             todaySchedule={todaySchedule}
           />
