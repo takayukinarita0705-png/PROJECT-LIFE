@@ -52,6 +52,13 @@ type Draft = {
   end: number;
 };
 
+type MobileEventDraft = {
+  eventId: string;
+  categoryId: string;
+  start: string;
+  end: string;
+};
+
 type DropTarget = {
   day: number;
   row: number;
@@ -130,12 +137,26 @@ function formatTime(totalMinutes: number) {
   return `${hour.toString().padStart(2, "0")}:${minute}`;
 }
 
+function parseTime(value: string) {
+  const match = /^(\d{1,2}):([0-5]\d)$/.exec(value.trim());
+  if (!match) return null;
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 24 || (hour === 24 && minute !== 0)) return null;
+  return hour * 60 + minute;
+}
+
 function toMinutes(hour: number, minute = 0) {
   return hour * 60 + minute;
 }
 
 function displayRowToTimeRow(displayRow: number) {
   return (displayRow + DISPLAY_START_ROW) % ROWS_PER_DAY;
+}
+
+function minutesFromDisplayStart(minutes: number) {
+  return (minutes - DISPLAY_START_MINUTES + 24 * 60) % (24 * 60);
 }
 
 function getEventPosition(event: CalendarEvent, rowStart: number) {
@@ -395,6 +416,9 @@ export default function WeeklyCalendar() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(null);
   const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [mobileEventDraft, setMobileEventDraft] =
+    useState<MobileEventDraft | null>(null);
+  const [mobileEditError, setMobileEditError] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState("work");
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
@@ -431,6 +455,31 @@ export default function WeeklyCalendar() {
       : currentTime.getHours() * 60 +
         currentTime.getMinutes() +
         currentTime.getSeconds() / 60;
+  const todaySchedule =
+    currentDay === null || !hasLoadedEvents
+      ? []
+      : events
+          .filter(
+            (event) => event.weekOffset === 0 && event.day === currentDay,
+          )
+          .flatMap((event) => {
+            const category = categories.find(
+              (item) => item.id === event.categoryId,
+            );
+            return category ? [{ event, category }] : [];
+          })
+          .sort(
+            (a, b) =>
+              minutesFromDisplayStart(a.event.start) -
+              minutesFromDisplayStart(b.event.start),
+          );
+  const currentScheduleItem =
+    currentMinutes === null
+      ? undefined
+      : todaySchedule.find(
+          ({ event }) =>
+            event.start <= currentMinutes && currentMinutes < event.end,
+        );
 
   useEffect(() => {
     let cancelled = false;
@@ -819,6 +868,97 @@ export default function WeeklyCalendar() {
     setDraft(null);
   }
 
+  function openMobileEventEditor(event: CalendarEvent) {
+    setMobileEditError("");
+    setMobileEventDraft({
+      eventId: event.id,
+      categoryId: event.categoryId,
+      start: formatTime(event.start),
+      end: formatTime(event.end),
+    });
+  }
+
+  function shiftMobileEventDraft(offsetMinutes: number) {
+    if (!mobileEventDraft) return;
+
+    const start = parseTime(mobileEventDraft.start);
+    const end = parseTime(mobileEventDraft.end);
+    if (start === null || end === null || end <= start) {
+      setMobileEditError("時刻を HH:MM 形式で正しく入力してください。");
+      return;
+    }
+
+    const duration = end - start;
+    const shiftedStart = Math.max(
+      0,
+      Math.min(24 * 60 - duration, start + offsetMinutes),
+    );
+    setMobileEditError("");
+    setMobileEventDraft({
+      ...mobileEventDraft,
+      start: formatTime(shiftedStart),
+      end: formatTime(shiftedStart + duration),
+    });
+  }
+
+  function saveMobileEventEdit() {
+    if (!mobileEventDraft) return;
+
+    const start = parseTime(mobileEventDraft.start);
+    const end = parseTime(mobileEventDraft.end);
+    if (start === null || end === null || end <= start) {
+      setMobileEditError(
+        "開始・終了時刻を HH:MM 形式で正しく入力してください。",
+      );
+      return;
+    }
+
+    const event = events.find(
+      (item) => item.id === mobileEventDraft.eventId,
+    );
+    if (!event) {
+      setMobileEventDraft(null);
+      return;
+    }
+
+    const editedEvent: CalendarEvent = {
+      ...event,
+      categoryId: mobileEventDraft.categoryId,
+      start,
+      end,
+    };
+    const isDuplicate = events.some(
+      (item) =>
+        item.id !== event.id && eventKey(item) === eventKey(editedEvent),
+    );
+    if (isDuplicate) {
+      setMobileEditError("同じ時間に同じ予定がすでにあります。");
+      return;
+    }
+
+    if (
+      event.categoryId !== editedEvent.categoryId ||
+      event.start !== editedEvent.start ||
+      event.end !== editedEvent.end
+    ) {
+      showUndo(events);
+      setEvents(
+        events.map((item) =>
+          item.id === event.id ? editedEvent : item,
+        ),
+      );
+    }
+    setMobileEventDraft(null);
+    setMobileEditError("");
+  }
+
+  function deleteMobileEvent() {
+    if (!mobileEventDraft) return;
+    deleteEvent(mobileEventDraft.eventId);
+    setMobileEventDraft(null);
+    setMobileEditError("");
+  }
+
   function createNextWeek() {
     clearUndo();
     const thisWeekEvents = events.filter((e) => e.weekOffset === weekOffset);
@@ -991,6 +1131,211 @@ export default function WeeklyCalendar() {
 
   return (
     <div className="weekly-calendar">
+      <section className="md:hidden">
+        <header className="mb-3">
+          <p className="text-xs font-bold tracking-[0.18em] text-slate-400">
+            TODAY
+          </p>
+          <div className="mt-1 flex items-end justify-between gap-3">
+            <h2 className="text-2xl font-bold text-slate-900">
+              今日のスケジュール
+            </h2>
+            {currentTime && currentDay !== null && (
+              <p className="shrink-0 text-sm font-bold text-slate-500">
+                {dateLabel(currentTime)}（{DAYS[currentDay]}）
+              </p>
+            )}
+          </div>
+        </header>
+
+        {!hasLoadedEvents || currentDay === null ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
+            予定を読み込んでいます…
+          </div>
+        ) : todaySchedule.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+            今日の予定はありません
+          </div>
+        ) : (
+          <div className="grid gap-1.5">
+            {todaySchedule.map(({ event, category }) => {
+              const isCurrent = currentScheduleItem?.event.id === event.id;
+
+              return (
+                <button
+                  type="button"
+                  key={event.id}
+                  aria-current={isCurrent ? "time" : undefined}
+                  onClick={() => openMobileEventEditor(event)}
+                  className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border border-l-4 border-slate-200 bg-white px-3 py-2 text-left shadow-sm active:scale-[0.99] ${
+                    isCurrent
+                      ? "ring-2 ring-rose-300 ring-offset-1"
+                      : ""
+                  }`}
+                  style={{ borderLeftColor: category.color }}
+                >
+                  <div
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-lg text-white"
+                    style={{ background: category.color }}
+                  >
+                    {category.icon}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="truncate font-bold text-slate-900">
+                        {category.name}
+                      </h3>
+                      {isCurrent && (
+                        <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-600">
+                          進行中
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium tabular-nums text-slate-500">
+                      {formatTime(event.start)}〜{formatTime(event.end)}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm text-slate-300">編集 ›</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {mobileEventDraft && (
+        <div className="fixed inset-0 z-[140] flex items-end bg-slate-950/50 p-3 backdrop-blur-sm md:hidden">
+          <div className="w-full rounded-3xl bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">予定を編集</h3>
+                <p className="text-xs text-slate-500">
+                  時刻の移動は30分単位で調整できます
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileEventDraft(null);
+                  setMobileEditError("");
+                }}
+                aria-label="編集を閉じる"
+                className="rounded-full bg-slate-100 px-3 py-2 text-slate-500"
+              >
+                ✕
+              </button>
+            </div>
+
+            <label className="mt-4 block text-sm font-bold text-slate-700">
+              予定
+            </label>
+            <select
+              value={mobileEventDraft.categoryId}
+              onChange={(event) =>
+                setMobileEventDraft({
+                  ...mobileEventDraft,
+                  categoryId: event.target.value,
+                })
+              }
+              className="mt-1 w-full rounded-xl border p-3 text-slate-900"
+            >
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.icon} {category.name}
+                </option>
+              ))}
+            </select>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <label className="text-sm font-bold text-slate-700">
+                開始
+                <input
+                  value={mobileEventDraft.start}
+                  onChange={(event) =>
+                    setMobileEventDraft({
+                      ...mobileEventDraft,
+                      start: event.target.value,
+                    })
+                  }
+                  inputMode="numeric"
+                  placeholder="09:00"
+                  className="mt-1 w-full rounded-xl border p-3 font-mono text-slate-900"
+                />
+              </label>
+              <label className="text-sm font-bold text-slate-700">
+                終了
+                <input
+                  value={mobileEventDraft.end}
+                  onChange={(event) =>
+                    setMobileEventDraft({
+                      ...mobileEventDraft,
+                      end: event.target.value,
+                    })
+                  }
+                  inputMode="numeric"
+                  placeholder="10:00"
+                  className="mt-1 w-full rounded-xl border p-3 font-mono text-slate-900"
+                />
+              </label>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => shiftMobileEventDraft(-30)}
+                className="rounded-xl bg-slate-100 px-3 py-3 text-sm font-bold text-slate-700 active:bg-slate-200"
+              >
+                ↑ 30分早める
+              </button>
+              <button
+                type="button"
+                onClick={() => shiftMobileEventDraft(30)}
+                className="rounded-xl bg-slate-100 px-3 py-3 text-sm font-bold text-slate-700 active:bg-slate-200"
+              >
+                ↓ 30分遅らせる
+              </button>
+            </div>
+
+            {mobileEditError && (
+              <p className="mt-3 text-sm font-bold text-red-600">
+                {mobileEditError}
+              </p>
+            )}
+
+            <div className="mt-5 grid grid-cols-[auto_1fr] gap-2">
+              <button
+                type="button"
+                onClick={deleteMobileEvent}
+                className="rounded-xl bg-red-50 px-4 py-3 font-bold text-red-600"
+              >
+                削除
+              </button>
+              <button
+                type="button"
+                onClick={saveMobileEventEdit}
+                className="rounded-xl bg-slate-900 px-4 py-3 font-bold text-white"
+              >
+                変更を保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {undoSnapshot && (
+        <div className="undo-toast-lifetime fixed bottom-5 left-1/2 z-[150] flex -translate-x-1/2 items-center gap-3 rounded-2xl bg-slate-900/95 px-4 py-3 text-sm text-white shadow-2xl md:hidden">
+          <span>予定を変更しました</span>
+          <button
+            type="button"
+            onClick={undoLastOperation}
+            className="rounded-lg bg-white/15 px-3 py-1.5 font-bold text-blue-200"
+          >
+            元に戻す
+          </button>
+        </div>
+      )}
+
+      <div className="hidden md:block">
       <div className="mb-4 rounded-xl bg-white p-4 shadow">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -1539,6 +1884,7 @@ export default function WeeklyCalendar() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
