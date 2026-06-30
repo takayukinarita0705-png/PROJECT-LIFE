@@ -3,6 +3,7 @@ import type {
   CalendarEvent,
   CalendarTemplate,
   Category,
+  EventLinkType,
   EventMode,
   EventStatus,
   TemplateEvent,
@@ -21,6 +22,10 @@ export function isEventStatus(value: unknown): value is EventStatus {
   );
 }
 
+export function isEventLinkType(value: unknown): value is EventLinkType {
+  return value === "after" || value === "before" || value === "none";
+}
+
 export function normalizeCalendarEvent(
   value: unknown,
 ): CalendarEvent | null {
@@ -33,6 +38,12 @@ export function normalizeCalendarEvent(
     typeof event.categoryId === "string" &&
     (event.mode === undefined || isEventMode(event.mode)) &&
     (event.status === undefined || isEventStatus(event.status)) &&
+    (event.linkedToEventId === undefined ||
+      typeof event.linkedToEventId === "string") &&
+    (event.linkType === undefined || isEventLinkType(event.linkType)) &&
+    (event.offsetMinutes === undefined ||
+      (typeof event.offsetMinutes === "number" &&
+        Number.isFinite(event.offsetMinutes))) &&
     typeof event.day === "number" &&
     typeof event.start === "number" &&
     typeof event.end === "number" &&
@@ -47,9 +58,15 @@ export function normalizeCalendarEvent(
   if (!isValid) return null;
 
   return {
-    ...(value as Omit<CalendarEvent, "mode" | "status">),
+    ...(value as Omit<
+      CalendarEvent,
+      "mode" | "status" | "linkType" | "offsetMinutes"
+    >),
     mode: isEventMode(event.mode) ? event.mode : "fixed",
     status: isEventStatus(event.status) ? event.status : "pending",
+    linkType: isEventLinkType(event.linkType) ? event.linkType : "none",
+    offsetMinutes:
+      typeof event.offsetMinutes === "number" ? event.offsetMinutes : 0,
   };
 }
 

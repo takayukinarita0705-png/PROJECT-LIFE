@@ -1,6 +1,7 @@
 export type RoutineRelation = "after-work-meal" | "after-work-bath";
 export type EventMode = "fixed" | "linked" | "flexible";
 export type EventStatus = "pending" | "active" | "completed" | "skipped";
+export type EventLinkType = "after" | "before" | "none";
 
 export type CalendarEvent = {
   id: string;
@@ -8,6 +9,9 @@ export type CalendarEvent = {
   categoryId: string;
   mode: EventMode;
   status: EventStatus;
+  linkedToEventId?: string;
+  linkType: EventLinkType;
+  offsetMinutes: number;
   day: number;
   /** 0時からの経過分 */
   start: number;

@@ -489,6 +489,8 @@ export default function WeeklyCalendar() {
         categoryId: activeCategoryId,
         mode: "fixed",
         status: "pending",
+        linkType: "none",
+        offsetMinutes: 0,
         day: draft.day,
         start: draft.start,
         end: draft.end,
@@ -616,6 +618,9 @@ export default function WeeklyCalendar() {
       id: crypto.randomUUID(),
       weekOffset: weekOffset + 1,
       status: "pending",
+      linkedToEventId: undefined,
+      linkType: "none",
+      offsetMinutes: 0,
       routineDetached: undefined,
     }));
     copied
@@ -643,6 +648,8 @@ export default function WeeklyCalendar() {
         id: crypto.randomUUID(),
         weekOffset,
         status: "pending",
+        linkType: "none",
+        offsetMinutes: 0,
         source: "fixed-template",
       })),
     );
