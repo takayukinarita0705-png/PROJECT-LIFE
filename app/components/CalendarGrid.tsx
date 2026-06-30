@@ -42,6 +42,7 @@ type CalendarGridProps = {
     pointerEvent: ReactPointerEvent<HTMLDivElement>,
   ) => void;
   onDeleteEvent: (id: string) => void;
+  readOnly?: boolean;
 };
 
 export default function CalendarGrid({
@@ -63,6 +64,7 @@ export default function CalendarGrid({
   onEventPointerUp,
   onEventPointerCancel,
   onDeleteEvent,
+  readOnly = false,
 }: CalendarGridProps) {
   return (
     <div
@@ -126,10 +128,20 @@ export default function CalendarGrid({
                     data-calendar-cell
                     data-day={day}
                     data-display-row={displayRow}
-                    onMouseDown={() => onSelectionStart(day, displayRow)}
-                    onMouseEnter={() => onSelectionMove(day, displayRow)}
-                    onMouseUp={onSelectionEnd}
-                    className={`relative cursor-pointer border p-0 ${
+                    onMouseDown={
+                      readOnly
+                        ? undefined
+                        : () => onSelectionStart(day, displayRow)
+                    }
+                    onMouseEnter={
+                      readOnly
+                        ? undefined
+                        : () => onSelectionMove(day, displayRow)
+                    }
+                    onMouseUp={readOnly ? undefined : onSelectionEnd}
+                    className={`relative border p-0 ${
+                      readOnly ? "cursor-default" : "cursor-pointer"
+                    } ${
                       isDropTarget
                         ? "bg-blue-100 ring-2 ring-inset ring-blue-300"
                         : selecting
@@ -157,6 +169,7 @@ export default function CalendarGrid({
                             onPointerUp={onEventPointerUp}
                             onPointerCancel={onEventPointerCancel}
                             onDelete={onDeleteEvent}
+                            readOnly={readOnly}
                           />
                         );
                       })}

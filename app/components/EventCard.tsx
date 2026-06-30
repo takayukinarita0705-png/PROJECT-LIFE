@@ -19,6 +19,7 @@ type EventCardProps = {
   onPointerUp: (pointerEvent: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerCancel: (pointerEvent: ReactPointerEvent<HTMLDivElement>) => void;
   onDelete: (id: string) => void;
+  readOnly?: boolean;
 };
 
 export default function EventCard({
@@ -31,6 +32,7 @@ export default function EventCard({
   onPointerUp,
   onPointerCancel,
   onDelete,
+  readOnly = false,
 }: EventCardProps) {
   const position = getEventPosition(event, rowStart);
   const isCompact = event.end - event.start <= MINUTES_PER_ROW;
@@ -43,7 +45,9 @@ export default function EventCard({
       className={`absolute z-10 box-border touch-none overflow-hidden text-white transition-[opacity,transform] duration-150 ${
         eventMove?.eventId === event.id
           ? "cursor-grabbing opacity-35 scale-[0.98]"
-          : "cursor-grab opacity-100"
+          : readOnly
+            ? "cursor-default opacity-100"
+            : "cursor-grab opacity-100"
       } ${
         isCompact
           ? "left-1 right-1 rounded px-1 text-[10px] leading-none"
@@ -54,10 +58,14 @@ export default function EventCard({
         height: position.height,
         top: position.top,
       }}
-      onPointerDown={(pointerEvent) => onPointerDown(event, pointerEvent)}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
+      onPointerDown={
+        readOnly
+          ? undefined
+          : (pointerEvent) => onPointerDown(event, pointerEvent)
+      }
+      onPointerMove={readOnly ? undefined : onPointerMove}
+      onPointerUp={readOnly ? undefined : onPointerUp}
+      onPointerCancel={readOnly ? undefined : onPointerCancel}
       onMouseDown={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
@@ -75,19 +83,21 @@ export default function EventCard({
           <div className="truncate opacity-80">{timeLabel}</div>
         </>
       )}
-      <button
-        onPointerDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-        onMouseUp={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete(event.id);
-        }}
-        aria-label={`${category.name}を削除`}
-        className="absolute right-1 top-0 rounded bg-black/20 px-1 text-[10px] leading-[14px]"
-      >
-        ×
-      </button>
+      {!readOnly && (
+        <button
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(event.id);
+          }}
+          aria-label={`${category.name}を削除`}
+          className="absolute right-1 top-0 rounded bg-black/20 px-1 text-[10px] leading-[14px]"
+        >
+          ×
+        </button>
+      )}
     </div>
   );
 }

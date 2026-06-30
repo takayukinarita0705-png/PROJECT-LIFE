@@ -52,10 +52,10 @@ export default function MobileSchedule({
               <article
                 key={event.id}
                 aria-current={isCurrent ? "time" : undefined}
-                className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border border-l-4 border-slate-200 px-3 py-2 text-left shadow-sm ${
+                className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border border-l-4 px-3 py-2 text-left shadow-sm ${
                   isCurrent
-                    ? "bg-rose-50 ring-2 ring-rose-300 ring-offset-1"
-                    : "bg-white"
+                    ? "border-rose-300 bg-rose-50 ring-2 ring-rose-300 ring-offset-1"
+                    : "border-slate-200 bg-white"
                 }`}
                 style={{ borderLeftColor: category.color }}
               >

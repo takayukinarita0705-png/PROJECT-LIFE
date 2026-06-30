@@ -53,6 +53,7 @@ import type {
 
 export default function WeeklyCalendar() {
   const [weekOffset, setWeekOffset] = useState(0);
+  const [mobileView, setMobileView] = useState<"today" | "week">("today");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [categories, setCategories] =
     useState<Category[]>(DEFAULT_CATEGORIES);
@@ -84,8 +85,12 @@ export default function WeeklyCalendar() {
   const undoIdRef = useRef(0);
 
   const weekDates = getWeekDates(weekOffset);
+  const mobileWeekDates = getWeekDates(0);
   const visibleEvents = hasLoadedEvents
     ? events.filter((event) => event.weekOffset === weekOffset)
+    : [];
+  const mobileWeekEvents = hasLoadedEvents
+    ? events.filter((event) => event.weekOffset === 0)
     : [];
   const movingCalendarEvent = eventMove
     ? events.find((event) => event.id === eventMove.eventId) ?? null
@@ -742,13 +747,84 @@ export default function WeeklyCalendar() {
 
   return (
     <div className="weekly-calendar">
-      <MobileSchedule
-        currentTime={currentTime}
-        currentDay={currentDay}
-        hasLoadedEvents={hasLoadedEvents}
-        todaySchedule={todaySchedule}
-        currentScheduleEventId={currentScheduleItem?.event.id}
-      />
+      <div className="md:hidden">
+        <div className="mb-4 inline-flex rounded-xl bg-slate-200/70 p-1">
+          <button
+            type="button"
+            onClick={() => setMobileView("today")}
+            aria-pressed={mobileView === "today"}
+            className={`rounded-lg px-4 py-2 text-sm font-bold ${
+              mobileView === "today"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500"
+            }`}
+          >
+            今日表示
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileView("week")}
+            aria-pressed={mobileView === "week"}
+            className={`rounded-lg px-4 py-2 text-sm font-bold ${
+              mobileView === "week"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-500"
+            }`}
+          >
+            週間表示
+          </button>
+        </div>
+
+        {mobileView === "today" ? (
+          <MobileSchedule
+            currentTime={currentTime}
+            currentDay={currentDay}
+            hasLoadedEvents={hasLoadedEvents}
+            todaySchedule={todaySchedule}
+            currentScheduleEventId={currentScheduleItem?.event.id}
+          />
+        ) : (
+          <section>
+            <header className="mb-3">
+              <p className="text-xs font-bold tracking-[0.18em] text-slate-400">
+                WEEK
+              </p>
+              <h2 className="mt-1 text-2xl font-bold text-slate-900">
+                週間スケジュール
+              </h2>
+              <p className="text-sm text-slate-500">
+                {dateLabel(mobileWeekDates[0])}〜
+                {dateLabel(mobileWeekDates[6])}
+              </p>
+            </header>
+            <CalendarGrid
+              weekDates={mobileWeekDates}
+              visibleEvents={mobileWeekEvents}
+              categories={categories}
+              dropTarget={null}
+              eventMove={null}
+              weekOffset={0}
+              currentDay={currentDay}
+              currentMinutes={currentMinutes}
+              isSelecting={() => false}
+              onSelectionStart={startDrag}
+              onSelectionMove={moveDrag}
+              onSelectionEnd={endDrag}
+              onSelectionCancel={() => {}}
+              onEventPointerDown={startEventMove}
+              onEventPointerMove={moveEvent}
+              onEventPointerUp={(pointerEvent) =>
+                finishEventMove(pointerEvent, true)
+              }
+              onEventPointerCancel={(pointerEvent) =>
+                finishEventMove(pointerEvent, false)
+              }
+              onDeleteEvent={deleteEvent}
+              readOnly
+            />
+          </section>
+        )}
+      </div>
 
       <div className="hidden md:block">
         <WeekToolbar
