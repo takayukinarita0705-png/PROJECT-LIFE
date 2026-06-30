@@ -2,6 +2,7 @@ export type RoutineRelation = "after-work-meal" | "after-work-bath";
 
 export type CalendarEvent = {
   id: string;
+  title?: string;
   categoryId: string;
   day: number;
   /** 0時からの経過分 */
@@ -35,7 +36,7 @@ export type CategoryDraft = {
 
 export type TemplateEvent = Pick<
   CalendarEvent,
-  "categoryId" | "day" | "start" | "end" | "routineRelation"
+  "title" | "categoryId" | "day" | "start" | "end" | "routineRelation"
 >;
 
 export type CalendarTemplate = {
@@ -49,6 +50,14 @@ export type Draft = {
   day: number;
   start: number;
   end: number;
+};
+
+export type EventEditDraft = {
+  eventId: string;
+  title: string;
+  categoryId: string;
+  start: string;
+  end: string;
 };
 
 export type DropTarget = {

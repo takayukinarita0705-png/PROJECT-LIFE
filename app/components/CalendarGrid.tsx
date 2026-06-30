@@ -42,6 +42,7 @@ type CalendarGridProps = {
     pointerEvent: ReactPointerEvent<HTMLDivElement>,
   ) => void;
   onDeleteEvent: (id: string) => void;
+  onEditEvent?: (event: CalendarEvent) => void;
   readOnly?: boolean;
 };
 
@@ -64,6 +65,7 @@ export default function CalendarGrid({
   onEventPointerUp,
   onEventPointerCancel,
   onDeleteEvent,
+  onEditEvent,
   readOnly = false,
 }: CalendarGridProps) {
   return (
@@ -169,6 +171,7 @@ export default function CalendarGrid({
                             onPointerUp={onEventPointerUp}
                             onPointerCancel={onEventPointerCancel}
                             onDelete={onDeleteEvent}
+                            onEdit={onEditEvent}
                             readOnly={readOnly}
                           />
                         );

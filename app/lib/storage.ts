@@ -17,7 +17,7 @@ import type {
 export const STORAGE_KEY = "project-life-calendar-events";
 export const TEMPLATE_STORAGE_KEY = "project-life-calendar-templates";
 export const TEMPLATE_STORAGE_VERSION = 1;
-export const STORAGE_VERSION = 5;
+export const STORAGE_VERSION = 6;
 
 export function isCalendarEvent(value: unknown): value is CalendarEvent {
   if (typeof value !== "object" || value === null) return false;
@@ -25,6 +25,7 @@ export function isCalendarEvent(value: unknown): value is CalendarEvent {
   const event = value as Record<string, unknown>;
   return (
     typeof event.id === "string" &&
+    (event.title === undefined || typeof event.title === "string") &&
     typeof event.categoryId === "string" &&
     typeof event.day === "number" &&
     typeof event.start === "number" &&
@@ -75,6 +76,7 @@ export function isTemplateEvent(value: unknown): value is TemplateEvent {
   const event = value as Record<string, unknown>;
   return (
     typeof event.categoryId === "string" &&
+    (event.title === undefined || typeof event.title === "string") &&
     typeof event.day === "number" &&
     Number.isInteger(event.day) &&
     event.day >= 0 &&

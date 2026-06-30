@@ -19,6 +19,7 @@ type EventCardProps = {
   onPointerUp: (pointerEvent: ReactPointerEvent<HTMLDivElement>) => void;
   onPointerCancel: (pointerEvent: ReactPointerEvent<HTMLDivElement>) => void;
   onDelete: (id: string) => void;
+  onEdit?: (event: CalendarEvent) => void;
   readOnly?: boolean;
 };
 
@@ -32,21 +33,25 @@ export default function EventCard({
   onPointerUp,
   onPointerCancel,
   onDelete,
+  onEdit,
   readOnly = false,
 }: EventCardProps) {
   const position = getEventPosition(event, rowStart);
   const isCompact = event.end - event.start <= MINUTES_PER_ROW;
   const timeLabel = `${formatTime(event.start)}〜${formatTime(event.end)}`;
+  const displayTitle = event.title?.trim() || category.name;
 
   return (
     <div
-      title={`${category.icon} ${category.name} ${timeLabel}`}
+      title={`${category.icon} ${displayTitle} ${timeLabel}`}
       aria-grabbed={eventMove?.eventId === event.id}
       className={`absolute z-10 box-border touch-none overflow-hidden text-white transition-[opacity,transform] duration-150 ${
         eventMove?.eventId === event.id
           ? "cursor-grabbing opacity-35 scale-[0.98]"
           : readOnly
-            ? "cursor-default opacity-100"
+            ? onEdit
+              ? "cursor-pointer opacity-100"
+              : "cursor-default opacity-100"
             : "cursor-grab opacity-100"
       } ${
         isCompact
@@ -68,17 +73,20 @@ export default function EventCard({
       onPointerCancel={readOnly ? undefined : onPointerCancel}
       onMouseDown={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (readOnly) onEdit?.(event);
+      }}
     >
       {isCompact ? (
         <div className="truncate pr-5 font-bold leading-[16px]">
-          {category.icon} {category.name}{" "}
+          {category.icon} {displayTitle}{" "}
           <span className="font-normal opacity-90">{timeLabel}</span>
         </div>
       ) : (
         <>
           <div className="truncate pr-5 font-bold">
-            {category.icon} {category.name}
+            {category.icon} {displayTitle}
           </div>
           <div className="truncate opacity-80">{timeLabel}</div>
         </>
@@ -92,7 +100,7 @@ export default function EventCard({
             e.stopPropagation();
             onDelete(event.id);
           }}
-          aria-label={`${category.name}を削除`}
+          aria-label={`${displayTitle}を削除`}
           className="absolute right-1 top-0 rounded bg-black/20 px-1 text-[10px] leading-[14px]"
         >
           ×

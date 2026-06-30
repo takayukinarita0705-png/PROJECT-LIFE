@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import CalendarGrid from "./CalendarGrid";
 import CategoryDialog from "./CategoryDialog";
-import EventDialog from "./EventDialog";
+import EventDialog, { MobileWeekEventDialog } from "./EventDialog";
 import MobileSchedule from "./MobileSchedule";
 import WeekToolbar from "./WeekToolbar";
 import {
@@ -25,6 +25,7 @@ import {
   displayRowToTimeRow,
   formatTime,
   minutesFromDisplayStart,
+  parseTime,
 } from "@/app/lib/time";
 import {
   STORAGE_KEY,
@@ -46,6 +47,7 @@ import type {
   Draft,
   DropTarget,
   EventMove,
+  EventEditDraft,
   SaveStatus,
   TemplateEvent,
   UndoSnapshot,
@@ -73,6 +75,9 @@ export default function WeeklyCalendar() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(null);
   const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [mobileWeekEditDraft, setMobileWeekEditDraft] =
+    useState<EventEditDraft | null>(null);
+  const [mobileWeekEditError, setMobileWeekEditError] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState("work");
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
@@ -131,14 +136,6 @@ export default function WeeklyCalendar() {
               minutesFromDisplayStart(a.event.start) -
               minutesFromDisplayStart(b.event.start),
           );
-  const currentScheduleItem =
-    currentMinutes === null
-      ? undefined
-      : todaySchedule.find(
-          ({ event }) =>
-            event.start <= currentMinutes && currentMinutes < event.end,
-        );
-
   useEffect(() => {
     let cancelled = false;
 
@@ -163,6 +160,20 @@ export default function WeeklyCalendar() {
             storedData !== null &&
             "version" in storedData &&
             storedData.version === STORAGE_VERSION &&
+            "events" in storedData &&
+            Array.isArray(storedData.events) &&
+            storedData.events.every(isCalendarEvent) &&
+            "categories" in storedData &&
+            Array.isArray(storedData.categories) &&
+            storedData.categories.every(isCategory)
+          ) {
+            setCategories(storedData.categories);
+            setEvents(mergeUniqueEvents([], storedData.events));
+          } else if (
+            typeof storedData === "object" &&
+            storedData !== null &&
+            "version" in storedData &&
+            storedData.version === 5 &&
             "events" in storedData &&
             Array.isArray(storedData.events) &&
             storedData.events.every(isCalendarEvent) &&
@@ -557,6 +568,88 @@ export default function WeeklyCalendar() {
     setDraft(null);
   }
 
+  function openMobileWeekEditor(event: CalendarEvent) {
+    const category = categories.find(
+      (item) => item.id === event.categoryId,
+    );
+    setMobileWeekEditError("");
+    setMobileWeekEditDraft({
+      eventId: event.id,
+      title: event.title?.trim() || category?.name || "",
+      categoryId: event.categoryId,
+      start: formatTime(event.start),
+      end: formatTime(event.end),
+    });
+  }
+
+  function saveMobileWeekEdit() {
+    if (!mobileWeekEditDraft) return;
+
+    const start = parseTime(mobileWeekEditDraft.start);
+    const end = parseTime(mobileWeekEditDraft.end);
+    const title = mobileWeekEditDraft.title.trim();
+    if (!title) {
+      setMobileWeekEditError("タイトルを入力してください。");
+      return;
+    }
+    if (start === null || end === null || end <= start) {
+      setMobileWeekEditError(
+        "開始・終了時刻を HH:MM 形式で正しく入力してください。",
+      );
+      return;
+    }
+
+    const event = events.find(
+      (item) => item.id === mobileWeekEditDraft.eventId,
+    );
+    if (!event) {
+      setMobileWeekEditDraft(null);
+      return;
+    }
+
+    const editedEvent: CalendarEvent = {
+      ...event,
+      title,
+      categoryId: mobileWeekEditDraft.categoryId,
+      start,
+      end,
+    };
+    const isDuplicate = events.some(
+      (item) =>
+        item.id !== event.id && eventKey(item) === eventKey(editedEvent),
+    );
+    if (isDuplicate) {
+      setMobileWeekEditError("同じ時間に同じ予定がすでにあります。");
+      return;
+    }
+
+    showUndo(events);
+    if (
+      event.categoryId === "work" &&
+      editedEvent.categoryId === "work" &&
+      event.end !== editedEvent.end
+    ) {
+      setEvents(updateWorkWithRelatedRoutine(events, event, editedEvent));
+    } else if (event.routineRelation) {
+      setEvents(updateRoutineManually(events, event, editedEvent));
+    } else {
+      setEvents(
+        events.map((item) =>
+          item.id === event.id ? editedEvent : item,
+        ),
+      );
+    }
+    setMobileWeekEditDraft(null);
+    setMobileWeekEditError("");
+  }
+
+  function deleteMobileWeekEvent() {
+    if (!mobileWeekEditDraft) return;
+    deleteEvent(mobileWeekEditDraft.eventId);
+    setMobileWeekEditDraft(null);
+    setMobileWeekEditError("");
+  }
+
   function createNextWeek() {
     clearUndo();
     const thisWeekEvents = events.filter(
@@ -639,6 +732,7 @@ export default function WeeklyCalendar() {
     if (!name) return;
 
     const templateEvents = currentWeekEvents.map<TemplateEvent>((event) => ({
+      title: event.title,
       categoryId: event.categoryId,
       day: event.day,
       start: event.start,
@@ -779,9 +873,9 @@ export default function WeeklyCalendar() {
           <MobileSchedule
             currentTime={currentTime}
             currentDay={currentDay}
+            currentMinutes={currentMinutes}
             hasLoadedEvents={hasLoadedEvents}
             todaySchedule={todaySchedule}
-            currentScheduleEventId={currentScheduleItem?.event.id}
           />
         ) : (
           <section>
@@ -820,11 +914,27 @@ export default function WeeklyCalendar() {
                 finishEventMove(pointerEvent, false)
               }
               onDeleteEvent={deleteEvent}
+              onEditEvent={openMobileWeekEditor}
               readOnly
             />
           </section>
         )}
       </div>
+
+      {mobileWeekEditDraft && (
+        <MobileWeekEventDialog
+          draft={mobileWeekEditDraft}
+          categories={categories}
+          error={mobileWeekEditError}
+          onChange={setMobileWeekEditDraft}
+          onCancel={() => {
+            setMobileWeekEditDraft(null);
+            setMobileWeekEditError("");
+          }}
+          onDelete={deleteMobileWeekEvent}
+          onSave={saveMobileWeekEdit}
+        />
+      )}
 
       <div className="hidden md:block">
         <WeekToolbar
@@ -889,7 +999,8 @@ export default function WeeklyCalendar() {
             }}
           >
             <div className="truncate font-bold">
-              {movingCategory.icon} {movingCategory.name}
+              {movingCategory.icon}{" "}
+              {movingCalendarEvent.title?.trim() || movingCategory.name}
             </div>
             <div className="truncate opacity-90">
               {formatTime(movingCalendarEvent.start)}〜

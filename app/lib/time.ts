@@ -16,6 +16,16 @@ export function formatTime(totalMinutes: number) {
   return `${hour.toString().padStart(2, "0")}:${minute}`;
 }
 
+export function parseTime(value: string) {
+  const match = /^(\d{1,2}):([0-5]\d)$/.exec(value.trim());
+  if (!match) return null;
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 24 || (hour === 24 && minute !== 0)) return null;
+  return hour * 60 + minute;
+}
+
 export function toMinutes(hour: number, minute = 0) {
   return hour * 60 + minute;
 }

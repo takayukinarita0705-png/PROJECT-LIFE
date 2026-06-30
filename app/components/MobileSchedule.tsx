@@ -5,17 +5,17 @@ import type { ScheduleItem } from "@/app/types/calendar";
 type MobileScheduleProps = {
   currentTime: Date | null;
   currentDay: number | null;
+  currentMinutes: number | null;
   hasLoadedEvents: boolean;
   todaySchedule: ScheduleItem[];
-  currentScheduleEventId?: string;
 };
 
 export default function MobileSchedule({
   currentTime,
   currentDay,
+  currentMinutes,
   hasLoadedEvents,
   todaySchedule,
-  currentScheduleEventId,
 }: MobileScheduleProps) {
   return (
     <section className="md:hidden">
@@ -46,7 +46,11 @@ export default function MobileSchedule({
       ) : (
         <div className="grid gap-1.5">
           {todaySchedule.map(({ event, category }) => {
-            const isCurrent = currentScheduleEventId === event.id;
+            const isCurrent =
+              currentMinutes !== null &&
+              event.start <= currentMinutes &&
+              currentMinutes < event.end;
+            const displayTitle = event.title?.trim() || category.name;
 
             return (
               <article
@@ -68,7 +72,7 @@ export default function MobileSchedule({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="truncate font-bold text-slate-900">
-                      {category.name}
+                      {displayTitle}
                     </h3>
                     {isCurrent && (
                       <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-600">
