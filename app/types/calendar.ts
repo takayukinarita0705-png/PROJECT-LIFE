@@ -48,8 +48,15 @@ export type SharedCalendarState = {
   templates: CalendarTemplate[];
 };
 
+export type CalendarDayColumn = {
+  day: number;
+  weekOffset: number;
+  date: Date;
+};
+
 export type Draft = {
   day: number;
+  weekOffset: number;
   start: number;
   end: number;
 };
@@ -64,6 +71,7 @@ export type EventEditDraft = {
 
 export type DropTarget = {
   day: number;
+  weekOffset: number;
   row: number;
   pointerMinute: number;
 };

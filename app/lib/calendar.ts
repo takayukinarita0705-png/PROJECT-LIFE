@@ -209,6 +209,7 @@ export function updateWorkWithRelatedRoutine(
         ...event,
         categoryId: "meal",
         day: editedWork.day,
+        weekOffset: editedWork.weekOffset,
         start: mealStart,
         end: mealEnd,
       };
@@ -218,6 +219,7 @@ export function updateWorkWithRelatedRoutine(
         ...event,
         categoryId: "bath",
         day: editedWork.day,
+        weekOffset: editedWork.weekOffset,
         start: mealEnd,
         end: bathEnd,
       };
@@ -263,8 +265,15 @@ export function getDropTarget(
   if (!cell) return null;
 
   const day = Number(cell.dataset.day);
+  const weekOffset = Number(cell.dataset.weekOffset);
   const displayRow = Number(cell.dataset.displayRow);
-  if (!Number.isInteger(day) || !Number.isInteger(displayRow)) return null;
+  if (
+    !Number.isInteger(day) ||
+    !Number.isInteger(weekOffset) ||
+    !Number.isInteger(displayRow)
+  ) {
+    return null;
+  }
 
   const rect = cell.getBoundingClientRect();
   const positionInRow = Math.max(
@@ -279,6 +288,7 @@ export function getDropTarget(
 
   return {
     day,
+    weekOffset,
     row: timeRow,
     pointerMinute: timeRow * MINUTES_PER_ROW + minuteInRow,
   };

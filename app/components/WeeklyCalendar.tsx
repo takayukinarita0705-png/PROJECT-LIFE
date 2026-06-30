@@ -48,6 +48,7 @@ import type {
 export default function WeeklyCalendar() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [mobileView, setMobileView] = useState<"today" | "week">("today");
+  const [mobileDayOffset, setMobileDayOffset] = useState(0);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [categories, setCategories] =
     useState<Category[]>(DEFAULT_CATEGORIES);
@@ -57,10 +58,12 @@ export default function WeeklyCalendar() {
   const [canPersistSharedState, setCanPersistSharedState] = useState(false);
   const [dragStart, setDragStart] = useState<{
     day: number;
+    weekOffset: number;
     row: number;
   } | null>(null);
   const [dragCurrent, setDragCurrent] = useState<{
     day: number;
+    weekOffset: number;
     row: number;
   } | null>(null);
   const [eventMove, setEventMove] = useState<EventMove | null>(null);
@@ -102,15 +105,28 @@ export default function WeeklyCalendar() {
     : categories[0]?.id ?? "";
   const currentDay =
     currentTime === null ? null : (currentTime.getDay() + 6) % DAYS.length;
-  const mobileThreeDayStart = Math.min(
-    currentDay ?? 0,
-    DAYS.length - 3,
-  );
-  const mobileDayIndices = [
-    mobileThreeDayStart,
-    mobileThreeDayStart + 1,
-    mobileThreeDayStart + 2,
-  ];
+  const mobileDayColumns = Array.from({ length: 3 }, (_, columnIndex) => {
+    const absoluteDay =
+      (currentDay ?? 0) + mobileDayOffset + columnIndex;
+    const columnWeekOffset = Math.floor(absoluteDay / DAYS.length);
+    const day =
+      ((absoluteDay % DAYS.length) + DAYS.length) % DAYS.length;
+
+    return {
+      day,
+      weekOffset: columnWeekOffset,
+      date: getWeekDates(columnWeekOffset)[day],
+    };
+  });
+  const mobileVisibleEvents = hasLoadedEvents
+    ? events.filter((event) =>
+        mobileDayColumns.some(
+          (column) =>
+            column.day === event.day &&
+            column.weekOffset === event.weekOffset,
+        ),
+      )
+    : [];
   const currentMinutes =
     currentTime === null
       ? null
@@ -270,14 +286,28 @@ export default function WeeklyCalendar() {
     setEvents(previousEvents);
   }
 
-  function startDrag(day: number, displayRow: number) {
-    setDragStart({ day, row: displayRow });
-    setDragCurrent({ day, row: displayRow });
+  function startDrag(
+    day: number,
+    displayRow: number,
+    targetWeekOffset: number,
+  ) {
+    setDragStart({ day, weekOffset: targetWeekOffset, row: displayRow });
+    setDragCurrent({ day, weekOffset: targetWeekOffset, row: displayRow });
   }
 
-  function moveDrag(day: number, displayRow: number) {
-    if (!dragStart || dragStart.day !== day) return;
-    setDragCurrent({ day, row: displayRow });
+  function moveDrag(
+    day: number,
+    displayRow: number,
+    targetWeekOffset: number,
+  ) {
+    if (
+      !dragStart ||
+      dragStart.day !== day ||
+      dragStart.weekOffset !== targetWeekOffset
+    ) {
+      return;
+    }
+    setDragCurrent({ day, weekOffset: targetWeekOffset, row: displayRow });
   }
 
   function endDrag() {
@@ -288,14 +318,30 @@ export default function WeeklyCalendar() {
     const end =
       (displayRowToTimeRow(lastDisplayRow) + 1) * MINUTES_PER_ROW;
     if (end > start) {
-      setDraft({ day: dragStart.day, start, end });
+      setDraft({
+        day: dragStart.day,
+        weekOffset: dragStart.weekOffset,
+        start,
+        end,
+      });
     }
     setDragStart(null);
     setDragCurrent(null);
   }
 
-  function isSelecting(day: number, displayRow: number) {
-    if (!dragStart || !dragCurrent || dragStart.day !== day) return false;
+  function isSelecting(
+    day: number,
+    displayRow: number,
+    targetWeekOffset: number,
+  ) {
+    if (
+      !dragStart ||
+      !dragCurrent ||
+      dragStart.day !== day ||
+      dragStart.weekOffset !== targetWeekOffset
+    ) {
+      return false;
+    }
     const start = Math.min(dragStart.row, dragCurrent.row);
     const end = Math.max(dragStart.row, dragCurrent.row);
     return displayRow >= start && displayRow <= end;
@@ -358,6 +404,7 @@ export default function WeeklyCalendar() {
     setDropTarget((current) => {
       if (
         current?.day === target?.day &&
+        current?.weekOffset === target?.weekOffset &&
         current?.row === target?.row &&
         current?.pointerMinute === target?.pointerMinute
       ) {
@@ -395,6 +442,7 @@ export default function WeeklyCalendar() {
         const movedEvent = {
           ...event,
           day: target.day,
+          weekOffset: target.weekOffset,
           start,
           end: start + duration,
         };
@@ -405,7 +453,9 @@ export default function WeeklyCalendar() {
 
         if (
           !isDuplicate &&
-          (event.day !== movedEvent.day || event.start !== movedEvent.start)
+          (event.day !== movedEvent.day ||
+            event.weekOffset !== movedEvent.weekOffset ||
+            event.start !== movedEvent.start)
         ) {
           showUndo(events);
           if (event.categoryId === "work") {
@@ -440,7 +490,7 @@ export default function WeeklyCalendar() {
         day: draft.day,
         start: draft.start,
         end: draft.end,
-        weekOffset,
+        weekOffset: draft.weekOffset,
       },
     ]);
 
@@ -789,14 +839,34 @@ export default function WeeklyCalendar() {
               <h2 className="mt-1 text-2xl font-bold text-slate-900">
                 週間スケジュール
               </h2>
-              <p className="text-sm text-slate-500">
-                {dateLabel(weekDates[mobileDayIndices[0]])}〜
-                {dateLabel(weekDates[mobileDayIndices[2]])}
-              </p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMobileDayOffset((value) => value - 3)
+                  }
+                  className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm"
+                >
+                  ← 前へ
+                </button>
+                <p className="text-center text-sm font-medium text-slate-500">
+                  {dateLabel(mobileDayColumns[0].date)}〜
+                  {dateLabel(mobileDayColumns[2].date)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMobileDayOffset((value) => value + 3)
+                  }
+                  className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm"
+                >
+                  次へ →
+                </button>
+              </div>
             </header>
             <CalendarGrid
               weekDates={weekDates}
-              visibleEvents={visibleEvents}
+              visibleEvents={mobileVisibleEvents}
               categories={categories}
               dropTarget={dropTarget}
               eventMove={eventMove}
@@ -821,7 +891,7 @@ export default function WeeklyCalendar() {
               }
               onDeleteEvent={deleteEvent}
               onEditEvent={openMobileWeekEditor}
-              dayIndices={mobileDayIndices}
+              dayColumns={mobileDayColumns}
               compactColumns
             />
           </section>

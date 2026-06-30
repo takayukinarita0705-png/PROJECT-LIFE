@@ -9,6 +9,7 @@ import {
   formatTime,
 } from "@/app/lib/time";
 import type {
+  CalendarDayColumn,
   CalendarEvent,
   Category,
   DropTarget,
@@ -24,9 +25,21 @@ type CalendarGridProps = {
   weekOffset: number;
   currentDay: number | null;
   currentMinutes: number | null;
-  isSelecting: (day: number, displayRow: number) => boolean;
-  onSelectionStart: (day: number, displayRow: number) => void;
-  onSelectionMove: (day: number, displayRow: number) => void;
+  isSelecting: (
+    day: number,
+    displayRow: number,
+    weekOffset: number,
+  ) => boolean;
+  onSelectionStart: (
+    day: number,
+    displayRow: number,
+    weekOffset: number,
+  ) => void;
+  onSelectionMove: (
+    day: number,
+    displayRow: number,
+    weekOffset: number,
+  ) => void;
   onSelectionEnd: () => void;
   onSelectionCancel: () => void;
   onEventPointerDown: (
@@ -44,15 +57,13 @@ type CalendarGridProps = {
   ) => void;
   onDeleteEvent: (id: string) => void;
   onEditEvent?: (event: CalendarEvent) => void;
-  dayIndices?: number[];
+  dayColumns?: CalendarDayColumn[];
   compactColumns?: boolean;
   readOnly?: boolean;
 };
 
 type TouchGesture = {
   pointerId: number;
-  startDay: number;
-  startDisplayRow: number;
   startX: number;
   startY: number;
   startScrollLeft: number;
@@ -79,14 +90,19 @@ export default function CalendarGrid({
   onEventPointerCancel,
   onDeleteEvent,
   onEditEvent,
-  dayIndices,
+  dayColumns,
   compactColumns = false,
   readOnly = false,
 }: CalendarGridProps) {
   const gridScrollRef = useRef<HTMLDivElement>(null);
   const touchGestureRef = useRef<TouchGesture | null>(null);
-  const displayedDayIndices =
-    dayIndices ?? DAYS.map((_, dayIndex) => dayIndex);
+  const displayedDayColumns =
+    dayColumns ??
+    DAYS.map((_, day) => ({
+      day,
+      weekOffset,
+      date: weekDates[day],
+    }));
 
   function moveTouchGesture(
     pointerEvent: ReactPointerEvent<HTMLDivElement>,
@@ -124,9 +140,16 @@ export default function CalendarGrid({
     if (!cell || !pointerEvent.currentTarget.contains(cell)) return;
 
     const day = Number(cell.dataset.day);
+    const cellWeekOffset = Number(cell.dataset.weekOffset);
     const displayRow = Number(cell.dataset.displayRow);
-    if (!Number.isInteger(day) || !Number.isInteger(displayRow)) return;
-    onSelectionMove(day, displayRow);
+    if (
+      !Number.isInteger(day) ||
+      !Number.isInteger(cellWeekOffset) ||
+      !Number.isInteger(displayRow)
+    ) {
+      return;
+    }
+    onSelectionMove(day, displayRow, cellWeekOffset);
   }
 
   function finishTouchGesture(
@@ -165,8 +188,8 @@ export default function CalendarGrid({
         {compactColumns && (
           <colgroup>
             <col className="w-12" />
-            {displayedDayIndices.map((dayIndex) => (
-              <col key={dayIndex} />
+            {displayedDayColumns.map((column) => (
+              <col key={`${column.weekOffset}:${column.day}`} />
             ))}
           </colgroup>
         )}
@@ -181,18 +204,18 @@ export default function CalendarGrid({
             >
               時間
             </th>
-            {displayedDayIndices.map((dayIndex) => (
+            {displayedDayColumns.map((column) => (
               <th
-                key={dayIndex}
+                key={`${column.weekOffset}:${column.day}`}
                 className={`h-14 border bg-gray-900 text-white ${
                   compactColumns
                     ? "min-w-0 px-1"
                     : "min-w-[140px]"
                 }`}
               >
-                <div>{DAYS[dayIndex]}</div>
+                <div>{DAYS[column.day]}</div>
                 <div className="text-xs text-slate-300">
-                  {dateLabel(weekDates[dayIndex])}
+                  {dateLabel(column.date)}
                 </div>
               </th>
             ))}
@@ -213,20 +236,28 @@ export default function CalendarGrid({
                 {formatTime(row * MINUTES_PER_ROW)}
               </td>
 
-              {displayedDayIndices.map((day) => {
+              {displayedDayColumns.map((column) => {
+                const { day, weekOffset: columnWeekOffset } = column;
                 const rowStart = row * MINUTES_PER_ROW;
                 const rowEnd = rowStart + MINUTES_PER_ROW;
                 const eventsStartingInRow = visibleEvents.filter(
                   (event) =>
                     event.day === day &&
+                    event.weekOffset === columnWeekOffset &&
                     event.start >= rowStart &&
                     event.start < rowEnd,
                 );
-                const selecting = isSelecting(day, displayRow);
+                const selecting = isSelecting(
+                  day,
+                  displayRow,
+                  columnWeekOffset,
+                );
                 const isDropTarget =
-                  dropTarget?.day === day && dropTarget.row === row;
+                  dropTarget?.day === day &&
+                  dropTarget.weekOffset === columnWeekOffset &&
+                  dropTarget.row === row;
                 const showsCurrentTime =
-                  weekOffset === 0 &&
+                  columnWeekOffset === 0 &&
                   currentDay === day &&
                   currentMinutes !== null &&
                   currentMinutes >= rowStart &&
@@ -238,19 +269,30 @@ export default function CalendarGrid({
 
                 return (
                   <td
-                    key={day}
+                    key={`${columnWeekOffset}:${day}`}
                     data-calendar-cell
                     data-day={day}
+                    data-week-offset={columnWeekOffset}
                     data-display-row={displayRow}
                     onMouseDown={
                       readOnly
                         ? undefined
-                        : () => onSelectionStart(day, displayRow)
+                        : () =>
+                            onSelectionStart(
+                              day,
+                              displayRow,
+                              columnWeekOffset,
+                            )
                     }
                     onMouseEnter={
                       readOnly
                         ? undefined
-                        : () => onSelectionMove(day, displayRow)
+                        : () =>
+                            onSelectionMove(
+                              day,
+                              displayRow,
+                              columnWeekOffset,
+                            )
                     }
                     onMouseUp={readOnly ? undefined : onSelectionEnd}
                     onPointerDown={(pointerEvent) => {
@@ -264,8 +306,6 @@ export default function CalendarGrid({
                       pointerEvent.preventDefault();
                       touchGestureRef.current = {
                         pointerId: pointerEvent.pointerId,
-                        startDay: day,
-                        startDisplayRow: displayRow,
                         startX: pointerEvent.clientX,
                         startY: pointerEvent.clientY,
                         startScrollLeft:
@@ -275,7 +315,11 @@ export default function CalendarGrid({
                       pointerEvent.currentTarget.setPointerCapture(
                         pointerEvent.pointerId,
                       );
-                      onSelectionStart(day, displayRow);
+                      onSelectionStart(
+                        day,
+                        displayRow,
+                        columnWeekOffset,
+                      );
                     }}
                     className={`relative border p-0 ${
                       readOnly
