@@ -1,6 +1,6 @@
 import { DEFAULT_CATEGORIES } from "@/app/lib/calendar";
 import {
-  isCategory,
+  normalizeCategory,
   normalizeCalendarEvent,
   normalizeCalendarTemplate,
 } from "@/app/lib/storage";
@@ -33,20 +33,26 @@ function normalizeSharedCalendarState(
   if (
     state.version !== SHARED_STATE_VERSION ||
     !Array.isArray(state.categories) ||
-    !state.categories.every(isCategory) ||
     !Array.isArray(state.events) ||
     !Array.isArray(state.templates)
   ) {
     return null;
   }
 
+  const categories = state.categories.map(normalizeCategory);
   const events = state.events.map(normalizeCalendarEvent);
   const templates = state.templates.map(normalizeCalendarTemplate);
-  if (!hasNoNull(events) || !hasNoNull(templates)) return null;
+  if (
+    !hasNoNull(categories) ||
+    !hasNoNull(events) ||
+    !hasNoNull(templates)
+  ) {
+    return null;
+  }
 
   return {
     version: SHARED_STATE_VERSION,
-    categories: state.categories,
+    categories,
     events,
     templates,
   };

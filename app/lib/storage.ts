@@ -70,16 +70,38 @@ export function normalizeCalendarEvent(
   };
 }
 
-export function isCategory(value: unknown): value is Category {
-  if (typeof value !== "object" || value === null) return false;
+export function normalizeCategory(value: unknown): Category | null {
+  if (typeof value !== "object" || value === null) return null;
 
   const category = value as Record<string, unknown>;
-  return (
+  const isValid =
     typeof category.id === "string" &&
     typeof category.name === "string" &&
     typeof category.color === "string" &&
-    typeof category.icon === "string"
-  );
+    typeof category.icon === "string" &&
+    (category.group === undefined || typeof category.group === "string") &&
+    (category.createdAt === undefined ||
+      typeof category.createdAt === "string") &&
+    (category.updatedAt === undefined ||
+      typeof category.updatedAt === "string");
+
+  if (!isValid) return null;
+
+  const normalizedAt = new Date().toISOString();
+  const createdAt =
+    typeof category.createdAt === "string"
+      ? category.createdAt
+      : normalizedAt;
+
+  return {
+    ...(value as Pick<Category, "id" | "name" | "color" | "icon">),
+    group: typeof category.group === "string" ? category.group : "other",
+    createdAt,
+    updatedAt:
+      typeof category.updatedAt === "string"
+        ? category.updatedAt
+        : createdAt,
+  };
 }
 
 export function normalizeTemplateEvent(
@@ -129,14 +151,19 @@ export function normalizeCalendarTemplate(
     (template.updatedAt !== undefined &&
       typeof template.updatedAt !== "string") ||
     !Array.isArray(template.events) ||
-    !Array.isArray(template.categories) ||
-    !template.categories.every(isCategory)
+    !Array.isArray(template.categories)
   ) {
     return null;
   }
 
   const events = template.events.map(normalizeTemplateEvent);
-  if (events.some((event) => event === null)) return null;
+  const categories = template.categories.map(normalizeCategory);
+  if (
+    events.some((event) => event === null) ||
+    categories.some((category) => category === null)
+  ) {
+    return null;
+  }
   const normalizedAt = new Date().toISOString();
   const createdAt =
     typeof template.createdAt === "string"
@@ -149,7 +176,7 @@ export function normalizeCalendarTemplate(
     description:
       typeof template.description === "string" ? template.description : "",
     events: events as TemplateEvent[],
-    categories: template.categories,
+    categories: categories as Category[],
     createdAt,
     updatedAt:
       typeof template.updatedAt === "string"

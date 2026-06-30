@@ -746,7 +746,12 @@ export default function WeeklyCalendar() {
   }
 
   function startEditingCategory(category: Category) {
-    setCategoryDraft({ ...category });
+    setCategoryDraft({
+      id: category.id,
+      name: category.name,
+      color: category.color,
+      icon: category.icon,
+    });
   }
 
   function saveCategory() {
@@ -764,16 +769,21 @@ export default function WeeklyCalendar() {
                 name,
                 color: categoryDraft.color,
                 icon,
+                updatedAt: new Date().toISOString(),
               }
             : category,
         ),
       );
     } else {
+      const createdAt = new Date().toISOString();
       const category: Category = {
         id: `custom-${crypto.randomUUID()}`,
         name,
         color: categoryDraft.color,
         icon,
+        group: "other",
+        createdAt,
+        updatedAt: createdAt,
       };
       setCategories((current) => [...current, category]);
       setSelectedCategoryId(category.id);

@@ -13,37 +13,76 @@ import {
 
 export const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 
-export const CLEANING_CATEGORY: Category = {
-  id: "cleaning",
-  name: "掃除",
-  color: "#d6a06a",
-  icon: "🧹",
-};
+const BUILT_IN_CATEGORY_TIMESTAMP = "2026-07-01T00:00:00.000Z";
+
+function createBuiltInCategory(
+  id: string,
+  name: string,
+  color: string,
+  icon: string,
+  group: string,
+): Category {
+  return {
+    id,
+    name,
+    color,
+    icon,
+    group,
+    createdAt: BUILT_IN_CATEGORY_TIMESTAMP,
+    updatedAt: BUILT_IN_CATEGORY_TIMESTAMP,
+  };
+}
+
+export const CLEANING_CATEGORY = createBuiltInCategory(
+  "cleaning",
+  "掃除",
+  "#d6a06a",
+  "🧹",
+  "life",
+);
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: "work", name: "仕事", color: "#3b82f6", icon: "💼" },
-  { id: "commute", name: "通勤", color: "#60a5fa", icon: "🚃" },
-  { id: "takken-law", name: "宅建業法", color: "#ef4444", icon: "📕" },
-  { id: "rights", name: "権利関係", color: "#f97316", icon: "⚖️" },
-  { id: "regulations", name: "法令上の制限", color: "#06b6d4", icon: "📘" },
-  { id: "memorization", name: "暗記", color: "#f43f5e", icon: "🧠" },
-  { id: "meal-prep", name: "ご飯作り", color: "#eab308", icon: "🍳" },
-  { id: "meal", name: "ご飯", color: "#f59e0b", icon: "🍚" },
-  { id: "bath", name: "お風呂", color: "#0ea5e9", icon: "🛁" },
-  { id: "shopping", name: "買い物", color: "#facc15", icon: "🛒" },
+  createBuiltInCategory("work", "仕事", "#3b82f6", "💼", "work"),
+  createBuiltInCategory("commute", "通勤", "#60a5fa", "🚃", "work"),
+  createBuiltInCategory("takken-law", "宅建業法", "#ef4444", "📕", "study"),
+  createBuiltInCategory("rights", "権利関係", "#f97316", "⚖️", "study"),
+  createBuiltInCategory(
+    "regulations",
+    "法令上の制限",
+    "#06b6d4",
+    "📘",
+    "study",
+  ),
+  createBuiltInCategory("memorization", "暗記", "#f43f5e", "🧠", "study"),
+  createBuiltInCategory("meal-prep", "ご飯作り", "#eab308", "🍳", "life"),
+  createBuiltInCategory("meal", "ご飯", "#f59e0b", "🍚", "life"),
+  createBuiltInCategory("bath", "お風呂", "#0ea5e9", "🛁", "life"),
+  createBuiltInCategory("shopping", "買い物", "#facc15", "🛒", "life"),
   CLEANING_CATEGORY,
-  { id: "daycare", name: "保育園送迎", color: "#c084fc", icon: "🎒" },
-  { id: "family", name: "家族時間", color: "#eab308", icon: "👨‍👩‍👧" },
-  { id: "kids", name: "子どもと遊ぶ", color: "#f59e0b", icon: "🧸" },
-  { id: "sleep", name: "睡眠", color: "#64748b", icon: "🌙" },
-  { id: "running", name: "ランニング", color: "#22c55e", icon: "🏃" },
-  { id: "road-bike", name: "ロードバイク", color: "#16a34a", icon: "🚴" },
-  { id: "walk", name: "散歩", color: "#84cc16", icon: "🚶" },
-  { id: "strength", name: "筋トレ", color: "#059669", icon: "🏋️" },
-  { id: "game", name: "ゲーム", color: "#a855f7", icon: "🎮" },
-  { id: "movie", name: "映画", color: "#8b5cf6", icon: "🎬" },
-  { id: "youtube", name: "YouTubeダラダラ", color: "#d946ef", icon: "▶️" },
-  { id: "reading", name: "読書", color: "#6366f1", icon: "📚" },
+  createBuiltInCategory("daycare", "保育園送迎", "#c084fc", "🎒", "family"),
+  createBuiltInCategory("family", "家族時間", "#eab308", "👨‍👩‍👧", "family"),
+  createBuiltInCategory("kids", "子どもと遊ぶ", "#f59e0b", "🧸", "family"),
+  createBuiltInCategory("sleep", "睡眠", "#64748b", "🌙", "health"),
+  createBuiltInCategory("running", "ランニング", "#22c55e", "🏃", "health"),
+  createBuiltInCategory(
+    "road-bike",
+    "ロードバイク",
+    "#16a34a",
+    "🚴",
+    "health",
+  ),
+  createBuiltInCategory("walk", "散歩", "#84cc16", "🚶", "health"),
+  createBuiltInCategory("strength", "筋トレ", "#059669", "🏋️", "health"),
+  createBuiltInCategory("game", "ゲーム", "#a855f7", "🎮", "leisure"),
+  createBuiltInCategory("movie", "映画", "#8b5cf6", "🎬", "leisure"),
+  createBuiltInCategory(
+    "youtube",
+    "YouTubeダラダラ",
+    "#d946ef",
+    "▶️",
+    "leisure",
+  ),
+  createBuiltInCategory("reading", "読書", "#6366f1", "📚", "study"),
 ];
 
 export function getMonday(offset: number) {
