@@ -1,9 +1,11 @@
 export type RoutineRelation = "after-work-meal" | "after-work-bath";
+export type EventMode = "fixed" | "linked" | "flexible";
 
 export type CalendarEvent = {
   id: string;
   title?: string;
   categoryId: string;
+  mode: EventMode;
   day: number;
   /** 0時からの経過分 */
   start: number;
@@ -31,7 +33,13 @@ export type CategoryDraft = {
 
 export type TemplateEvent = Pick<
   CalendarEvent,
-  "title" | "categoryId" | "day" | "start" | "end" | "routineRelation"
+  | "title"
+  | "categoryId"
+  | "mode"
+  | "day"
+  | "start"
+  | "end"
+  | "routineRelation"
 >;
 
 export type CalendarTemplate = {

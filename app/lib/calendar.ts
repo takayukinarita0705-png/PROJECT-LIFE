@@ -83,7 +83,14 @@ export function createFixedTemplateEvents(
     end: number,
     routineRelation?: RoutineRelation,
   ) {
-    templateEvents.push({ categoryId, day, start, end, routineRelation });
+    templateEvents.push({
+      categoryId,
+      mode: "fixed",
+      day,
+      start,
+      end,
+      routineRelation,
+    });
   }
 
   DAYS.forEach((_, day) => {

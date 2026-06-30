@@ -487,6 +487,7 @@ export default function WeeklyCalendar() {
       {
         id: crypto.randomUUID(),
         categoryId: activeCategoryId,
+        mode: "fixed",
         day: draft.day,
         start: draft.start,
         end: draft.end,
@@ -688,6 +689,7 @@ export default function WeeklyCalendar() {
     const templateEvents = currentWeekEvents.map<TemplateEvent>((event) => ({
       title: event.title,
       categoryId: event.categoryId,
+      mode: event.mode,
       day: event.day,
       start: event.start,
       end: event.end,

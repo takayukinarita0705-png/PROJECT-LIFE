@@ -1,8 +1,8 @@
 import { DEFAULT_CATEGORIES } from "@/app/lib/calendar";
 import {
-  isCalendarEvent,
-  isCalendarTemplate,
   isCategory,
+  normalizeCalendarEvent,
+  normalizeCalendarTemplate,
 } from "@/app/lib/storage";
 import { getSupabaseClient } from "@/app/lib/supabase";
 import type { SharedCalendarState } from "@/app/types/calendar";
@@ -20,19 +20,36 @@ function createEmptySharedState(): SharedCalendarState {
   };
 }
 
-function isSharedCalendarState(value: unknown): value is SharedCalendarState {
-  if (typeof value !== "object" || value === null) return false;
+function hasNoNull<T>(values: (T | null)[]): values is T[] {
+  return values.every((value) => value !== null);
+}
+
+function normalizeSharedCalendarState(
+  value: unknown,
+): SharedCalendarState | null {
+  if (typeof value !== "object" || value === null) return null;
 
   const state = value as Record<string, unknown>;
-  return (
-    state.version === SHARED_STATE_VERSION &&
-    Array.isArray(state.categories) &&
-    state.categories.every(isCategory) &&
-    Array.isArray(state.events) &&
-    state.events.every(isCalendarEvent) &&
-    Array.isArray(state.templates) &&
-    state.templates.every(isCalendarTemplate)
-  );
+  if (
+    state.version !== SHARED_STATE_VERSION ||
+    !Array.isArray(state.categories) ||
+    !state.categories.every(isCategory) ||
+    !Array.isArray(state.events) ||
+    !Array.isArray(state.templates)
+  ) {
+    return null;
+  }
+
+  const events = state.events.map(normalizeCalendarEvent);
+  const templates = state.templates.map(normalizeCalendarTemplate);
+  if (!hasNoNull(events) || !hasNoNull(templates)) return null;
+
+  return {
+    version: SHARED_STATE_VERSION,
+    categories: state.categories,
+    events,
+    templates,
+  };
 }
 
 export async function loadSharedCalendarState() {
@@ -50,8 +67,8 @@ export async function loadSharedCalendarState() {
 
   if (!data) return createEmptySharedState();
 
-  const state: unknown = data.state;
-  if (!isSharedCalendarState(state)) {
+  const state = normalizeSharedCalendarState(data.state);
+  if (!state) {
     throw new Error("Supabaseの予定データ形式が正しくありません。");
   }
 

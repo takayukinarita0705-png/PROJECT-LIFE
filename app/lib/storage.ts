@@ -3,17 +3,25 @@ import type {
   CalendarEvent,
   CalendarTemplate,
   Category,
+  EventMode,
   TemplateEvent,
 } from "@/app/types/calendar";
 
-export function isCalendarEvent(value: unknown): value is CalendarEvent {
-  if (typeof value !== "object" || value === null) return false;
+export function isEventMode(value: unknown): value is EventMode {
+  return value === "fixed" || value === "linked" || value === "flexible";
+}
+
+export function normalizeCalendarEvent(
+  value: unknown,
+): CalendarEvent | null {
+  if (typeof value !== "object" || value === null) return null;
 
   const event = value as Record<string, unknown>;
-  return (
+  const isValid =
     typeof event.id === "string" &&
     (event.title === undefined || typeof event.title === "string") &&
     typeof event.categoryId === "string" &&
+    (event.mode === undefined || isEventMode(event.mode)) &&
     typeof event.day === "number" &&
     typeof event.start === "number" &&
     typeof event.end === "number" &&
@@ -23,8 +31,14 @@ export function isCalendarEvent(value: unknown): value is CalendarEvent {
       event.routineRelation === "after-work-meal" ||
       event.routineRelation === "after-work-bath") &&
     (event.routineDetached === undefined ||
-      typeof event.routineDetached === "boolean")
-  );
+      typeof event.routineDetached === "boolean");
+
+  if (!isValid) return null;
+
+  return {
+    ...(value as Omit<CalendarEvent, "mode">),
+    mode: isEventMode(event.mode) ? event.mode : "fixed",
+  };
 }
 
 export function isCategory(value: unknown): value is Category {
@@ -39,13 +53,16 @@ export function isCategory(value: unknown): value is Category {
   );
 }
 
-export function isTemplateEvent(value: unknown): value is TemplateEvent {
-  if (typeof value !== "object" || value === null) return false;
+export function normalizeTemplateEvent(
+  value: unknown,
+): TemplateEvent | null {
+  if (typeof value !== "object" || value === null) return null;
 
   const event = value as Record<string, unknown>;
-  return (
+  const isValid =
     typeof event.categoryId === "string" &&
     (event.title === undefined || typeof event.title === "string") &&
+    (event.mode === undefined || isEventMode(event.mode)) &&
     typeof event.day === "number" &&
     Number.isInteger(event.day) &&
     event.day >= 0 &&
@@ -57,22 +74,39 @@ export function isTemplateEvent(value: unknown): value is TemplateEvent {
     event.start < event.end &&
     (event.routineRelation === undefined ||
       event.routineRelation === "after-work-meal" ||
-      event.routineRelation === "after-work-bath")
-  );
+      event.routineRelation === "after-work-bath");
+
+  if (!isValid) return null;
+
+  return {
+    ...(value as Omit<TemplateEvent, "mode">),
+    mode: isEventMode(event.mode) ? event.mode : "fixed",
+  };
 }
 
-export function isCalendarTemplate(
+export function normalizeCalendarTemplate(
   value: unknown,
-): value is CalendarTemplate {
-  if (typeof value !== "object" || value === null) return false;
+): CalendarTemplate | null {
+  if (typeof value !== "object" || value === null) return null;
 
   const template = value as Record<string, unknown>;
-  return (
-    typeof template.id === "string" &&
-    typeof template.name === "string" &&
-    Array.isArray(template.events) &&
-    template.events.every(isTemplateEvent) &&
-    Array.isArray(template.categories) &&
-    template.categories.every(isCategory)
-  );
+  if (
+    typeof template.id !== "string" ||
+    typeof template.name !== "string" ||
+    !Array.isArray(template.events) ||
+    !Array.isArray(template.categories) ||
+    !template.categories.every(isCategory)
+  ) {
+    return null;
+  }
+
+  const events = template.events.map(normalizeTemplateEvent);
+  if (events.some((event) => event === null)) return null;
+
+  return {
+    id: template.id,
+    name: template.name,
+    events: events as TemplateEvent[],
+    categories: template.categories,
+  };
 }
