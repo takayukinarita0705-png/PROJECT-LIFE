@@ -34,13 +34,23 @@ type CategoryDraft = {
   icon: string;
 };
 
+type TemplateEvent = Pick<
+  CalendarEvent,
+  "categoryId" | "day" | "start" | "end"
+>;
+
+type CalendarTemplate = {
+  id: string;
+  name: string;
+  events: TemplateEvent[];
+  categories: Category[];
+};
+
 type Draft = {
   day: number;
   start: number;
   end: number;
 };
-
-type ViewMode = "detail" | "overview";
 
 type DropTarget = {
   day: number;
@@ -69,23 +79,23 @@ type UndoSnapshot = {
 
 const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 const STORAGE_KEY = "project-life-calendar-events";
+const TEMPLATE_STORAGE_KEY = "project-life-calendar-templates";
+const TEMPLATE_STORAGE_VERSION = 1;
 const STORAGE_VERSION = 4;
 const MINUTES_PER_ROW = 30;
-const DETAIL_ROW_HEIGHT = 32;
+const ROWS_PER_DAY = (24 * 60) / MINUTES_PER_ROW;
+const DISPLAY_START_MINUTES = 5 * 60;
+const DISPLAY_START_ROW = DISPLAY_START_MINUTES / MINUTES_PER_ROW;
+const ROW_HEIGHT = 32;
+const DISPLAY_ROWS = Array.from(
+  { length: ROWS_PER_DAY },
+  (_, displayRow) => displayRowToTimeRow(displayRow),
+);
 const CLEANING_CATEGORY: Category = {
   id: "cleaning",
   name: "掃除",
   color: "#d6a06a",
   icon: "🧹",
-};
-
-const OVERVIEW_LABELS: Record<string, string> = {
-  "takken-law": "宅建",
-  rights: "権利",
-  regulations: "法令",
-  "meal-prep": "作り置き",
-  youtube: "YouTube",
-  bath: "風呂",
 };
 
 const DEFAULT_CATEGORIES: Category[] = [
@@ -122,6 +132,10 @@ function formatTime(totalMinutes: number) {
 
 function toMinutes(hour: number, minute = 0) {
   return hour * 60 + minute;
+}
+
+function displayRowToTimeRow(displayRow: number) {
+  return (displayRow + DISPLAY_START_ROW) % ROWS_PER_DAY;
 }
 
 function getEventPosition(event: CalendarEvent, rowStart: number) {
@@ -196,6 +210,72 @@ function isCategory(value: unknown): value is Category {
   );
 }
 
+function isTemplateEvent(value: unknown): value is TemplateEvent {
+  if (typeof value !== "object" || value === null) return false;
+
+  const event = value as Record<string, unknown>;
+  return (
+    typeof event.categoryId === "string" &&
+    typeof event.day === "number" &&
+    Number.isInteger(event.day) &&
+    event.day >= 0 &&
+    event.day < DAYS.length &&
+    typeof event.start === "number" &&
+    typeof event.end === "number" &&
+    event.start >= 0 &&
+    event.end <= 24 * 60 &&
+    event.start < event.end
+  );
+}
+
+function isCalendarTemplate(value: unknown): value is CalendarTemplate {
+  if (typeof value !== "object" || value === null) return false;
+
+  const template = value as Record<string, unknown>;
+  return (
+    typeof template.id === "string" &&
+    typeof template.name === "string" &&
+    Array.isArray(template.events) &&
+    template.events.every(isTemplateEvent) &&
+    Array.isArray(template.categories) &&
+    template.categories.every(isCategory)
+  );
+}
+
+function createFixedTemplateEvents(secondDayOff: 1 | 3): TemplateEvent[] {
+  const workDays = DAYS.map((_, day) => day).filter(
+    (day) => day !== 2 && day !== secondDayOff,
+  );
+  const templateEvents: TemplateEvent[] = [];
+
+  function addTemplateEvent(
+    categoryId: string,
+    day: number,
+    start: number,
+    end: number,
+  ) {
+    templateEvents.push({ categoryId, day, start, end });
+  }
+
+  DAYS.forEach((_, day) => {
+    addTemplateEvent("sleep", day, toMinutes(0), toMinutes(5));
+    addTemplateEvent("walk", day, toMinutes(5), toMinutes(5, 20));
+    addTemplateEvent("takken-law", day, toMinutes(5, 20), toMinutes(6, 10));
+    addTemplateEvent("rights", day, toMinutes(6, 10), toMinutes(6, 50));
+    addTemplateEvent("regulations", day, toMinutes(6, 50), toMinutes(7, 30));
+    addTemplateEvent("sleep", day, toMinutes(22), toMinutes(24));
+  });
+
+  workDays.forEach((day) => {
+    addTemplateEvent("meal", day, toMinutes(7, 30), toMinutes(8));
+    addTemplateEvent("work", day, toMinutes(9), toMinutes(19));
+    addTemplateEvent("meal", day, toMinutes(19, 30), toMinutes(19, 45));
+    addTemplateEvent("bath", day, toMinutes(19, 45), toMinutes(20, 10));
+  });
+
+  return templateEvents;
+}
+
 function eventKey(
   event: Pick<
     CalendarEvent,
@@ -263,13 +343,23 @@ function migrateLegacyEvents(
 }
 
 function getDropTarget(clientX: number, clientY: number): DropTarget | null {
-  const element = document.elementFromPoint(clientX, clientY);
-  const cell = element?.closest<HTMLElement>("[data-calendar-cell]");
+  const cell = document.elementsFromPoint(clientX, clientY).find((element) => {
+    if (!(element instanceof HTMLElement)) return false;
+    if (!element.matches("[data-calendar-cell]")) return false;
+
+    const rect = element.getBoundingClientRect();
+    return (
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom
+    );
+  }) as HTMLElement | undefined;
   if (!cell) return null;
 
   const day = Number(cell.dataset.day);
-  const row = Number(cell.dataset.row);
-  if (!Number.isInteger(day) || !Number.isInteger(row)) return null;
+  const displayRow = Number(cell.dataset.displayRow);
+  if (!Number.isInteger(day) || !Number.isInteger(displayRow)) return null;
 
   const rect = cell.getBoundingClientRect();
   const positionInRow = Math.max(
@@ -280,21 +370,23 @@ function getDropTarget(clientX: number, clientY: number): DropTarget | null {
     25,
     Math.round((positionInRow * MINUTES_PER_ROW) / 5) * 5,
   );
+  const timeRow = displayRowToTimeRow(displayRow);
 
   return {
     day,
-    row,
-    pointerMinute: row * MINUTES_PER_ROW + minuteInRow,
+    row: timeRow,
+    pointerMinute: timeRow * MINUTES_PER_ROW + minuteInRow,
   };
 }
 
 export default function WeeklyCalendar() {
   const [weekOffset, setWeekOffset] = useState(0);
-  const [viewMode, setViewMode] = useState<ViewMode>("detail");
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [categories, setCategories] =
     useState<Category[]>(DEFAULT_CATEGORIES);
   const [hasLoadedEvents, setHasLoadedEvents] = useState(false);
+  const [templates, setTemplates] = useState<CalendarTemplate[]>([]);
+  const [hasLoadedTemplates, setHasLoadedTemplates] = useState(false);
 
   const [dragStart, setDragStart] = useState<{ day: number; row: number } | null>(null);
   const [dragCurrent, setDragCurrent] = useState<{ day: number; row: number } | null>(null);
@@ -302,6 +394,7 @@ export default function WeeklyCalendar() {
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(null);
   const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState("work");
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
@@ -317,10 +410,6 @@ export default function WeeklyCalendar() {
   const visibleEvents = hasLoadedEvents
     ? events.filter((e) => e.weekOffset === weekOffset)
     : [];
-  const isOverview = viewMode === "overview";
-  const rowHeight = isOverview
-    ? "var(--overview-row-height)"
-    : DETAIL_ROW_HEIGHT;
   const movingCalendarEvent = eventMove
     ? events.find((event) => event.id === eventMove.eventId) ?? null
     : null;
@@ -334,6 +423,14 @@ export default function WeeklyCalendar() {
   )
     ? selectedCategoryId
     : categories[0]?.id ?? "";
+  const currentDay =
+    currentTime === null ? null : (currentTime.getDay() + 6) % DAYS.length;
+  const currentMinutes =
+    currentTime === null
+      ? null
+      : currentTime.getHours() * 60 +
+        currentTime.getMinutes() +
+        currentTime.getSeconds() / 60;
 
   useEffect(() => {
     let cancelled = false;
@@ -403,10 +500,27 @@ export default function WeeklyCalendar() {
             setEvents(migrated.events);
           }
         }
+
+        const storedTemplates = localStorage.getItem(TEMPLATE_STORAGE_KEY);
+        if (storedTemplates !== null) {
+          const storedTemplateData: unknown = JSON.parse(storedTemplates);
+          if (
+            typeof storedTemplateData === "object" &&
+            storedTemplateData !== null &&
+            "version" in storedTemplateData &&
+            storedTemplateData.version === TEMPLATE_STORAGE_VERSION &&
+            "templates" in storedTemplateData &&
+            Array.isArray(storedTemplateData.templates) &&
+            storedTemplateData.templates.every(isCalendarTemplate)
+          ) {
+            setTemplates(storedTemplateData.templates);
+          }
+        }
       } catch (error) {
         console.error("予定データの復元に失敗しました。", error);
       } finally {
         setHasLoadedEvents(true);
+        setHasLoadedTemplates(true);
       }
     });
 
@@ -450,10 +564,41 @@ export default function WeeklyCalendar() {
   }, [categories, events, hasLoadedEvents]);
 
   useEffect(() => {
+    if (!hasLoadedTemplates) return;
+
+    try {
+      localStorage.setItem(
+        TEMPLATE_STORAGE_KEY,
+        JSON.stringify({
+          version: TEMPLATE_STORAGE_VERSION,
+          templates,
+        }),
+      );
+    } catch (error) {
+      console.error("テンプレートの保存に失敗しました。", error);
+    }
+  }, [hasLoadedTemplates, templates]);
+
+  useEffect(() => {
     return () => {
       if (undoTimerRef.current !== null) {
         window.clearTimeout(undoTimerRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const updateCurrentTime = () => {
+      if (!cancelled) setCurrentTime(new Date());
+    };
+
+    queueMicrotask(updateCurrentTime);
+    const timer = window.setInterval(updateCurrentTime, 60_000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
     };
   }, []);
 
@@ -488,30 +633,36 @@ export default function WeeklyCalendar() {
     setEvents(previousEvents);
   }
 
-  function startDrag(day: number, row: number) {
-    setDragStart({ day, row });
-    setDragCurrent({ day, row });
+  function startDrag(day: number, displayRow: number) {
+    setDragStart({ day, row: displayRow });
+    setDragCurrent({ day, row: displayRow });
   }
 
-  function moveDrag(day: number, row: number) {
+  function moveDrag(day: number, displayRow: number) {
     if (!dragStart || dragStart.day !== day) return;
-    setDragCurrent({ day, row });
+    setDragCurrent({ day, row: displayRow });
   }
 
   function endDrag() {
     if (!dragStart || !dragCurrent) return;
-    const start = Math.min(dragStart.row, dragCurrent.row) * MINUTES_PER_ROW;
-    const end = (Math.max(dragStart.row, dragCurrent.row) + 1) * MINUTES_PER_ROW;
-    setDraft({ day: dragStart.day, start, end });
+    const firstDisplayRow = Math.min(dragStart.row, dragCurrent.row);
+    const lastDisplayRow = Math.max(dragStart.row, dragCurrent.row);
+    const start =
+      displayRowToTimeRow(firstDisplayRow) * MINUTES_PER_ROW;
+    const end =
+      (displayRowToTimeRow(lastDisplayRow) + 1) * MINUTES_PER_ROW;
+    if (end > start) {
+      setDraft({ day: dragStart.day, start, end });
+    }
     setDragStart(null);
     setDragCurrent(null);
   }
 
-  function isSelecting(day: number, row: number) {
+  function isSelecting(day: number, displayRow: number) {
     if (!dragStart || !dragCurrent || dragStart.day !== day) return false;
     const start = Math.min(dragStart.row, dragCurrent.row);
     const end = Math.max(dragStart.row, dragCurrent.row);
-    return row >= start && row <= end;
+    return displayRow >= start && displayRow <= end;
   }
 
   function startEventMove(
@@ -681,50 +832,22 @@ export default function WeeklyCalendar() {
     setWeekOffset((prev) => prev + 1);
   }
 
-  function applyFixedTemplate(secondDayOff: 1 | 3) {
+  function applyTemplate(
+    templateEvents: TemplateEvent[],
+    templateCategories: Category[],
+  ) {
     clearUndo();
-    const workDays = DAYS.map((_, day) => day).filter(
-      (day) => day !== 2 && day !== secondDayOff,
-    );
-    const templateEvents: CalendarEvent[] = [];
-
-    function addTemplateEvent(
-      categoryId: string,
-      day: number,
-      start: number,
-      end: number,
-    ) {
-      templateEvents.push({
-        id: crypto.randomUUID(),
-        categoryId,
-        day,
-        start,
-        end,
-        weekOffset,
-        source: "fixed-template",
-      });
-    }
-
-    DAYS.forEach((_, day) => {
-      addTemplateEvent("sleep", day, toMinutes(0), toMinutes(5));
-      addTemplateEvent("walk", day, toMinutes(5), toMinutes(5, 20));
-      addTemplateEvent("takken-law", day, toMinutes(5, 20), toMinutes(6, 10));
-      addTemplateEvent("rights", day, toMinutes(6, 10), toMinutes(6, 50));
-      addTemplateEvent("regulations", day, toMinutes(6, 50), toMinutes(7, 30));
-      addTemplateEvent("sleep", day, toMinutes(22), toMinutes(24));
-    });
-
-    workDays.forEach((day) => {
-      addTemplateEvent("meal", day, toMinutes(7, 30), toMinutes(8));
-      addTemplateEvent("work", day, toMinutes(9), toMinutes(19));
-      addTemplateEvent("meal", day, toMinutes(19, 30), toMinutes(19, 45));
-      addTemplateEvent("bath", day, toMinutes(19, 45), toMinutes(20, 10));
-    });
+    const nextEvents = templateEvents.map<CalendarEvent>((event) => ({
+      ...event,
+      id: crypto.randomUUID(),
+      weekOffset,
+      source: "fixed-template",
+    }));
 
     const requiredCategoryIds = new Set(
       templateEvents.map((event) => event.categoryId),
     );
-    const missingCategories = DEFAULT_CATEGORIES.filter(
+    const missingCategories = templateCategories.filter(
       (category) =>
         requiredCategoryIds.has(category.id) &&
         !categories.some((item) => item.id === category.id),
@@ -738,8 +861,59 @@ export default function WeeklyCalendar() {
         (event) =>
           event.weekOffset !== weekOffset || event.source !== "fixed-template",
       );
-      return mergeUniqueEvents(withoutCurrentTemplate, templateEvents);
+      return mergeUniqueEvents(withoutCurrentTemplate, nextEvents);
     });
+  }
+
+  function applyFixedTemplate(secondDayOff: 1 | 3) {
+    applyTemplate(createFixedTemplateEvents(secondDayOff), DEFAULT_CATEGORIES);
+  }
+
+  function saveCurrentWeekAsTemplate() {
+    const currentWeekEvents = events.filter(
+      (event) => event.weekOffset === weekOffset,
+    );
+    if (currentWeekEvents.length === 0) {
+      window.alert("現在の週に保存できる予定がありません。");
+      return;
+    }
+
+    const suggestedName = `${dateLabel(weekDates[0])}〜${dateLabel(weekDates[6])}`;
+    const enteredName = window.prompt("テンプレート名を入力してください", suggestedName);
+    const name = enteredName?.trim();
+    if (!name) return;
+
+    const templateEvents = currentWeekEvents.map<TemplateEvent>((event) => ({
+      categoryId: event.categoryId,
+      day: event.day,
+      start: event.start,
+      end: event.end,
+    }));
+    const requiredCategoryIds = new Set(
+      templateEvents.map((event) => event.categoryId),
+    );
+    const templateCategories = categories
+      .filter((category) => requiredCategoryIds.has(category.id))
+      .map((category) => ({ ...category }));
+
+    setTemplates((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        name,
+        events: templateEvents,
+        categories: templateCategories,
+      },
+    ]);
+  }
+
+  function deleteTemplate(template: CalendarTemplate) {
+    if (!window.confirm(`テンプレート「${template.name}」を削除しますか？`)) {
+      return;
+    }
+    setTemplates((current) =>
+      current.filter((item) => item.id !== template.id),
+    );
   }
 
   function startAddingCategory() {
@@ -816,119 +990,105 @@ export default function WeeklyCalendar() {
   }
 
   return (
-    <div className="weekly-calendar" data-calendar-view={viewMode}>
-      <div
-        className={`rounded-xl bg-white ${
-          isOverview ? "mb-2 p-2 shadow-sm" : "mb-4 p-4 shadow"
-        }`}
-      >
-        <div
-          className={`flex md:flex-row md:items-center md:justify-between ${
-            isOverview ? "flex-row flex-wrap gap-2" : "flex-col gap-3"
-          }`}
-        >
+    <div className="weekly-calendar">
+      <div className="mb-4 rounded-xl bg-white p-4 shadow">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2
-              className={`font-bold text-slate-900 ${
-                isOverview ? "text-base" : "text-xl"
-              }`}
-            >
-              週間スケジュール
-            </h2>
-            <p className={isOverview ? "text-xs text-slate-500" : "text-sm text-slate-500"}>
+            <h2 className="text-xl font-bold text-slate-900">週間スケジュール</h2>
+            <p className="text-sm text-slate-500">
               {dateLabel(weekDates[0])}〜{dateLabel(weekDates[6])}
             </p>
-            <div
-              className={`inline-flex rounded-lg bg-slate-100 p-1 ${
-                isOverview ? "mt-1" : "mt-2"
-              }`}
-            >
-              <button
-                onClick={() => setViewMode("detail")}
-                aria-pressed={!isOverview}
-                className={`rounded-md font-bold ${
-                  isOverview ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm"
-                } ${
-                  !isOverview
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500"
-                }`}
-              >
-                詳細表示
-              </button>
-              <button
-                onClick={() => setViewMode("overview")}
-                aria-pressed={isOverview}
-                className={`rounded-md font-bold ${
-                  isOverview ? "px-2 py-0.5 text-xs" : "px-3 py-1 text-sm"
-                } ${
-                  isOverview
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500"
-                }`}
-              >
-                全体表示
-              </button>
-            </div>
           </div>
 
-          <div className={`flex flex-wrap ${isOverview ? "gap-1" : "gap-2"}`}>
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setWeekOffset((w) => w - 1)}
-              className={`rounded-xl border font-bold text-slate-700 ${
-                isOverview ? "px-2 py-1 text-xs" : "px-4 py-2"
-              }`}
+              className="rounded-xl border px-4 py-2 font-bold text-slate-700"
             >
               ← 前週
             </button>
             <button
               onClick={() => setWeekOffset(0)}
-              className={`rounded-xl bg-slate-900 font-bold text-white ${
-                isOverview ? "px-2 py-1 text-xs" : "px-4 py-2"
-              }`}
+              className="rounded-xl bg-slate-900 px-4 py-2 font-bold text-white"
             >
               今週
             </button>
             <button
               onClick={() => setWeekOffset((w) => w + 1)}
-              className={`rounded-xl border font-bold text-slate-700 ${
-                isOverview ? "px-2 py-1 text-xs" : "px-4 py-2"
-              }`}
+              className="rounded-xl border px-4 py-2 font-bold text-slate-700"
             >
               次週 →
             </button>
-            {!isOverview && (
-              <>
-                <button
-                  onClick={() => {
-                    setCategoryDraft(null);
-                    setIsCategoryManagerOpen(true);
-                  }}
-                  className="rounded-xl border border-violet-300 bg-violet-50 px-4 py-2 font-bold text-violet-700"
-                >
-                  カテゴリ管理
-                </button>
-                <button onClick={createNextWeek} className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white">
-                  来週を作成
-                </button>
-                <button
-                  onClick={() => applyFixedTemplate(1)}
-                  disabled={!hasLoadedEvents}
-                  className="rounded-xl bg-amber-500 px-4 py-2 font-bold text-white disabled:opacity-50"
-                >
-                  火曜休みテンプレート
-                </button>
-                <button
-                  onClick={() => applyFixedTemplate(3)}
-                  disabled={!hasLoadedEvents}
-                  className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-50"
-                >
-                  木曜休みテンプレート
-                </button>
-              </>
-            )}
+            <button
+              onClick={() => {
+                setCategoryDraft(null);
+                setIsCategoryManagerOpen(true);
+              }}
+              className="rounded-xl border border-violet-300 bg-violet-50 px-4 py-2 font-bold text-violet-700"
+            >
+              カテゴリ管理
+            </button>
+            <button onClick={createNextWeek} className="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white">
+              来週を作成
+            </button>
+            <button
+              onClick={() => applyFixedTemplate(1)}
+              disabled={!hasLoadedEvents}
+              className="rounded-xl bg-amber-500 px-4 py-2 font-bold text-white disabled:opacity-50"
+            >
+              火曜休みテンプレート
+            </button>
+            <button
+              onClick={() => applyFixedTemplate(3)}
+              disabled={!hasLoadedEvents}
+              className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-50"
+            >
+              木曜休みテンプレート
+            </button>
+            <button
+              onClick={saveCurrentWeekAsTemplate}
+              disabled={!hasLoadedEvents || !hasLoadedTemplates}
+              className="rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-2 font-bold text-indigo-700 disabled:opacity-50"
+            >
+              現在の1週間をテンプレート保存
+            </button>
           </div>
         </div>
+
+        {templates.length > 0 && (
+          <div className="mt-3 border-t border-slate-200 pt-3">
+            <p className="mb-2 text-sm font-bold text-slate-600">
+              保存したテンプレート
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {templates.map((template) => (
+                <div
+                  key={template.id}
+                  className="flex overflow-hidden rounded-xl border border-slate-300 bg-white"
+                >
+                  <button
+                    onClick={() =>
+                      applyTemplate(template.events, template.categories)
+                    }
+                    disabled={!hasLoadedEvents}
+                    className="px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    title={`${template.name}を適用`}
+                  >
+                    {template.name}
+                  </button>
+                  <button
+                    onClick={() => deleteTemplate(template)}
+                    className="border-l border-slate-200 px-2 py-2 text-sm text-red-500 hover:bg-red-50"
+                    aria-label={`${template.name}を削除`}
+                    title="削除"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div
@@ -945,9 +1105,7 @@ export default function WeeklyCalendar() {
               {DAYS.map((day, i) => (
                 <th
                   key={day}
-                  className={`min-w-[140px] border bg-gray-900 text-white ${
-                    isOverview ? "h-8 text-sm" : "h-14"
-                  }`}
+                  className="h-14 min-w-[140px] border bg-gray-900 text-white"
                 >
                   <div>{day}</div>
                   <div className="text-xs text-slate-300">{dateLabel(weekDates[i])}</div>
@@ -957,22 +1115,15 @@ export default function WeeklyCalendar() {
           </thead>
 
           <tbody>
-            {Array.from({ length: 48 }).map((_, row) => (
-              <tr key={row} style={{ height: rowHeight }}>
+            {DISPLAY_ROWS.map((row, displayRow) => (
+              <tr key={row} style={{ height: ROW_HEIGHT }}>
                 <td
-                  className={`border bg-gray-100 text-gray-700 ${
-                    isOverview
-                      ? "p-0 text-center text-[8px]"
-                      : "p-1 text-xs"
-                  }`}
+                  className="border bg-gray-100 p-1 text-xs text-gray-700"
                   style={{
-                    height: rowHeight,
-                    lineHeight: isOverview ? rowHeight : undefined,
+                    height: ROW_HEIGHT,
                   }}
                 >
-                  {!isOverview || row % 2 === 0
-                    ? formatTime(row * MINUTES_PER_ROW)
-                    : ""}
+                  {formatTime(row * MINUTES_PER_ROW)}
                 </td>
 
                 {DAYS.map((_, day) => {
@@ -984,18 +1135,28 @@ export default function WeeklyCalendar() {
                       event.start >= rowStart &&
                       event.start < rowEnd,
                   );
-                  const selecting = isSelecting(day, row);
+                  const selecting = isSelecting(day, displayRow);
                   const isDropTarget =
                     dropTarget?.day === day && dropTarget.row === row;
+                  const showsCurrentTime =
+                    weekOffset === 0 &&
+                    currentDay === day &&
+                    currentMinutes !== null &&
+                    currentMinutes >= rowStart &&
+                    currentMinutes < rowEnd;
+                  const currentTimeTop =
+                    currentMinutes === null
+                      ? "0%"
+                      : `${((currentMinutes - rowStart) / MINUTES_PER_ROW) * 100}%`;
 
                   return (
                     <td
                       key={day}
                       data-calendar-cell
                       data-day={day}
-                      data-row={row}
-                      onMouseDown={() => startDrag(day, row)}
-                      onMouseEnter={() => moveDrag(day, row)}
+                      data-display-row={displayRow}
+                      onMouseDown={() => startDrag(day, displayRow)}
+                      onMouseEnter={() => moveDrag(day, displayRow)}
                       onMouseUp={endDrag}
                       className={`relative cursor-pointer border p-0 ${
                         isDropTarget
@@ -1004,7 +1165,7 @@ export default function WeeklyCalendar() {
                             ? "bg-blue-100"
                             : "hover:bg-blue-50"
                       }`}
-                      style={{ height: rowHeight }}
+                      style={{ height: ROW_HEIGHT }}
                     >
                       <div className="absolute inset-0">
                         {eventsStartingInRow.map((event) => {
@@ -1017,8 +1178,6 @@ export default function WeeklyCalendar() {
                           const isCompact =
                             event.end - event.start <= MINUTES_PER_ROW;
                           const timeLabel = `${formatTime(event.start)}〜${formatTime(event.end)}`;
-                          const overviewLabel =
-                            OVERVIEW_LABELS[category.id] ?? category.name;
 
                           return (
                             <div
@@ -1030,9 +1189,7 @@ export default function WeeklyCalendar() {
                                   ? "cursor-grabbing opacity-35 scale-[0.98]"
                                   : "cursor-grab opacity-100"
                               } ${
-                                isOverview
-                                  ? "left-[2px] right-[2px] rounded-[2px] px-0.5 text-[9px] leading-[8px] ring-1 ring-inset ring-white/40"
-                                  : isCompact
+                                isCompact
                                   ? "left-1 right-1 rounded px-1 text-[10px] leading-none"
                                   : "left-1 right-1 rounded p-1 text-xs shadow"
                               }`}
@@ -1055,11 +1212,7 @@ export default function WeeklyCalendar() {
                               onMouseUp={(e) => e.stopPropagation()}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {isOverview ? (
-                                <div className="truncate font-bold">
-                                  {category.icon} {overviewLabel}
-                                </div>
-                              ) : isCompact ? (
+                              {isCompact ? (
                                 <div className="truncate pr-5 font-bold leading-[16px]">
                                   {category.icon} {category.name}{" "}
                                   <span className="font-normal opacity-90">
@@ -1076,24 +1229,32 @@ export default function WeeklyCalendar() {
                                   </div>
                                 </>
                               )}
-                              {!isOverview && (
-                                <button
-                                  onPointerDown={(e) => e.stopPropagation()}
-                                  onMouseDown={(e) => e.stopPropagation()}
-                                  onMouseUp={(e) => e.stopPropagation()}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteEvent(event.id);
-                                  }}
-                                  aria-label={`${category.name}を削除`}
-                                  className="absolute right-1 top-0 rounded bg-black/20 px-1 text-[10px] leading-[14px]"
-                                >
-                                  ×
-                                </button>
-                              )}
+                              <button
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onMouseUp={(e) => e.stopPropagation()}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteEvent(event.id);
+                                }}
+                                aria-label={`${category.name}を削除`}
+                                className="absolute right-1 top-0 rounded bg-black/20 px-1 text-[10px] leading-[14px]"
+                              >
+                                ×
+                              </button>
                             </div>
                           );
                         })}
+                        {showsCurrentTime && (
+                          <div
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-0 right-0 z-20 h-0"
+                            style={{ top: currentTimeTop }}
+                          >
+                            <span className="absolute left-0 right-0 top-0 h-px bg-rose-500/80 shadow-[0_0_4px_rgba(244,63,94,0.35)]" />
+                            <span className="absolute left-0 top-0 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-rose-500 shadow-sm" />
+                          </div>
+                        )}
                       </div>
                     </td>
                   );
@@ -1117,17 +1278,12 @@ export default function WeeklyCalendar() {
           }}
         >
           <div className="truncate font-bold">
-            {movingCategory.icon}{" "}
-            {isOverview
-              ? OVERVIEW_LABELS[movingCategory.id] ?? movingCategory.name
-              : movingCategory.name}
+            {movingCategory.icon} {movingCategory.name}
           </div>
-          {!isOverview && (
-            <div className="truncate opacity-90">
-              {formatTime(movingCalendarEvent.start)}〜
-              {formatTime(movingCalendarEvent.end)}
-            </div>
-          )}
+          <div className="truncate opacity-90">
+            {formatTime(movingCalendarEvent.start)}〜
+            {formatTime(movingCalendarEvent.end)}
+          </div>
         </div>
       )}
 
