@@ -1,11 +1,13 @@
 export type RoutineRelation = "after-work-meal" | "after-work-bath";
 export type EventMode = "fixed" | "linked" | "flexible";
+export type EventStatus = "pending" | "active" | "completed" | "skipped";
 
 export type CalendarEvent = {
   id: string;
   title?: string;
   categoryId: string;
   mode: EventMode;
+  status: EventStatus;
   day: number;
   /** 0時からの経過分 */
   start: number;

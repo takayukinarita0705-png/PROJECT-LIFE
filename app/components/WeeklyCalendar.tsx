@@ -488,6 +488,7 @@ export default function WeeklyCalendar() {
         id: crypto.randomUUID(),
         categoryId: activeCategoryId,
         mode: "fixed",
+        status: "pending",
         day: draft.day,
         start: draft.start,
         end: draft.end,
@@ -614,6 +615,7 @@ export default function WeeklyCalendar() {
       ...event,
       id: crypto.randomUUID(),
       weekOffset: weekOffset + 1,
+      status: "pending",
       routineDetached: undefined,
     }));
     copied
@@ -640,6 +642,7 @@ export default function WeeklyCalendar() {
         ...event,
         id: crypto.randomUUID(),
         weekOffset,
+        status: "pending",
         source: "fixed-template",
       })),
     );

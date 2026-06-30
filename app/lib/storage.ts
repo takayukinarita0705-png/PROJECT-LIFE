@@ -4,11 +4,21 @@ import type {
   CalendarTemplate,
   Category,
   EventMode,
+  EventStatus,
   TemplateEvent,
 } from "@/app/types/calendar";
 
 export function isEventMode(value: unknown): value is EventMode {
   return value === "fixed" || value === "linked" || value === "flexible";
+}
+
+export function isEventStatus(value: unknown): value is EventStatus {
+  return (
+    value === "pending" ||
+    value === "active" ||
+    value === "completed" ||
+    value === "skipped"
+  );
 }
 
 export function normalizeCalendarEvent(
@@ -22,6 +32,7 @@ export function normalizeCalendarEvent(
     (event.title === undefined || typeof event.title === "string") &&
     typeof event.categoryId === "string" &&
     (event.mode === undefined || isEventMode(event.mode)) &&
+    (event.status === undefined || isEventStatus(event.status)) &&
     typeof event.day === "number" &&
     typeof event.start === "number" &&
     typeof event.end === "number" &&
@@ -36,8 +47,9 @@ export function normalizeCalendarEvent(
   if (!isValid) return null;
 
   return {
-    ...(value as Omit<CalendarEvent, "mode">),
+    ...(value as Omit<CalendarEvent, "mode" | "status">),
     mode: isEventMode(event.mode) ? event.mode : "fixed",
+    status: isEventStatus(event.status) ? event.status : "pending",
   };
 }
 
