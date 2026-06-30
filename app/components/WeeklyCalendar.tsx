@@ -102,6 +102,15 @@ export default function WeeklyCalendar() {
     : categories[0]?.id ?? "";
   const currentDay =
     currentTime === null ? null : (currentTime.getDay() + 6) % DAYS.length;
+  const mobileThreeDayStart = Math.min(
+    currentDay ?? 0,
+    DAYS.length - 3,
+  );
+  const mobileDayIndices = [
+    mobileThreeDayStart,
+    mobileThreeDayStart + 1,
+    mobileThreeDayStart + 2,
+  ];
   const currentMinutes =
     currentTime === null
       ? null
@@ -781,7 +790,8 @@ export default function WeeklyCalendar() {
                 週間スケジュール
               </h2>
               <p className="text-sm text-slate-500">
-                {dateLabel(weekDates[0])}〜{dateLabel(weekDates[6])}
+                {dateLabel(weekDates[mobileDayIndices[0]])}〜
+                {dateLabel(weekDates[mobileDayIndices[2]])}
               </p>
             </header>
             <CalendarGrid
@@ -811,6 +821,8 @@ export default function WeeklyCalendar() {
               }
               onDeleteEvent={deleteEvent}
               onEditEvent={openMobileWeekEditor}
+              dayIndices={mobileDayIndices}
+              compactColumns
             />
           </section>
         )}

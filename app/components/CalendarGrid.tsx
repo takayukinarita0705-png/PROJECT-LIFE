@@ -44,6 +44,8 @@ type CalendarGridProps = {
   ) => void;
   onDeleteEvent: (id: string) => void;
   onEditEvent?: (event: CalendarEvent) => void;
+  dayIndices?: number[];
+  compactColumns?: boolean;
   readOnly?: boolean;
 };
 
@@ -77,10 +79,14 @@ export default function CalendarGrid({
   onEventPointerCancel,
   onDeleteEvent,
   onEditEvent,
+  dayIndices,
+  compactColumns = false,
   readOnly = false,
 }: CalendarGridProps) {
   const gridScrollRef = useRef<HTMLDivElement>(null);
   const touchGestureRef = useRef<TouchGesture | null>(null);
+  const displayedDayIndices =
+    dayIndices ?? DAYS.map((_, dayIndex) => dayIndex);
 
   function moveTouchGesture(
     pointerEvent: ReactPointerEvent<HTMLDivElement>,
@@ -151,18 +157,42 @@ export default function CalendarGrid({
         finishTouchGesture(pointerEvent, false)
       }
     >
-      <table className="border-collapse min-w-full">
+      <table
+        className={`border-collapse ${
+          compactColumns ? "w-full table-fixed" : "min-w-full"
+        }`}
+      >
+        {compactColumns && (
+          <colgroup>
+            <col className="w-12" />
+            {displayedDayIndices.map((dayIndex) => (
+              <col key={dayIndex} />
+            ))}
+          </colgroup>
+        )}
         <thead>
           <tr>
-            <th className="w-20 border bg-gray-900 text-white">時間</th>
-            {DAYS.map((day, i) => (
+            <th
+              className={`border bg-gray-900 text-white ${
+                compactColumns
+                  ? "w-12 px-0.5 text-xs"
+                  : "w-20"
+              }`}
+            >
+              時間
+            </th>
+            {displayedDayIndices.map((dayIndex) => (
               <th
-                key={day}
-                className="h-14 min-w-[140px] border bg-gray-900 text-white"
+                key={dayIndex}
+                className={`h-14 border bg-gray-900 text-white ${
+                  compactColumns
+                    ? "min-w-0 px-1"
+                    : "min-w-[140px]"
+                }`}
               >
-                <div>{day}</div>
+                <div>{DAYS[dayIndex]}</div>
                 <div className="text-xs text-slate-300">
-                  {dateLabel(weekDates[i])}
+                  {dateLabel(weekDates[dayIndex])}
                 </div>
               </th>
             ))}
@@ -173,13 +203,17 @@ export default function CalendarGrid({
           {DISPLAY_ROWS.map((row, displayRow) => (
             <tr key={row} style={{ height: ROW_HEIGHT }}>
               <td
-                className="border bg-gray-100 p-1 text-xs text-gray-700"
+                className={`border bg-gray-100 text-gray-700 ${
+                  compactColumns
+                    ? "p-0.5 text-[10px]"
+                    : "p-1 text-xs"
+                }`}
                 style={{ height: ROW_HEIGHT }}
               >
                 {formatTime(row * MINUTES_PER_ROW)}
               </td>
 
-              {DAYS.map((_, day) => {
+              {displayedDayIndices.map((day) => {
                 const rowStart = row * MINUTES_PER_ROW;
                 const rowEnd = rowStart + MINUTES_PER_ROW;
                 const eventsStartingInRow = visibleEvents.filter(
