@@ -31,6 +31,7 @@ import {
   loadSharedCalendarState,
   saveSharedCalendarState,
 } from "@/app/lib/supabaseStorage";
+import { CURRENT_SCHEMA_VERSION } from "@/app/lib/migrations/calendarState";
 import type {
   CalendarEvent,
   CalendarTemplate,
@@ -195,6 +196,7 @@ export default function WeeklyCalendar() {
 
       const sharedState = {
         version: 1,
+        schemaVersion: CURRENT_SCHEMA_VERSION,
         categories,
         events,
         templates,

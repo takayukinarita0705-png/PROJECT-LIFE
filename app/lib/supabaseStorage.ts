@@ -4,6 +4,10 @@ import {
   normalizeCalendarEvent,
   normalizeCalendarTemplate,
 } from "@/app/lib/storage";
+import {
+  CURRENT_SCHEMA_VERSION,
+  migrateState,
+} from "@/app/lib/migrations/calendarState";
 import { getSupabaseClient } from "@/app/lib/supabase";
 import type { SharedCalendarState } from "@/app/types/calendar";
 
@@ -14,6 +18,7 @@ const SHARED_STATE_VERSION = 1;
 function createEmptySharedState(): SharedCalendarState {
   return {
     version: SHARED_STATE_VERSION,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     categories: DEFAULT_CATEGORIES.map((category) => ({ ...category })),
     events: [],
     templates: [],
@@ -29,7 +34,9 @@ function normalizeSharedCalendarState(
 ): SharedCalendarState | null {
   if (typeof value !== "object" || value === null) return null;
 
-  const state = value as Record<string, unknown>;
+  const state = migrateState(value as Record<string, unknown>);
+  if (!state) return null;
+
   if (
     state.version !== SHARED_STATE_VERSION ||
     !Array.isArray(state.categories) ||
@@ -52,6 +59,7 @@ function normalizeSharedCalendarState(
 
   return {
     version: SHARED_STATE_VERSION,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     categories,
     events,
     templates,

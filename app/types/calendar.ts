@@ -65,6 +65,7 @@ export type CalendarTemplate = Template;
 
 export type SharedCalendarState = {
   version: 1;
+  schemaVersion: 1;
   categories: Category[];
   events: CalendarEvent[];
   templates: CalendarTemplate[];
