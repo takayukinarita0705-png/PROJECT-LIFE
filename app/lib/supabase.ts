@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function requirePublicEnv(value: string | undefined, name: string) {
   if (!value) {
@@ -8,22 +9,35 @@ function requirePublicEnv(value: string | undefined, name: string) {
   return value;
 }
 
-const supabaseUrl = requirePublicEnv(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  "NEXT_PUBLIC_SUPABASE_URL",
-);
-const supabaseAnonKey = requirePublicEnv(
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-);
+function getSupabaseConfig() {
+  return {
+    url: requirePublicEnv(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      "NEXT_PUBLIC_SUPABASE_URL",
+    ),
+    anonKey: requirePublicEnv(
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    ),
+  };
+}
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+let supabaseClient: SupabaseClient | null = null;
+
+export function getSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+
+  const { url, anonKey } = getSupabaseConfig();
+  supabaseClient = createClient(url, anonKey);
+  return supabaseClient;
+}
 
 export async function testSupabaseConnection() {
-  const response = await fetch(new URL("/rest/v1/", supabaseUrl), {
+  const { url, anonKey } = getSupabaseConfig();
+  const response = await fetch(new URL("/rest/v1/", url), {
     headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
     },
   });
 

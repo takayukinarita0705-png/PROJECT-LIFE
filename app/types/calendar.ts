@@ -46,6 +46,13 @@ export type CalendarTemplate = {
   categories: Category[];
 };
 
+export type SharedCalendarState = {
+  version: 1;
+  categories: Category[];
+  events: CalendarEvent[];
+  templates: CalendarTemplate[];
+};
+
 export type Draft = {
   day: number;
   start: number;

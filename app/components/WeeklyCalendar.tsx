@@ -28,17 +28,9 @@ import {
   parseTime,
 } from "@/app/lib/time";
 import {
-  STORAGE_KEY,
-  STORAGE_VERSION,
-  TEMPLATE_STORAGE_KEY,
-  TEMPLATE_STORAGE_VERSION,
-  categoriesWithCleaning,
-  isCalendarEvent,
-  isCalendarTemplate,
-  isCategory,
-  isLegacyCalendarEvent,
-  migrateLegacyEvents,
-} from "@/app/lib/storage";
+  loadSharedCalendarState,
+  saveSharedCalendarState,
+} from "@/app/lib/supabaseStorage";
 import type {
   CalendarEvent,
   CalendarTemplate,
@@ -62,6 +54,7 @@ export default function WeeklyCalendar() {
   const [hasLoadedEvents, setHasLoadedEvents] = useState(false);
   const [templates, setTemplates] = useState<CalendarTemplate[]>([]);
   const [hasLoadedTemplates, setHasLoadedTemplates] = useState(false);
+  const [canPersistSharedState, setCanPersistSharedState] = useState(false);
   const [dragStart, setDragStart] = useState<{
     day: number;
     row: number;
@@ -88,6 +81,7 @@ export default function WeeklyCalendar() {
   const eventMoveDidMoveRef = useRef(false);
   const undoTimerRef = useRef<number | null>(null);
   const undoIdRef = useRef(0);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const weekDates = getWeekDates(weekOffset);
   const mobileWeekDates = getWeekDates(0);
@@ -139,123 +133,25 @@ export default function WeeklyCalendar() {
   useEffect(() => {
     let cancelled = false;
 
-    queueMicrotask(() => {
-      if (cancelled) return;
-
+    async function restoreSharedState() {
       try {
-        const storedEvents = localStorage.getItem(STORAGE_KEY);
+        const sharedState = await loadSharedCalendarState();
+        if (cancelled) return;
 
-        if (storedEvents !== null) {
-          const storedData: unknown = JSON.parse(storedEvents);
-
-          if (
-            Array.isArray(storedData) &&
-            storedData.every(isLegacyCalendarEvent)
-          ) {
-            const migrated = migrateLegacyEvents(storedData, true);
-            setCategories(migrated.categories);
-            setEvents(migrated.events);
-          } else if (
-            typeof storedData === "object" &&
-            storedData !== null &&
-            "version" in storedData &&
-            storedData.version === STORAGE_VERSION &&
-            "events" in storedData &&
-            Array.isArray(storedData.events) &&
-            storedData.events.every(isCalendarEvent) &&
-            "categories" in storedData &&
-            Array.isArray(storedData.categories) &&
-            storedData.categories.every(isCategory)
-          ) {
-            setCategories(storedData.categories);
-            setEvents(mergeUniqueEvents([], storedData.events));
-          } else if (
-            typeof storedData === "object" &&
-            storedData !== null &&
-            "version" in storedData &&
-            storedData.version === 5 &&
-            "events" in storedData &&
-            Array.isArray(storedData.events) &&
-            storedData.events.every(isCalendarEvent) &&
-            "categories" in storedData &&
-            Array.isArray(storedData.categories) &&
-            storedData.categories.every(isCategory)
-          ) {
-            setCategories(storedData.categories);
-            setEvents(mergeUniqueEvents([], storedData.events));
-          } else if (
-            typeof storedData === "object" &&
-            storedData !== null &&
-            "version" in storedData &&
-            storedData.version === 4 &&
-            "events" in storedData &&
-            Array.isArray(storedData.events) &&
-            storedData.events.every(isCalendarEvent) &&
-            "categories" in storedData &&
-            Array.isArray(storedData.categories) &&
-            storedData.categories.every(isCategory)
-          ) {
-            setCategories(storedData.categories);
-            setEvents(
-              attachRoutineRelations(
-                mergeUniqueEvents([], storedData.events),
-              ),
-            );
-          } else if (
-            typeof storedData === "object" &&
-            storedData !== null &&
-            "version" in storedData &&
-            storedData.version === 3 &&
-            "events" in storedData &&
-            Array.isArray(storedData.events) &&
-            storedData.events.every(isCalendarEvent) &&
-            "categories" in storedData &&
-            Array.isArray(storedData.categories) &&
-            storedData.categories.every(isCategory)
-          ) {
-            setCategories(categoriesWithCleaning(storedData.categories));
-            setEvents(
-              attachRoutineRelations(
-                mergeUniqueEvents([], storedData.events),
-              ),
-            );
-          } else if (
-            typeof storedData === "object" &&
-            storedData !== null &&
-            "version" in storedData &&
-            storedData.version === 2 &&
-            "events" in storedData &&
-            Array.isArray(storedData.events) &&
-            storedData.events.every(isLegacyCalendarEvent)
-          ) {
-            const migrated = migrateLegacyEvents(storedData.events, false);
-            setCategories(migrated.categories);
-            setEvents(migrated.events);
-          }
-        }
-
-        const storedTemplates = localStorage.getItem(TEMPLATE_STORAGE_KEY);
-        if (storedTemplates !== null) {
-          const storedTemplateData: unknown = JSON.parse(storedTemplates);
-          if (
-            typeof storedTemplateData === "object" &&
-            storedTemplateData !== null &&
-            "version" in storedTemplateData &&
-            storedTemplateData.version === TEMPLATE_STORAGE_VERSION &&
-            "templates" in storedTemplateData &&
-            Array.isArray(storedTemplateData.templates) &&
-            storedTemplateData.templates.every(isCalendarTemplate)
-          ) {
-            setTemplates(storedTemplateData.templates);
-          }
-        }
+        setCategories(sharedState.categories);
+        setEvents(sharedState.events);
+        setTemplates(sharedState.templates);
+        setCanPersistSharedState(true);
       } catch (error) {
-        console.error("予定データの復元に失敗しました。", error);
+        console.error("Supabaseから予定データを復元できませんでした。", error);
       } finally {
+        if (cancelled) return;
         setHasLoadedEvents(true);
         setHasLoadedTemplates(true);
       }
-    });
+    }
+
+    void restoreSharedState();
 
     return () => {
       cancelled = true;
@@ -263,54 +159,57 @@ export default function WeeklyCalendar() {
   }, []);
 
   useEffect(() => {
-    if (!hasLoadedEvents) return;
+    if (
+      !hasLoadedEvents ||
+      !hasLoadedTemplates ||
+      !canPersistSharedState
+    ) {
+      return;
+    }
 
-    let persistTimer: number | undefined;
+    let cancelled = false;
     let hideTimer: number | undefined;
-    const savingTimer = window.setTimeout(() => {
+    const persistTimer = window.setTimeout(() => {
       setSaveStatus("saving");
 
-      persistTimer = window.setTimeout(() => {
-        try {
-          localStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify({
-              version: STORAGE_VERSION,
-              categories,
-              events,
-            }),
-          );
+      const sharedState = {
+        version: 1,
+        categories,
+        events,
+        templates,
+      } as const;
+      const saveRequest = saveQueueRef.current.then(
+        () => saveSharedCalendarState(sharedState),
+        () => saveSharedCalendarState(sharedState),
+      );
+      saveQueueRef.current = saveRequest.catch(() => undefined);
+
+      void saveRequest
+        .then(() => {
+          if (cancelled) return;
           setSaveStatus("saved");
           hideTimer = window.setTimeout(() => setSaveStatus(null), 2000);
-        } catch (error) {
+        })
+        .catch((error: unknown) => {
+          if (cancelled) return;
           setSaveStatus(null);
-          console.error("予定データの保存に失敗しました。", error);
-        }
-      }, 120);
-    }, 0);
+          console.error("Supabaseへ予定データを保存できませんでした。", error);
+        });
+    }, 120);
 
     return () => {
-      window.clearTimeout(savingTimer);
-      if (persistTimer !== undefined) window.clearTimeout(persistTimer);
+      cancelled = true;
+      window.clearTimeout(persistTimer);
       if (hideTimer !== undefined) window.clearTimeout(hideTimer);
     };
-  }, [categories, events, hasLoadedEvents]);
-
-  useEffect(() => {
-    if (!hasLoadedTemplates) return;
-
-    try {
-      localStorage.setItem(
-        TEMPLATE_STORAGE_KEY,
-        JSON.stringify({
-          version: TEMPLATE_STORAGE_VERSION,
-          templates,
-        }),
-      );
-    } catch (error) {
-      console.error("テンプレートの保存に失敗しました。", error);
-    }
-  }, [hasLoadedTemplates, templates]);
+  }, [
+    canPersistSharedState,
+    categories,
+    events,
+    hasLoadedEvents,
+    hasLoadedTemplates,
+    templates,
+  ]);
 
   useEffect(() => {
     return () => {
