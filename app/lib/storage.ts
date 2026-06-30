@@ -122,6 +122,12 @@ export function normalizeCalendarTemplate(
   if (
     typeof template.id !== "string" ||
     typeof template.name !== "string" ||
+    (template.description !== undefined &&
+      typeof template.description !== "string") ||
+    (template.createdAt !== undefined &&
+      typeof template.createdAt !== "string") ||
+    (template.updatedAt !== undefined &&
+      typeof template.updatedAt !== "string") ||
     !Array.isArray(template.events) ||
     !Array.isArray(template.categories) ||
     !template.categories.every(isCategory)
@@ -131,11 +137,23 @@ export function normalizeCalendarTemplate(
 
   const events = template.events.map(normalizeTemplateEvent);
   if (events.some((event) => event === null)) return null;
+  const normalizedAt = new Date().toISOString();
+  const createdAt =
+    typeof template.createdAt === "string"
+      ? template.createdAt
+      : normalizedAt;
 
   return {
     id: template.id,
     name: template.name,
+    description:
+      typeof template.description === "string" ? template.description : "",
     events: events as TemplateEvent[],
     categories: template.categories,
+    createdAt,
+    updatedAt:
+      typeof template.updatedAt === "string"
+        ? template.updatedAt
+        : createdAt,
   };
 }

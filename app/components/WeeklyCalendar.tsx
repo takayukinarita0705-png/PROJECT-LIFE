@@ -711,14 +711,18 @@ export default function WeeklyCalendar() {
     const templateCategories = categories
       .filter((category) => requiredCategoryIds.has(category.id))
       .map((category) => ({ ...category }));
+    const createdAt = new Date().toISOString();
 
     setTemplates((current) => [
       ...current,
       {
         id: crypto.randomUUID(),
         name,
+        description: "",
         events: templateEvents,
         categories: templateCategories,
+        createdAt,
+        updatedAt: createdAt,
       },
     ]);
   }

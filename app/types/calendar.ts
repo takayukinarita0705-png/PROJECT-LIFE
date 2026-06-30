@@ -48,12 +48,17 @@ export type TemplateEvent = Pick<
   | "routineRelation"
 >;
 
-export type CalendarTemplate = {
+export type Template = {
   id: string;
   name: string;
+  description: string;
   events: TemplateEvent[];
   categories: Category[];
+  createdAt: string;
+  updatedAt: string;
 };
+
+export type CalendarTemplate = Template;
 
 export type SharedCalendarState = {
   version: 1;
