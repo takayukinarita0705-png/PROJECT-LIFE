@@ -195,26 +195,35 @@ export function mergeUniqueEvents(
 
 export function attachRoutineRelations(events: CalendarEvent[]) {
   const withMeals = events.map((event) => {
-    if (event.categoryId !== "meal" || event.routineRelation) return event;
+    if (event.categoryId !== "meal") return event;
 
     const parentWork = events.find(
       (candidate) =>
         candidate.categoryId === "work" &&
+        candidate.mode === "fixed" &&
         candidate.weekOffset === event.weekOffset &&
         candidate.day === event.day &&
         event.start === candidate.end + 30 &&
         event.end === event.start + 15,
     );
     return parentWork
-      ? { ...event, routineRelation: "after-work-meal" as const }
+      ? {
+          ...event,
+          mode: "linked" as const,
+          linkedToEventId: parentWork.id,
+          linkType: "after" as const,
+          offsetMinutes: 30,
+          routineRelation: "after-work-meal" as const,
+        }
       : event;
   });
 
   return withMeals.map((event) => {
-    if (event.categoryId !== "bath" || event.routineRelation) return event;
+    if (event.categoryId !== "bath") return event;
 
     const relatedMeal = withMeals.find(
       (candidate) =>
+        candidate.mode === "linked" &&
         candidate.routineRelation === "after-work-meal" &&
         candidate.weekOffset === event.weekOffset &&
         candidate.day === event.day &&
@@ -222,55 +231,15 @@ export function attachRoutineRelations(events: CalendarEvent[]) {
         event.end === event.start + 25,
     );
     return relatedMeal
-      ? { ...event, routineRelation: "after-work-bath" as const }
+      ? {
+          ...event,
+          mode: "linked" as const,
+          linkedToEventId: relatedMeal.id,
+          linkType: "after" as const,
+          offsetMinutes: 0,
+          routineRelation: "after-work-bath" as const,
+        }
       : event;
-  });
-}
-
-export function updateWorkWithRelatedRoutine(
-  events: CalendarEvent[],
-  originalWork: CalendarEvent,
-  editedWork: CalendarEvent,
-) {
-  if (originalWork.routineDetached) {
-    return events.map((event) =>
-      event.id === originalWork.id ? editedWork : event,
-    );
-  }
-
-  const mealStart = editedWork.end + 30;
-  const mealEnd = mealStart + 15;
-  const bathEnd = mealEnd + 25;
-
-  return events.map((event) => {
-    if (event.id === originalWork.id) return editedWork;
-    if (
-      event.weekOffset !== originalWork.weekOffset ||
-      event.day !== originalWork.day
-    ) {
-      return event;
-    }
-    if (event.routineRelation === "after-work-meal") {
-      return {
-        ...event,
-        categoryId: "meal",
-        day: editedWork.day,
-        weekOffset: editedWork.weekOffset,
-        start: mealStart,
-        end: mealEnd,
-      };
-    }
-    if (event.routineRelation === "after-work-bath") {
-      return {
-        ...event,
-        categoryId: "bath",
-        day: editedWork.day,
-        weekOffset: editedWork.weekOffset,
-        start: mealEnd,
-        end: bathEnd,
-      };
-    }
-    return event;
   });
 }
 

@@ -18,8 +18,8 @@ import {
   getWeekDates,
   mergeUniqueEvents,
   updateRoutineManually,
-  updateWorkWithRelatedRoutine,
 } from "@/app/lib/calendar";
+import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
 import {
   MINUTES_PER_ROW,
   displayRowToTimeRow,
@@ -161,7 +161,7 @@ export default function WeeklyCalendar() {
         if (cancelled) return;
 
         setCategories(sharedState.categories);
-        setEvents(sharedState.events);
+        setEvents(attachRoutineRelations(sharedState.events));
         setTemplates(sharedState.templates);
         setCanPersistSharedState(true);
       } catch (error) {
@@ -460,10 +460,8 @@ export default function WeeklyCalendar() {
             event.start !== movedEvent.start)
         ) {
           showUndo(events);
-          if (event.categoryId === "work") {
-            setEvents(
-              updateWorkWithRelatedRoutine(events, event, movedEvent),
-            );
+          if (event.categoryId === "work" && event.mode === "fixed") {
+            setEvents(runRoutineEngine(events, event, movedEvent));
           } else if (event.routineRelation) {
             setEvents(updateRoutineManually(events, event, movedEvent));
           } else {
@@ -587,9 +585,11 @@ export default function WeeklyCalendar() {
     if (
       event.categoryId === "work" &&
       editedEvent.categoryId === "work" &&
-      event.end !== editedEvent.end
+      event.mode === "fixed" &&
+      editedEvent.mode === "fixed" &&
+      (event.start !== editedEvent.start || event.end !== editedEvent.end)
     ) {
-      setEvents(updateWorkWithRelatedRoutine(events, event, editedEvent));
+      setEvents(runRoutineEngine(events, event, editedEvent));
     } else if (event.routineRelation) {
       setEvents(updateRoutineManually(events, event, editedEvent));
     } else {
@@ -615,25 +615,18 @@ export default function WeeklyCalendar() {
     const thisWeekEvents = events.filter(
       (event) => event.weekOffset === weekOffset,
     );
-    let copied: CalendarEvent[] = thisWeekEvents.map((event) => ({
-      ...event,
-      id: crypto.randomUUID(),
-      weekOffset: weekOffset + 1,
-      status: "pending",
-      linkedToEventId: undefined,
-      linkType: "none",
-      offsetMinutes: 0,
-      routineDetached: undefined,
-    }));
-    copied
-      .filter((event) => event.categoryId === "work")
-      .forEach((workEvent) => {
-        copied = updateWorkWithRelatedRoutine(
-          copied,
-          workEvent,
-          workEvent,
-        );
-      });
+    const copied = attachRoutineRelations(
+      thisWeekEvents.map((event) => ({
+        ...event,
+        id: crypto.randomUUID(),
+        weekOffset: weekOffset + 1,
+        status: "pending",
+        linkedToEventId: undefined,
+        linkType: "none",
+        offsetMinutes: 0,
+        routineDetached: undefined,
+      })),
+    );
 
     setEvents((previous) => mergeUniqueEvents(previous, copied));
     setWeekOffset((previous) => previous + 1);
