@@ -1,7 +1,6 @@
 import { DAYS, dateLabel } from "@/app/lib/calendar";
 import { formatTime } from "@/app/lib/time";
 import type { ScheduleItem } from "@/app/types/calendar";
-import DailyProgressRing from "./DailyProgressRing";
 
 type MobileScheduleProps = {
   currentTime: Date | null;
@@ -28,18 +27,11 @@ export default function MobileSchedule({
           <h2 className="text-2xl font-bold text-slate-900">
             今日のスケジュール
           </h2>
-          <div className="flex shrink-0 items-center gap-2">
-            {currentTime && currentDay !== null && (
-              <p className="text-sm font-bold text-slate-500">
-                {dateLabel(currentTime)}（{DAYS[currentDay]}）
-              </p>
-            )}
-            <DailyProgressRing
-              schedule={todaySchedule}
-              currentTime={currentTime}
-              currentScheduleEventId={currentScheduleEventId}
-            />
-          </div>
+          {currentTime && currentDay !== null && (
+            <p className="shrink-0 text-sm font-bold text-slate-500">
+              {dateLabel(currentTime)}（{DAYS[currentDay]}）
+            </p>
+          )}
         </div>
       </header>
 
