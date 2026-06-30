@@ -22,11 +22,6 @@ export type Category = {
   icon: string;
 };
 
-export type LegacyCalendarEvent = Omit<CalendarEvent, "categoryId"> & {
-  title: string;
-  color: string;
-};
-
 export type CategoryDraft = {
   id: string | null;
   name: string;

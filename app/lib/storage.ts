@@ -1,23 +1,10 @@
-import {
-  CLEANING_CATEGORY,
-  DEFAULT_CATEGORIES,
-  DAYS,
-  attachRoutineRelations,
-  mergeUniqueEvents,
-} from "@/app/lib/calendar";
-import { MINUTES_PER_ROW } from "@/app/lib/time";
+import { DAYS } from "@/app/lib/calendar";
 import type {
   CalendarEvent,
   CalendarTemplate,
   Category,
-  LegacyCalendarEvent,
   TemplateEvent,
 } from "@/app/types/calendar";
-
-export const STORAGE_KEY = "project-life-calendar-events";
-export const TEMPLATE_STORAGE_KEY = "project-life-calendar-templates";
-export const TEMPLATE_STORAGE_VERSION = 1;
-export const STORAGE_VERSION = 6;
 
 export function isCalendarEvent(value: unknown): value is CalendarEvent {
   if (typeof value !== "object" || value === null) return false;
@@ -37,24 +24,6 @@ export function isCalendarEvent(value: unknown): value is CalendarEvent {
       event.routineRelation === "after-work-bath") &&
     (event.routineDetached === undefined ||
       typeof event.routineDetached === "boolean")
-  );
-}
-
-export function isLegacyCalendarEvent(
-  value: unknown,
-): value is LegacyCalendarEvent {
-  if (typeof value !== "object" || value === null) return false;
-
-  const event = value as Record<string, unknown>;
-  return (
-    typeof event.id === "string" &&
-    typeof event.title === "string" &&
-    typeof event.color === "string" &&
-    typeof event.day === "number" &&
-    typeof event.start === "number" &&
-    typeof event.end === "number" &&
-    typeof event.weekOffset === "number" &&
-    (event.source === undefined || event.source === "fixed-template")
   );
 }
 
@@ -106,49 +75,4 @@ export function isCalendarTemplate(
     Array.isArray(template.categories) &&
     template.categories.every(isCategory)
   );
-}
-
-export function migrateLegacyEvents(
-  legacyEvents: LegacyCalendarEvent[],
-  usesThirtyMinuteRows: boolean,
-) {
-  const categories = DEFAULT_CATEGORIES.map((category) => ({ ...category }));
-  const events = legacyEvents.map<CalendarEvent>((event) => {
-    let category = categories.find((item) => item.name === event.title);
-
-    if (!category) {
-      category = {
-        id: `migrated-${crypto.randomUUID()}`,
-        name: event.title,
-        color: event.color,
-        icon: "•",
-      };
-      categories.push(category);
-    }
-
-    return {
-      id: event.id,
-      categoryId: category.id,
-      day: event.day,
-      start: usesThirtyMinuteRows
-        ? event.start * MINUTES_PER_ROW
-        : event.start,
-      end: usesThirtyMinuteRows
-        ? event.end * MINUTES_PER_ROW
-        : event.end,
-      weekOffset: event.weekOffset,
-      source: event.source,
-    };
-  });
-
-  return {
-    categories,
-    events: attachRoutineRelations(mergeUniqueEvents([], events)),
-  };
-}
-
-export function categoriesWithCleaning(categories: Category[]) {
-  return categories.some((category) => category.id === CLEANING_CATEGORY.id)
-    ? categories
-    : [...categories, { ...CLEANING_CATEGORY }];
 }
