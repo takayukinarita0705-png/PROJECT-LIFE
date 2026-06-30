@@ -84,12 +84,8 @@ export default function WeeklyCalendar() {
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const weekDates = getWeekDates(weekOffset);
-  const mobileWeekDates = getWeekDates(0);
   const visibleEvents = hasLoadedEvents
     ? events.filter((event) => event.weekOffset === weekOffset)
-    : [];
-  const mobileWeekEvents = hasLoadedEvents
-    ? events.filter((event) => event.weekOffset === 0)
     : [];
   const movingCalendarEvent = eventMove
     ? events.find((event) => event.id === eventMove.eventId) ?? null
@@ -746,7 +742,7 @@ export default function WeeklyCalendar() {
             type="button"
             onClick={() => setMobileView("today")}
             aria-pressed={mobileView === "today"}
-            className={`rounded-lg px-4 py-2 text-sm font-bold ${
+            className={`min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${
               mobileView === "today"
                 ? "bg-white text-slate-900 shadow-sm"
                 : "text-slate-500"
@@ -758,7 +754,7 @@ export default function WeeklyCalendar() {
             type="button"
             onClick={() => setMobileView("week")}
             aria-pressed={mobileView === "week"}
-            className={`rounded-lg px-4 py-2 text-sm font-bold ${
+            className={`min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${
               mobileView === "week"
                 ? "bg-white text-slate-900 shadow-sm"
                 : "text-slate-500"
@@ -785,24 +781,26 @@ export default function WeeklyCalendar() {
                 週間スケジュール
               </h2>
               <p className="text-sm text-slate-500">
-                {dateLabel(mobileWeekDates[0])}〜
-                {dateLabel(mobileWeekDates[6])}
+                {dateLabel(weekDates[0])}〜{dateLabel(weekDates[6])}
               </p>
             </header>
             <CalendarGrid
-              weekDates={mobileWeekDates}
-              visibleEvents={mobileWeekEvents}
+              weekDates={weekDates}
+              visibleEvents={visibleEvents}
               categories={categories}
-              dropTarget={null}
-              eventMove={null}
-              weekOffset={0}
+              dropTarget={dropTarget}
+              eventMove={eventMove}
+              weekOffset={weekOffset}
               currentDay={currentDay}
               currentMinutes={currentMinutes}
-              isSelecting={() => false}
+              isSelecting={isSelecting}
               onSelectionStart={startDrag}
               onSelectionMove={moveDrag}
               onSelectionEnd={endDrag}
-              onSelectionCancel={() => {}}
+              onSelectionCancel={() => {
+                setDragStart(null);
+                setDragCurrent(null);
+              }}
               onEventPointerDown={startEventMove}
               onEventPointerMove={moveEvent}
               onEventPointerUp={(pointerEvent) =>
@@ -813,7 +811,6 @@ export default function WeeklyCalendar() {
               }
               onDeleteEvent={deleteEvent}
               onEditEvent={openMobileWeekEditor}
-              readOnly
             />
           </section>
         )}
@@ -884,61 +881,6 @@ export default function WeeklyCalendar() {
           onDeleteEvent={deleteEvent}
         />
 
-        {eventMove && movingCalendarEvent && movingCategory && (
-          <div
-            ref={dragGhostRef}
-            className="pointer-events-none fixed z-30 box-border overflow-hidden rounded-md p-1 text-xs text-white opacity-75 shadow-2xl will-change-transform"
-            style={{
-              background: movingCategory.color,
-              height: eventMove.height,
-              left: eventMove.left,
-              top: eventMove.top,
-              width: eventMove.width,
-            }}
-          >
-            <div className="truncate font-bold">
-              {movingCategory.icon}{" "}
-              {movingCalendarEvent.title?.trim() || movingCategory.name}
-            </div>
-            <div className="truncate opacity-90">
-              {formatTime(movingCalendarEvent.start)}〜
-              {formatTime(movingCalendarEvent.end)}
-            </div>
-          </div>
-        )}
-
-        {saveStatus && (
-          <div
-            key={saveStatus}
-            role="status"
-            aria-live="polite"
-            className={`fixed right-4 top-4 z-[120] rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-sm font-bold text-slate-700 shadow-lg backdrop-blur ${
-              saveStatus === "saved"
-                ? "save-toast-lifetime"
-                : "toast-enter"
-            }`}
-          >
-            {saveStatus === "saving" ? "💾 保存中..." : "✅ 保存しました"}
-          </div>
-        )}
-
-        {undoSnapshot && (
-          <div
-            key={undoSnapshot.id}
-            role="status"
-            aria-live="polite"
-            className="undo-toast-lifetime fixed bottom-5 left-1/2 z-[120] flex -translate-x-1/2 items-center gap-4 rounded-2xl bg-slate-900/95 px-4 py-3 text-sm text-white shadow-2xl backdrop-blur"
-          >
-            <span>操作しました</span>
-            <button
-              onClick={undoLastOperation}
-              className="rounded-lg bg-white/15 px-3 py-1.5 font-bold text-blue-200 transition-colors hover:bg-white/25 active:bg-white/30"
-            >
-              元に戻す
-            </button>
-          </div>
-        )}
-
         {isCategoryManagerOpen && (
           <CategoryDialog
             categories={categories}
@@ -954,18 +896,73 @@ export default function WeeklyCalendar() {
             onSave={saveCategory}
           />
         )}
-
-        {draft && (
-          <EventDialog
-            draft={draft}
-            categories={categories}
-            activeCategoryId={activeCategoryId}
-            onCategoryChange={setSelectedCategoryId}
-            onCancel={() => setDraft(null)}
-            onAdd={addEvent}
-          />
-        )}
       </div>
+
+      {eventMove && movingCalendarEvent && movingCategory && (
+        <div
+          ref={dragGhostRef}
+          className="pointer-events-none fixed z-30 box-border overflow-hidden rounded-md p-1 text-xs text-white opacity-75 shadow-2xl will-change-transform"
+          style={{
+            background: movingCategory.color,
+            height: eventMove.height,
+            left: eventMove.left,
+            top: eventMove.top,
+            width: eventMove.width,
+          }}
+        >
+          <div className="truncate font-bold">
+            {movingCategory.icon}{" "}
+            {movingCalendarEvent.title?.trim() || movingCategory.name}
+          </div>
+          <div className="truncate opacity-90">
+            {formatTime(movingCalendarEvent.start)}〜
+            {formatTime(movingCalendarEvent.end)}
+          </div>
+        </div>
+      )}
+
+      {saveStatus && (
+        <div
+          key={saveStatus}
+          role="status"
+          aria-live="polite"
+          className={`fixed right-4 top-4 z-[120] rounded-xl border border-slate-200 bg-white/95 px-3 py-2 text-sm font-bold text-slate-700 shadow-lg backdrop-blur ${
+            saveStatus === "saved"
+              ? "save-toast-lifetime"
+              : "toast-enter"
+          }`}
+        >
+          {saveStatus === "saving" ? "💾 保存中..." : "✅ 保存しました"}
+        </div>
+      )}
+
+      {undoSnapshot && (
+        <div
+          key={undoSnapshot.id}
+          role="status"
+          aria-live="polite"
+          className="undo-toast-lifetime fixed bottom-5 left-1/2 z-[120] flex -translate-x-1/2 items-center gap-4 rounded-2xl bg-slate-900/95 px-4 py-3 text-sm text-white shadow-2xl backdrop-blur"
+        >
+          <span>操作しました</span>
+          <button
+            onClick={undoLastOperation}
+            className="min-h-11 rounded-lg bg-white/15 px-3 py-1.5 font-bold text-blue-200 transition-colors hover:bg-white/25 active:bg-white/30 md:min-h-0"
+          >
+            元に戻す
+          </button>
+        </div>
+      )}
+
+      {draft && (
+        <EventDialog
+          draft={draft}
+          categories={categories}
+          activeCategoryId={activeCategoryId}
+          onCategoryChange={setSelectedCategoryId}
+          onCancel={() => setDraft(null)}
+          onAdd={addEvent}
+        />
+      )}
     </div>
   );
 }

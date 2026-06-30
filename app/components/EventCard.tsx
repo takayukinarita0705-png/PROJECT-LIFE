@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { formatTime, getEventPosition, MINUTES_PER_ROW } from "@/app/lib/time";
 import type {
@@ -36,6 +37,8 @@ export default function EventCard({
   onEdit,
   readOnly = false,
 }: EventCardProps) {
+  const pointerOriginRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerDidMoveRef = useRef(false);
   const position = getEventPosition(event, rowStart);
   const isCompact = event.end - event.start <= MINUTES_PER_ROW;
   const timeLabel = `${formatTime(event.start)}〜${formatTime(event.end)}`;
@@ -66,10 +69,40 @@ export default function EventCard({
       onPointerDown={
         readOnly
           ? undefined
-          : (pointerEvent) => onPointerDown(event, pointerEvent)
+          : (pointerEvent) => {
+              pointerOriginRef.current = {
+                x: pointerEvent.clientX,
+                y: pointerEvent.clientY,
+              };
+              pointerDidMoveRef.current = false;
+              onPointerDown(event, pointerEvent);
+            }
       }
-      onPointerMove={readOnly ? undefined : onPointerMove}
-      onPointerUp={readOnly ? undefined : onPointerUp}
+      onPointerMove={
+        readOnly
+          ? undefined
+          : (pointerEvent) => {
+              const origin = pointerOriginRef.current;
+              if (
+                origin &&
+                Math.hypot(
+                  pointerEvent.clientX - origin.x,
+                  pointerEvent.clientY - origin.y,
+                ) >= 4
+              ) {
+                pointerDidMoveRef.current = true;
+              }
+              onPointerMove(pointerEvent);
+            }
+      }
+      onPointerUp={
+        readOnly
+          ? undefined
+          : (pointerEvent) => {
+              onPointerUp(pointerEvent);
+              if (!pointerDidMoveRef.current) onEdit?.(event);
+            }
+      }
       onPointerCancel={readOnly ? undefined : onPointerCancel}
       onMouseDown={(e) => e.stopPropagation()}
       onMouseUp={(e) => e.stopPropagation()}
@@ -94,6 +127,7 @@ export default function EventCard({
       {!readOnly && (
         <button
           onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
           onClick={(e) => {

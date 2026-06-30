@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import EventCard from "./EventCard";
 import { DAYS, dateLabel } from "@/app/lib/calendar";
@@ -46,6 +47,16 @@ type CalendarGridProps = {
   readOnly?: boolean;
 };
 
+type TouchGesture = {
+  pointerId: number;
+  startDay: number;
+  startDisplayRow: number;
+  startX: number;
+  startY: number;
+  startScrollLeft: number;
+  mode: "pending" | "selecting" | "scrolling";
+};
+
 export default function CalendarGrid({
   weekDates,
   visibleEvents,
@@ -68,10 +79,77 @@ export default function CalendarGrid({
   onEditEvent,
   readOnly = false,
 }: CalendarGridProps) {
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+  const touchGestureRef = useRef<TouchGesture | null>(null);
+
+  function moveTouchGesture(
+    pointerEvent: ReactPointerEvent<HTMLDivElement>,
+  ) {
+    const gesture = touchGestureRef.current;
+    if (readOnly || gesture?.pointerId !== pointerEvent.pointerId) return;
+
+    pointerEvent.preventDefault();
+    const deltaX = pointerEvent.clientX - gesture.startX;
+    const deltaY = pointerEvent.clientY - gesture.startY;
+
+    if (
+      gesture.mode === "pending" &&
+      Math.max(Math.abs(deltaX), Math.abs(deltaY)) >= 6
+    ) {
+      gesture.mode =
+        Math.abs(deltaX) > Math.abs(deltaY) ? "scrolling" : "selecting";
+      if (gesture.mode === "scrolling") {
+        onSelectionCancel();
+      }
+    }
+
+    if (gesture.mode === "scrolling") {
+      pointerEvent.currentTarget.scrollLeft =
+        gesture.startScrollLeft - deltaX;
+      return;
+    }
+    if (gesture.mode !== "selecting") return;
+
+    const target = document.elementFromPoint(
+      pointerEvent.clientX,
+      pointerEvent.clientY,
+    );
+    const cell = target?.closest<HTMLElement>("[data-calendar-cell]");
+    if (!cell || !pointerEvent.currentTarget.contains(cell)) return;
+
+    const day = Number(cell.dataset.day);
+    const displayRow = Number(cell.dataset.displayRow);
+    if (!Number.isInteger(day) || !Number.isInteger(displayRow)) return;
+    onSelectionMove(day, displayRow);
+  }
+
+  function finishTouchGesture(
+    pointerEvent: ReactPointerEvent<HTMLDivElement>,
+    shouldAdd: boolean,
+  ) {
+    const gesture = touchGestureRef.current;
+    if (gesture?.pointerId !== pointerEvent.pointerId) return;
+
+    touchGestureRef.current = null;
+    if (!shouldAdd || gesture.mode === "scrolling") {
+      onSelectionCancel();
+    } else {
+      onSelectionEnd();
+    }
+  }
+
   return (
     <div
-      className="overflow-auto rounded-xl border border-gray-700 bg-white select-none"
+      ref={gridScrollRef}
+      className="overflow-auto overscroll-x-contain rounded-xl border border-gray-700 bg-white select-none"
       onMouseLeave={onSelectionCancel}
+      onPointerMove={moveTouchGesture}
+      onPointerUp={(pointerEvent) =>
+        finishTouchGesture(pointerEvent, true)
+      }
+      onPointerCancel={(pointerEvent) =>
+        finishTouchGesture(pointerEvent, false)
+      }
     >
       <table className="border-collapse min-w-full">
         <thead>
@@ -141,8 +219,34 @@ export default function CalendarGrid({
                         : () => onSelectionMove(day, displayRow)
                     }
                     onMouseUp={readOnly ? undefined : onSelectionEnd}
+                    onPointerDown={(pointerEvent) => {
+                      if (
+                        readOnly ||
+                        pointerEvent.pointerType === "mouse"
+                      ) {
+                        return;
+                      }
+
+                      pointerEvent.preventDefault();
+                      touchGestureRef.current = {
+                        pointerId: pointerEvent.pointerId,
+                        startDay: day,
+                        startDisplayRow: displayRow,
+                        startX: pointerEvent.clientX,
+                        startY: pointerEvent.clientY,
+                        startScrollLeft:
+                          gridScrollRef.current?.scrollLeft ?? 0,
+                        mode: "pending",
+                      };
+                      pointerEvent.currentTarget.setPointerCapture(
+                        pointerEvent.pointerId,
+                      );
+                      onSelectionStart(day, displayRow);
+                    }}
                     className={`relative border p-0 ${
-                      readOnly ? "cursor-default" : "cursor-pointer"
+                      readOnly
+                        ? "cursor-default"
+                        : "cursor-pointer touch-none md:touch-auto"
                     } ${
                       isDropTarget
                         ? "bg-blue-100 ring-2 ring-inset ring-blue-300"
