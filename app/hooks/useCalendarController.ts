@@ -14,6 +14,7 @@ import {
 import {
   addDaysToCalendarDate,
   formatCalendarDate,
+  materializeEventDate,
   resolveEventDate,
 } from "@/app/lib/date";
 import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
@@ -188,27 +189,28 @@ export default function useCalendarController(weekOffset: number) {
     event: CalendarEvent,
     movedEvent: CalendarEvent,
   ) {
+    const datedMovedEvent = materializeEventDate(movedEvent);
     const isDuplicate = events.some(
       (item) =>
-        item.id !== event.id && eventKey(item) === eventKey(movedEvent),
+        item.id !== event.id && eventKey(item) === eventKey(datedMovedEvent),
     );
     if (
       isDuplicate ||
-      (resolveEventDate(event) === resolveEventDate(movedEvent) &&
-        event.start === movedEvent.start)
+      (resolveEventDate(event) === datedMovedEvent.date &&
+        event.start === datedMovedEvent.start)
     ) {
       return;
     }
 
     showUndo(events);
     if (event.categoryId === "work" && event.mode === "fixed") {
-      setEvents(runRoutineEngine(events, event, movedEvent));
+      setEvents(runRoutineEngine(events, event, datedMovedEvent));
     } else if (event.routineRelation) {
-      setEvents(updateRoutineManually(events, event, movedEvent));
+      setEvents(updateRoutineManually(events, event, datedMovedEvent));
     } else {
       setEvents(
         events.map((item) =>
-          item.id === event.id ? movedEvent : item,
+          item.id === event.id ? datedMovedEvent : item,
         ),
       );
     }
@@ -218,7 +220,7 @@ export default function useCalendarController(weekOffset: number) {
     if (!activeCategoryId) return;
 
     const nextEvents = mergeUniqueEvents(events, [
-      {
+      materializeEventDate({
         id: crypto.randomUUID(),
         categoryId: activeCategoryId,
         mode: "fixed",
@@ -230,7 +232,7 @@ export default function useCalendarController(weekOffset: number) {
         start: draft.start,
         end: draft.end,
         weekOffset: draft.weekOffset,
-      },
+      }),
     ]);
 
     if (nextEvents.length !== events.length) {
@@ -268,13 +270,13 @@ export default function useCalendarController(weekOffset: number) {
     const event = events.find((item) => item.id === draft.eventId);
     if (!event) return null;
 
-    const editedEvent: CalendarEvent = {
+    const editedEvent = materializeEventDate({
       ...event,
       title,
       categoryId: draft.categoryId,
       start,
       end,
-    };
+    });
     const isDuplicate = events.some(
       (item) =>
         item.id !== event.id && eventKey(item) === eventKey(editedEvent),
@@ -330,16 +332,18 @@ export default function useCalendarController(weekOffset: number) {
   ) {
     clearUndo();
     const nextEvents = attachRoutineRelations(
-      templateEvents.map<CalendarEvent>((event) => ({
-        ...event,
-        id: crypto.randomUUID(),
-        date: formatCalendarDate(weekDates[event.day]),
-        weekOffset,
-        status: "pending",
-        linkType: "none",
-        offsetMinutes: 0,
-        source: "fixed-template",
-      })),
+      templateEvents.map<CalendarEvent>((event) =>
+        materializeEventDate({
+          ...event,
+          id: crypto.randomUUID(),
+          date: formatCalendarDate(weekDates[event.day]),
+          weekOffset,
+          status: "pending",
+          linkType: "none",
+          offsetMinutes: 0,
+          source: "fixed-template",
+        }),
+      ),
     );
 
     const requiredCategoryIds = new Set(

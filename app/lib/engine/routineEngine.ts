@@ -1,5 +1,8 @@
 import type { CalendarEvent } from "@/app/types/calendar";
-import { resolveEventDate } from "@/app/lib/date";
+import {
+  materializeEventDate,
+  resolveEventDate,
+} from "@/app/lib/date";
 
 function hasScheduleChanged(
   originalEvent: CalendarEvent,
@@ -57,14 +60,17 @@ export function runRoutineEngine(
 
         const duration = event.end - event.start;
         const start = parent.end + event.offsetMinutes;
-        eventsById.set(event.id, {
-          ...event,
-          date: parent.date,
-          day: parent.day,
-          weekOffset: parent.weekOffset,
-          start,
-          end: start + duration,
-        });
+        eventsById.set(
+          event.id,
+          materializeEventDate({
+            ...event,
+            date: resolveEventDate(parent),
+            day: parent.day,
+            weekOffset: parent.weekOffset,
+            start,
+            end: start + duration,
+          }),
+        );
         pendingParentIds.push(event.id);
       });
   }

@@ -7,6 +7,7 @@ import {
   getDateFromWeekOffset,
   isEventOnDate,
   isCalendarDate,
+  materializeEventDate,
   resolveEventDate,
 } from "@/app/lib/date";
 
@@ -79,5 +80,31 @@ describe("Calendar date", () => {
     expect(compareEventDates(legacyEvent, datedEvent, referenceDate)).toBeLessThan(
       0,
     );
+  });
+
+  it("保存対象Eventへdateを実体化し、既存dateを正とする", () => {
+    const legacyEvent = {
+      id: "legacy",
+      categoryId: "work",
+      mode: "fixed" as const,
+      status: "pending" as const,
+      linkType: "none" as const,
+      offsetMinutes: 0,
+      day: 2,
+      weekOffset: 1,
+      start: 540,
+      end: 600,
+    };
+    const datedEvent = {
+      ...legacyEvent,
+      date: "2026-08-15",
+      day: 0,
+      weekOffset: 0,
+    };
+
+    expect(materializeEventDate(legacyEvent, referenceDate).date).toBe(
+      "2026-07-08",
+    );
+    expect(materializeEventDate(datedEvent, referenceDate)).toBe(datedEvent);
   });
 });
