@@ -1,4 +1,7 @@
-import { getCalendarDateForWeekDay } from "@/app/lib/date";
+import {
+  getCalendarDateForWeekDay,
+  getDateFromWeekOffset,
+} from "@/app/lib/date";
 
 export const CURRENT_SCHEMA_VERSION = 2 as const;
 const LEGACY_SCHEMA_VERSION = 1;
@@ -10,6 +13,43 @@ export type MigratableState = Record<string, unknown> & {
 export type MigratedState = Record<string, unknown> & {
   schemaVersion: typeof CURRENT_SCHEMA_VERSION;
 };
+
+export function migrateStateV1ToV2(
+  state: MigratableState,
+  anchorWeekStart: Date,
+): MigratedState {
+  const events = Array.isArray(state.events)
+    ? state.events.map((value) => {
+        if (typeof value !== "object" || value === null) return value;
+
+        const event = value as Record<string, unknown>;
+        if (
+          typeof event.date === "string" ||
+          typeof event.weekOffset !== "number" ||
+          !Number.isInteger(event.weekOffset) ||
+          typeof event.day !== "number" ||
+          !Number.isInteger(event.day)
+        ) {
+          return event;
+        }
+
+        return {
+          ...event,
+          date: getDateFromWeekOffset(
+            anchorWeekStart,
+            event.weekOffset,
+            event.day,
+          ),
+        };
+      })
+    : state.events;
+
+  return {
+    ...state,
+    events,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
+  };
+}
 
 function migrateVersion1(
   state: MigratableState,

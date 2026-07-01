@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CURRENT_SCHEMA_VERSION,
   migrateState,
+  migrateStateV1ToV2,
 } from "@/app/lib/migrations/calendarState";
 
 describe("保存StateのSchema Migration", () => {
@@ -48,6 +49,33 @@ describe("保存StateのSchema Migration", () => {
       | Array<{ events: Array<Record<string, unknown>> }>
       | undefined;
     expect(templates?.[0].events[0]).not.toHaveProperty("date");
+  });
+
+  it("V1 Stateを指定した基準週からV2へ変換する", () => {
+    const migrated = migrateStateV1ToV2(
+      {
+        version: 1,
+        schemaVersion: 1,
+        events: [
+          {
+            id: "next-week-wednesday",
+            day: 2,
+            weekOffset: 1,
+          },
+        ],
+      },
+      new Date(2026, 5, 29, 12),
+    );
+
+    expect(migrated).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      events: [
+        {
+          id: "next-week-wednesday",
+          date: "2026-07-08",
+        },
+      ],
+    });
   });
 
   it("現在Versionのデータ内容を変更しない", () => {

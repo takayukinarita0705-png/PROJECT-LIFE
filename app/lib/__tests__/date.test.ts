@@ -3,6 +3,7 @@ import {
   addDaysToCalendarDate,
   formatCalendarDate,
   getCalendarDateForWeekDay,
+  getDateFromWeekOffset,
   isCalendarDate,
 } from "@/app/lib/date";
 
@@ -16,6 +17,15 @@ describe("Calendar date", () => {
   });
 
   it("基準週の月曜日からweekOffsetと曜日を日付へ変換する", () => {
+    expect(getDateFromWeekOffset("2026-06-29", 0, 0)).toBe(
+      "2026-06-29",
+    );
+    expect(getDateFromWeekOffset("2026-06-29", 1, 2)).toBe(
+      "2026-07-08",
+    );
+    expect(getDateFromWeekOffset("2026-06-29", -1, 6)).toBe(
+      "2026-06-28",
+    );
     expect(getCalendarDateForWeekDay(0, 0, referenceDate)).toBe(
       "2026-06-29",
     );

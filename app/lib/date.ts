@@ -22,6 +22,23 @@ export function isCalendarDate(value: unknown): value is string {
   return typeof value === "string" && parseCalendarDate(value) !== null;
 }
 
+export function getDateFromWeekOffset(
+  anchorWeekStart: Date | string,
+  weekOffset: number,
+  day: number,
+): string {
+  const anchorDate =
+    anchorWeekStart instanceof Date
+      ? new Date(anchorWeekStart.getTime())
+      : parseCalendarDate(anchorWeekStart);
+  if (!anchorDate || Number.isNaN(anchorDate.getTime())) {
+    throw new RangeError("anchorWeekStart must be a valid calendar date.");
+  }
+
+  anchorDate.setDate(anchorDate.getDate() + weekOffset * 7 + day);
+  return formatCalendarDate(anchorDate);
+}
+
 export function getCalendarDateForWeekDay(
   weekOffset: number,
   day: number,
