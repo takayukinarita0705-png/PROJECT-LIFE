@@ -186,6 +186,27 @@ export function eventKey(
   ].join(":");
 }
 
+export function filterEventsByDate(
+  events: CalendarEvent[],
+  date: string,
+  referenceDate = new Date(),
+) {
+  return events.filter(
+    (event) => resolveEventDate(event, referenceDate) === date,
+  );
+}
+
+export function filterEventsByDates(
+  events: CalendarEvent[],
+  dates: Iterable<string>,
+  referenceDate = new Date(),
+) {
+  const dateKeys = new Set(dates);
+  return events.filter((event) =>
+    dateKeys.has(resolveEventDate(event, referenceDate)),
+  );
+}
+
 export function mergeUniqueEvents(
   current: CalendarEvent[],
   additions: CalendarEvent[],

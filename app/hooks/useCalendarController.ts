@@ -7,6 +7,7 @@ import {
   createFixedTemplateEvents,
   dateLabel,
   eventKey,
+  filterEventsByDates,
   getWeekDates,
   mergeUniqueEvents,
   updateRoutineManually,
@@ -306,8 +307,9 @@ export default function useCalendarController(weekOffset: number) {
 
   function createNextWeek() {
     clearUndo();
-    const thisWeekEvents = events.filter(
-      (event) => weekDateKeys.has(resolveEventDate(event)),
+    const thisWeekEvents = filterEventsByDates(
+      events,
+      weekDates.map(formatCalendarDate),
     );
     const copied = attachRoutineRelations(
       thisWeekEvents.map((event) => ({

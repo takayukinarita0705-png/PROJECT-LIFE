@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   attachRoutineRelations,
+  filterEventsByDate,
+  filterEventsByDates,
   mergeUniqueEvents,
   updateRoutineManually,
 } from "@/app/lib/calendar";
@@ -52,6 +54,64 @@ describe("テンプレート重複防止", () => {
     const second = createEvent({ id: "second" });
 
     expect(mergeUniqueEvents([], [first, second])).toEqual([first]);
+  });
+});
+
+describe("date中心のEvent抽出", () => {
+  const referenceDate = new Date(2026, 6, 1, 12);
+  const datedEvent = createEvent({
+    id: "dated",
+    date: "2026-08-15",
+    day: 0,
+    weekOffset: 0,
+  });
+  const legacyEvent = createEvent({
+    id: "legacy",
+    date: undefined,
+    day: 2,
+    weekOffset: 1,
+  });
+
+  it("dateがあるEventはweekOffset/dayよりdateを優先する", () => {
+    expect(
+      filterEventsByDate(
+        [datedEvent],
+        "2026-08-15",
+        referenceDate,
+      ),
+    ).toEqual([datedEvent]);
+    expect(
+      filterEventsByDate(
+        [datedEvent],
+        "2026-06-29",
+        referenceDate,
+      ),
+    ).toEqual([]);
+  });
+
+  it("dateがないEventだけweekOffset/dayで補完する", () => {
+    expect(
+      filterEventsByDate(
+        [legacyEvent],
+        "2026-07-08",
+        referenceDate,
+      ),
+    ).toEqual([legacyEvent]);
+  });
+
+  it("表示対象の日付集合が変わると該当Eventだけを抽出する", () => {
+    const events = [datedEvent, legacyEvent];
+
+    expect(
+      filterEventsByDates(
+        events,
+        ["2026-07-06", "2026-07-07", "2026-07-08"],
+        referenceDate,
+      ),
+    ).toEqual([legacyEvent]);
+    expect(
+      filterEventsByDates(events, ["2026-08-15"], referenceDate),
+    ).toEqual([datedEvent]);
   });
 });
 

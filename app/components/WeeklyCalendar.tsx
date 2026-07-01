@@ -10,6 +10,8 @@ import WeekToolbar from "./WeekToolbar";
 import {
   DAYS,
   dateLabel,
+  filterEventsByDate,
+  filterEventsByDates,
   getDropTarget,
   getWeekDates,
 } from "@/app/lib/calendar";
@@ -17,8 +19,6 @@ import {
   compareEventDates,
   formatCalendarDate,
   getCalendarDateForWeekDay,
-  isEventOnDate,
-  resolveEventDate,
 } from "@/app/lib/date";
 import {
   MINUTES_PER_ROW,
@@ -89,11 +89,8 @@ export default function WeeklyCalendar() {
   const eventMoveDidMoveRef = useRef(false);
 
   const weekDates = getWeekDates(weekOffset);
-  const weekDateKeys = new Set(weekDates.map(formatCalendarDate));
   const visibleEvents = hasLoadedEvents
-    ? events.filter((event) =>
-        weekDateKeys.has(resolveEventDate(event)),
-      )
+    ? filterEventsByDates(events, weekDates.map(formatCalendarDate))
     : [];
   const movingCalendarEvent = eventMove
     ? events.find((event) => event.id === eventMove.eventId) ?? null
@@ -121,10 +118,10 @@ export default function WeeklyCalendar() {
     };
   });
   const mobileVisibleEvents = hasLoadedEvents
-    ? events.filter((event) =>
-        mobileDayColumns.some(
-          (column) =>
-            isEventOnDate(event, formatCalendarDate(column.date)),
+    ? filterEventsByDates(
+        events,
+        mobileDayColumns.map((column) =>
+          formatCalendarDate(column.date),
         ),
       )
     : [];
@@ -137,8 +134,7 @@ export default function WeeklyCalendar() {
   const todaySchedule =
     currentDate === null || !hasLoadedEvents
       ? []
-      : events
-          .filter((event) => isEventOnDate(event, currentDate))
+      : filterEventsByDate(events, currentDate)
           .flatMap((event) => {
             const category = categories.find(
               (item) => item.id === event.categoryId,
