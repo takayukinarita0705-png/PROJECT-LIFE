@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { isCurrentMobileEvent } from "@/app/components/MobileSchedule";
+import {
+  getTodayProgress,
+  isCurrentMobileEvent,
+} from "@/app/components/MobileSchedule";
 import type { CalendarEvent } from "@/app/types/calendar";
 
 const overnightSleep: CalendarEvent = {
@@ -33,5 +36,29 @@ describe("日またぎ予定の進行中判定", () => {
     expect(
       isCurrentMobileEvent(overnightSleep, "2026-07-02", 23 * 60),
     ).toBe(false);
+  });
+});
+
+describe("今日の達成状況", () => {
+  it("completedだけを完了として件数と達成率を計算する", () => {
+    expect(
+      getTodayProgress([
+        { status: "completed" },
+        { status: "pending" },
+        {},
+      ]),
+    ).toEqual({
+      completed: 1,
+      total: 3,
+      percentage: 33,
+    });
+  });
+
+  it("今日の予定がない場合は達成率を0%にする", () => {
+    expect(getTodayProgress([])).toEqual({
+      completed: 0,
+      total: 0,
+      percentage: 0,
+    });
   });
 });

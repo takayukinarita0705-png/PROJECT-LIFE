@@ -4,12 +4,29 @@ import {
   isEventOnDate,
 } from "@/app/lib/date";
 import { formatTime } from "@/app/lib/time";
-import type { CalendarEvent, ScheduleItem } from "@/app/types/calendar";
+import type {
+  CalendarEvent,
+  EventStatus,
+  ScheduleItem,
+} from "@/app/types/calendar";
 
 const MINUTES_PER_DAY = 24 * 60;
 
 function normalizeDayMinutes(minutes: number) {
   return ((minutes % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+}
+
+export function getTodayProgress(
+  events: Array<{ status?: EventStatus }>,
+) {
+  const total = events.length;
+  const completed = events.filter(
+    (event) => event.status === "completed",
+  ).length;
+  const percentage =
+    total === 0 ? 0 : Math.round((completed / total) * 100);
+
+  return { completed, total, percentage };
 }
 
 export function isCurrentMobileEvent(
@@ -63,6 +80,9 @@ export default function MobileSchedule({
         currentTime.getSeconds() / 60;
   const currentDate =
     currentTime === null ? null : formatCalendarDate(currentTime);
+  const todayProgress = getTodayProgress(
+    todaySchedule.map(({ event }) => event),
+  );
 
   return (
     <section className="md:hidden">
@@ -81,6 +101,40 @@ export default function MobileSchedule({
           )}
         </div>
       </header>
+
+      {hasLoadedEvents && currentDay !== null && (
+        <section
+          aria-label="今日の達成状況"
+          className="mb-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold tracking-wide text-emerald-700">
+                今日の達成状況
+              </p>
+              <p className="mt-0.5 text-sm font-bold text-slate-700">
+                {todayProgress.completed} / {todayProgress.total} 件完了
+              </p>
+            </div>
+            <p className="text-xl font-bold tabular-nums text-emerald-700">
+              {todayProgress.percentage}%
+            </p>
+          </div>
+          <div
+            role="progressbar"
+            aria-label="今日の予定の達成率"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={todayProgress.percentage}
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-emerald-100"
+          >
+            <div
+              className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
+              style={{ width: `${todayProgress.percentage}%` }}
+            />
+          </div>
+        </section>
+      )}
 
       {!hasLoadedEvents || currentDay === null ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
