@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatActualMinutes,
+  getTodayActuals,
   getTodayProgress,
   isCurrentMobileEvent,
 } from "@/app/components/MobileSchedule";
-import type { CalendarEvent } from "@/app/types/calendar";
+import type {
+  CalendarEvent,
+  Category,
+  ScheduleItem,
+} from "@/app/types/calendar";
 
 const overnightSleep: CalendarEvent = {
   id: "overnight-sleep",
@@ -18,6 +24,36 @@ const overnightSleep: CalendarEvent = {
   end: 5 * 60,
   weekOffset: 0,
 };
+
+const category: Category = {
+  id: "study",
+  name: "宅建業法",
+  color: "#ef4444",
+  icon: "📕",
+  group: "study",
+  createdAt: "2026-07-01T00:00:00.000Z",
+  updatedAt: "2026-07-01T00:00:00.000Z",
+};
+
+function createScheduleItem(
+  id: string,
+  status: CalendarEvent["status"],
+  start: number,
+  end: number,
+  itemCategory = category,
+): ScheduleItem {
+  return {
+    event: {
+      ...overnightSleep,
+      id,
+      categoryId: itemCategory.id,
+      status,
+      start,
+      end,
+    },
+    category: itemCategory,
+  };
+}
 
 describe("日またぎ予定の進行中判定", () => {
   it("開始後と翌日側の終了前を進行中として扱う", () => {
@@ -61,5 +97,46 @@ describe("今日の達成状況", () => {
       total: 0,
       percentage: 0,
     });
+  });
+});
+
+describe("今日の実績", () => {
+  it("completedだけをカテゴリ別に合計する", () => {
+    const walkCategory = {
+      ...category,
+      id: "walk",
+      name: "散歩",
+      icon: "🚶",
+    };
+    const actuals = getTodayActuals([
+      createScheduleItem("study-1", "completed", 540, 570),
+      createScheduleItem("study-2", "completed", 600, 620),
+      createScheduleItem("pending", "pending", 620, 680),
+      createScheduleItem("skipped", "skipped", 680, 740),
+      createScheduleItem("walk", "completed", 300, 320, walkCategory),
+    ]);
+
+    expect(actuals).toEqual([
+      {
+        categoryId: "study",
+        name: "宅建業法",
+        icon: "📕",
+        color: "#ef4444",
+        minutes: 50,
+      },
+      {
+        categoryId: "walk",
+        name: "散歩",
+        icon: "🚶",
+        color: "#ef4444",
+        minutes: 20,
+      },
+    ]);
+  });
+
+  it("分数をコンパクトな時間表記へ変換する", () => {
+    expect(formatActualMinutes(50)).toBe("50分");
+    expect(formatActualMinutes(600)).toBe("10時間");
+    expect(formatActualMinutes(90)).toBe("1時間30分");
   });
 });

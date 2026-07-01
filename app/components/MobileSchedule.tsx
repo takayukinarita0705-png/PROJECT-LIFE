@@ -29,6 +29,50 @@ export function getTodayProgress(
   return { completed, total, percentage };
 }
 
+export function getTodayActuals(schedule: ScheduleItem[]) {
+  const actualsByCategory = new Map<
+    string,
+    {
+      categoryId: string;
+      name: string;
+      icon: string;
+      color: string;
+      minutes: number;
+    }
+  >();
+
+  schedule.forEach(({ event, category }) => {
+    if (event.status !== "completed") return;
+
+    const rawDuration = event.end - event.start;
+    const duration =
+      rawDuration >= 0 ? rawDuration : MINUTES_PER_DAY + rawDuration;
+    const current = actualsByCategory.get(category.id);
+    if (current) {
+      current.minutes += duration;
+      return;
+    }
+
+    actualsByCategory.set(category.id, {
+      categoryId: category.id,
+      name: category.name,
+      icon: category.icon,
+      color: category.color,
+      minutes: duration,
+    });
+  });
+
+  return [...actualsByCategory.values()];
+}
+
+export function formatActualMinutes(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (hours === 0) return `${remainingMinutes}分`;
+  if (remainingMinutes === 0) return `${hours}時間`;
+  return `${hours}時間${remainingMinutes}分`;
+}
+
 export function isCurrentMobileEvent(
   event: CalendarEvent,
   currentDate: string | null,
@@ -87,6 +131,7 @@ export default function MobileSchedule({
   const todayProgress = getTodayProgress(
     todaySchedule.map(({ event }) => event),
   );
+  const todayActuals = getTodayActuals(todaySchedule);
 
   return (
     <section className="md:hidden">
@@ -137,6 +182,40 @@ export default function MobileSchedule({
               style={{ width: `${todayProgress.percentage}%` }}
             />
           </div>
+        </section>
+      )}
+
+      {hasLoadedEvents && currentDay !== null && (
+        <section
+          aria-label="今日の実績"
+          className="mb-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+        >
+          <p className="text-xs font-bold tracking-wide text-slate-500">
+            今日の実績
+          </p>
+          {todayActuals.length === 0 ? (
+            <p className="mt-1 text-xs text-slate-400">
+              完了した予定はまだありません
+            </p>
+          ) : (
+            <ul className="mt-2 flex flex-wrap gap-1.5">
+              {todayActuals.map((actual) => (
+                <li
+                  key={actual.categoryId}
+                  className="flex items-center gap-1.5 rounded-lg border bg-slate-50 px-2 py-1 text-xs"
+                  style={{ borderColor: actual.color }}
+                >
+                  <span aria-hidden="true">{actual.icon}</span>
+                  <span className="font-bold text-slate-700">
+                    {actual.name}
+                  </span>
+                  <span className="font-bold tabular-nums text-slate-500">
+                    {formatActualMinutes(actual.minutes)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       )}
 
