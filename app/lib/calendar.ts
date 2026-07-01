@@ -10,6 +10,7 @@ import {
   displayRowToTimeRow,
   toMinutes,
 } from "@/app/lib/time";
+import { isCalendarDate } from "@/app/lib/date";
 
 export const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 
@@ -166,12 +167,11 @@ export function createFixedTemplateEvents(
 export function eventKey(
   event: Pick<
     CalendarEvent,
-    "categoryId" | "day" | "start" | "end" | "weekOffset"
+    "categoryId" | "date" | "start" | "end"
   >,
 ) {
   return [
-    event.weekOffset,
-    event.day,
+    event.date,
     event.start,
     event.end,
     event.categoryId,
@@ -201,8 +201,7 @@ export function attachRoutineRelations(events: CalendarEvent[]) {
       (candidate) =>
         candidate.categoryId === "work" &&
         candidate.mode === "fixed" &&
-        candidate.weekOffset === event.weekOffset &&
-        candidate.day === event.day &&
+        candidate.date === event.date &&
         event.start === candidate.end + 30 &&
         event.end === event.start + 15,
     );
@@ -225,8 +224,7 @@ export function attachRoutineRelations(events: CalendarEvent[]) {
       (candidate) =>
         candidate.mode === "linked" &&
         candidate.routineRelation === "after-work-meal" &&
-        candidate.weekOffset === event.weekOffset &&
-        candidate.day === event.day &&
+        candidate.date === event.date &&
         event.start === candidate.end &&
         event.end === event.start + 25,
     );
@@ -252,8 +250,7 @@ export function updateRoutineManually(
     if (event.id === originalRoutine.id) return editedRoutine;
     if (
       event.categoryId === "work" &&
-      event.weekOffset === originalRoutine.weekOffset &&
-      event.day === originalRoutine.day
+      event.date === originalRoutine.date
     ) {
       return { ...event, routineDetached: true };
     }
@@ -281,8 +278,10 @@ export function getDropTarget(
 
   const day = Number(cell.dataset.day);
   const weekOffset = Number(cell.dataset.weekOffset);
+  const date = cell.dataset.date;
   const displayRow = Number(cell.dataset.displayRow);
   if (
+    !isCalendarDate(date) ||
     !Number.isInteger(day) ||
     !Number.isInteger(weekOffset) ||
     !Number.isInteger(displayRow)
@@ -302,6 +301,7 @@ export function getDropTarget(
   const timeRow = displayRowToTimeRow(displayRow);
 
   return {
+    date,
     day,
     weekOffset,
     row: timeRow,

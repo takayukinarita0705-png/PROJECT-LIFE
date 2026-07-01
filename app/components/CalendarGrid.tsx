@@ -2,6 +2,7 @@ import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import EventCard from "./EventCard";
 import { DAYS, dateLabel } from "@/app/lib/calendar";
+import { formatCalendarDate } from "@/app/lib/date";
 import {
   DISPLAY_ROWS,
   MINUTES_PER_ROW,
@@ -23,7 +24,7 @@ type CalendarGridProps = {
   dropTarget: DropTarget | null;
   eventMove: EventMove | null;
   weekOffset: number;
-  currentDay: number | null;
+  currentDate: string | null;
   currentMinutes: number | null;
   isSelecting: (
     day: number,
@@ -77,7 +78,7 @@ export default function CalendarGrid({
   dropTarget,
   eventMove,
   weekOffset,
-  currentDay,
+  currentDate,
   currentMinutes,
   isSelecting,
   onSelectionStart,
@@ -238,12 +239,12 @@ export default function CalendarGrid({
 
               {displayedDayColumns.map((column) => {
                 const { day, weekOffset: columnWeekOffset } = column;
+                const columnDate = formatCalendarDate(column.date);
                 const rowStart = row * MINUTES_PER_ROW;
                 const rowEnd = rowStart + MINUTES_PER_ROW;
                 const eventsStartingInRow = visibleEvents.filter(
                   (event) =>
-                    event.day === day &&
-                    event.weekOffset === columnWeekOffset &&
+                    event.date === columnDate &&
                     event.start >= rowStart &&
                     event.start < rowEnd,
                 );
@@ -253,12 +254,10 @@ export default function CalendarGrid({
                   columnWeekOffset,
                 );
                 const isDropTarget =
-                  dropTarget?.day === day &&
-                  dropTarget.weekOffset === columnWeekOffset &&
+                  dropTarget?.date === columnDate &&
                   dropTarget.row === row;
                 const showsCurrentTime =
-                  columnWeekOffset === 0 &&
-                  currentDay === day &&
+                  currentDate === columnDate &&
                   currentMinutes !== null &&
                   currentMinutes >= rowStart &&
                   currentMinutes < rowEnd;
@@ -272,6 +271,7 @@ export default function CalendarGrid({
                     key={`${columnWeekOffset}:${day}`}
                     data-calendar-cell
                     data-day={day}
+                    data-date={columnDate}
                     data-week-offset={columnWeekOffset}
                     data-display-row={displayRow}
                     onMouseDown={

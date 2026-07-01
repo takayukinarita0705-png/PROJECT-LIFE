@@ -12,6 +12,8 @@ export type CalendarEvent = {
   linkedToEventId?: string;
   linkType: EventLinkType;
   offsetMinutes: number;
+  /** 予定日のローカル日付（YYYY-MM-DD） */
+  date: string;
   day: number;
   /** 0時からの経過分 */
   start: number;
@@ -65,7 +67,7 @@ export type CalendarTemplate = Template;
 
 export type SharedCalendarState = {
   version: 1;
-  schemaVersion: 1;
+  schemaVersion: 2;
   categories: Category[];
   events: CalendarEvent[];
   templates: CalendarTemplate[];
@@ -78,6 +80,7 @@ export type CalendarDayColumn = {
 };
 
 export type Draft = {
+  date: string;
   day: number;
   weekOffset: number;
   start: number;
@@ -93,6 +96,7 @@ export type EventEditDraft = {
 };
 
 export type DropTarget = {
+  date: string;
   day: number;
   weekOffset: number;
   row: number;

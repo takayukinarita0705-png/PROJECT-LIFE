@@ -9,6 +9,7 @@ const overnightSleep: CalendarEvent = {
   status: "pending",
   linkType: "none",
   offsetMinutes: 0,
+  date: "2026-07-01",
   day: 0,
   start: 22 * 60,
   end: 5 * 60,
@@ -17,12 +18,20 @@ const overnightSleep: CalendarEvent = {
 
 describe("日またぎ予定の進行中判定", () => {
   it("開始後と翌日側の終了前を進行中として扱う", () => {
-    expect(isCurrentMobileEvent(overnightSleep, 0, 23 * 60 + 30)).toBe(true);
-    expect(isCurrentMobileEvent(overnightSleep, 0, 4 * 60 + 59)).toBe(true);
+    expect(
+      isCurrentMobileEvent(overnightSleep, "2026-07-01", 23 * 60 + 30),
+    ).toBe(true);
+    expect(
+      isCurrentMobileEvent(overnightSleep, "2026-07-01", 4 * 60 + 59),
+    ).toBe(true);
   });
 
   it("終了時刻以降と予定日以外では進行中にしない", () => {
-    expect(isCurrentMobileEvent(overnightSleep, 0, 5 * 60)).toBe(false);
-    expect(isCurrentMobileEvent(overnightSleep, 1, 23 * 60)).toBe(false);
+    expect(
+      isCurrentMobileEvent(overnightSleep, "2026-07-01", 5 * 60),
+    ).toBe(false);
+    expect(
+      isCurrentMobileEvent(overnightSleep, "2026-07-02", 23 * 60),
+    ).toBe(false);
   });
 });

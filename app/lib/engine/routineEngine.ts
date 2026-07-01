@@ -5,8 +5,7 @@ function hasScheduleChanged(
   movedEvent: CalendarEvent,
 ) {
   return (
-    originalEvent.day !== movedEvent.day ||
-    originalEvent.weekOffset !== movedEvent.weekOffset ||
+    originalEvent.date !== movedEvent.date ||
     originalEvent.start !== movedEvent.start ||
     originalEvent.end !== movedEvent.end
   );
@@ -59,6 +58,7 @@ export function runRoutineEngine(
         const start = parent.end + event.offsetMinutes;
         eventsById.set(event.id, {
           ...event,
+          date: parent.date,
           day: parent.day,
           weekOffset: parent.weekOffset,
           start,

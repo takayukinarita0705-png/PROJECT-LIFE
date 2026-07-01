@@ -19,6 +19,11 @@ import {
   mergeUniqueEvents,
   updateRoutineManually,
 } from "@/app/lib/calendar";
+import {
+  addDaysToCalendarDate,
+  formatCalendarDate,
+  getCalendarDateForWeekDay,
+} from "@/app/lib/date";
 import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
 import {
   MINUTES_PER_ROW,
@@ -58,6 +63,7 @@ export default function WeeklyCalendar() {
   const [hasLoadedTemplates, setHasLoadedTemplates] = useState(false);
   const [canPersistSharedState, setCanPersistSharedState] = useState(false);
   const [dragStart, setDragStart] = useState<{
+    date: string;
     day: number;
     weekOffset: number;
     row: number;
@@ -88,8 +94,9 @@ export default function WeeklyCalendar() {
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const weekDates = getWeekDates(weekOffset);
+  const weekDateKeys = new Set(weekDates.map(formatCalendarDate));
   const visibleEvents = hasLoadedEvents
-    ? events.filter((event) => event.weekOffset === weekOffset)
+    ? events.filter((event) => weekDateKeys.has(event.date))
     : [];
   const movingCalendarEvent = eventMove
     ? events.find((event) => event.id === eventMove.eventId) ?? null
@@ -106,6 +113,8 @@ export default function WeeklyCalendar() {
     : categories[0]?.id ?? "";
   const currentDay =
     currentTime === null ? null : (currentTime.getDay() + 6) % DAYS.length;
+  const currentDate =
+    currentTime === null ? null : formatCalendarDate(currentTime);
   const mobileDayColumns = Array.from({ length: 3 }, (_, columnIndex) => {
     const absoluteDay =
       (currentDay ?? 0) + mobileDayOffset + columnIndex;
@@ -123,8 +132,7 @@ export default function WeeklyCalendar() {
     ? events.filter((event) =>
         mobileDayColumns.some(
           (column) =>
-            column.day === event.day &&
-            column.weekOffset === event.weekOffset,
+            formatCalendarDate(column.date) === event.date,
         ),
       )
     : [];
@@ -135,12 +143,10 @@ export default function WeeklyCalendar() {
         currentTime.getMinutes() +
         currentTime.getSeconds() / 60;
   const todaySchedule =
-    currentDay === null || !hasLoadedEvents
+    currentDate === null || !hasLoadedEvents
       ? []
       : events
-          .filter(
-            (event) => event.weekOffset === 0 && event.day === currentDay,
-          )
+          .filter((event) => event.date === currentDate)
           .flatMap((event) => {
             const category = categories.find(
               (item) => item.id === event.categoryId,
@@ -293,7 +299,12 @@ export default function WeeklyCalendar() {
     displayRow: number,
     targetWeekOffset: number,
   ) {
-    setDragStart({ day, weekOffset: targetWeekOffset, row: displayRow });
+    setDragStart({
+      date: getCalendarDateForWeekDay(targetWeekOffset, day),
+      day,
+      weekOffset: targetWeekOffset,
+      row: displayRow,
+    });
     setDragCurrent({ day, weekOffset: targetWeekOffset, row: displayRow });
   }
 
@@ -321,6 +332,7 @@ export default function WeeklyCalendar() {
       (displayRowToTimeRow(lastDisplayRow) + 1) * MINUTES_PER_ROW;
     if (end > start) {
       setDraft({
+        date: dragStart.date,
         day: dragStart.day,
         weekOffset: dragStart.weekOffset,
         start,
@@ -406,6 +418,7 @@ export default function WeeklyCalendar() {
     setDropTarget((current) => {
       if (
         current?.day === target?.day &&
+        current?.date === target?.date &&
         current?.weekOffset === target?.weekOffset &&
         current?.row === target?.row &&
         current?.pointerMinute === target?.pointerMinute
@@ -443,6 +456,7 @@ export default function WeeklyCalendar() {
         );
         const movedEvent = {
           ...event,
+          date: target.date,
           day: target.day,
           weekOffset: target.weekOffset,
           start,
@@ -455,8 +469,7 @@ export default function WeeklyCalendar() {
 
         if (
           !isDuplicate &&
-          (event.day !== movedEvent.day ||
-            event.weekOffset !== movedEvent.weekOffset ||
+          (event.date !== movedEvent.date ||
             event.start !== movedEvent.start)
         ) {
           showUndo(events);
@@ -491,6 +504,7 @@ export default function WeeklyCalendar() {
         status: "pending",
         linkType: "none",
         offsetMinutes: 0,
+        date: draft.date,
         day: draft.day,
         start: draft.start,
         end: draft.end,
@@ -511,8 +525,7 @@ export default function WeeklyCalendar() {
     if (deletedEvent?.routineRelation) {
       nextEvents = nextEvents.map((event) =>
         event.categoryId === "work" &&
-        event.weekOffset === deletedEvent.weekOffset &&
-        event.day === deletedEvent.day
+        event.date === deletedEvent.date
           ? { ...event, routineDetached: true }
           : event,
       );
@@ -613,12 +626,13 @@ export default function WeeklyCalendar() {
   function createNextWeek() {
     clearUndo();
     const thisWeekEvents = events.filter(
-      (event) => event.weekOffset === weekOffset,
+      (event) => weekDateKeys.has(event.date),
     );
     const copied = attachRoutineRelations(
       thisWeekEvents.map((event) => ({
         ...event,
         id: crypto.randomUUID(),
+        date: addDaysToCalendarDate(event.date, 7),
         weekOffset: weekOffset + 1,
         status: "pending",
         linkedToEventId: undefined,
@@ -641,6 +655,7 @@ export default function WeeklyCalendar() {
       templateEvents.map<CalendarEvent>((event) => ({
         ...event,
         id: crypto.randomUUID(),
+        date: formatCalendarDate(weekDates[event.day]),
         weekOffset,
         status: "pending",
         linkType: "none",
@@ -664,7 +679,8 @@ export default function WeeklyCalendar() {
     setEvents((previous) => {
       const withoutCurrentTemplate = previous.filter(
         (event) =>
-          event.weekOffset !== weekOffset || event.source !== "fixed-template",
+          !weekDateKeys.has(event.date) ||
+          event.source !== "fixed-template",
       );
       return mergeUniqueEvents(withoutCurrentTemplate, nextEvents);
     });
@@ -676,7 +692,7 @@ export default function WeeklyCalendar() {
 
   function saveCurrentWeekAsTemplate() {
     const currentWeekEvents = events.filter(
-      (event) => event.weekOffset === weekOffset,
+      (event) => weekDateKeys.has(event.date),
     );
     if (currentWeekEvents.length === 0) {
       window.alert("現在の週に保存できる予定がありません。");
@@ -892,7 +908,7 @@ export default function WeeklyCalendar() {
               dropTarget={dropTarget}
               eventMove={eventMove}
               weekOffset={weekOffset}
-              currentDay={currentDay}
+              currentDate={currentDate}
               currentMinutes={currentMinutes}
               isSelecting={isSelecting}
               onSelectionStart={startDrag}
@@ -963,7 +979,7 @@ export default function WeeklyCalendar() {
           dropTarget={dropTarget}
           eventMove={eventMove}
           weekOffset={weekOffset}
-          currentDay={currentDay}
+          currentDate={currentDate}
           currentMinutes={currentMinutes}
           isSelecting={isSelecting}
           onSelectionStart={startDrag}

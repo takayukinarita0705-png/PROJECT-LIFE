@@ -21,6 +21,7 @@ describe("旧データ補完処理", () => {
     const event = normalizeCalendarEvent({
       id: "legacy-event",
       categoryId: "work",
+      date: "2026-07-01",
       day: 0,
       start: 9 * 60,
       end: 19 * 60,

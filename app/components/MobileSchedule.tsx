@@ -1,4 +1,5 @@
 import { DAYS, dateLabel } from "@/app/lib/calendar";
+import { formatCalendarDate } from "@/app/lib/date";
 import { formatTime } from "@/app/lib/time";
 import type { CalendarEvent, ScheduleItem } from "@/app/types/calendar";
 
@@ -10,13 +11,13 @@ function normalizeDayMinutes(minutes: number) {
 
 export function isCurrentMobileEvent(
   event: CalendarEvent,
-  currentDay: number | null,
+  currentDate: string | null,
   currentMinutes: number | null,
 ) {
   if (
-    currentDay === null ||
+    currentDate === null ||
     currentMinutes === null ||
-    event.day !== currentDay
+    event.date !== currentDate
   ) {
     return false;
   }
@@ -55,6 +56,8 @@ export default function MobileSchedule({
       : currentTime.getHours() * 60 +
         currentTime.getMinutes() +
         currentTime.getSeconds() / 60;
+  const currentDate =
+    currentTime === null ? null : formatCalendarDate(currentTime);
 
   return (
     <section className="md:hidden">
@@ -87,7 +90,7 @@ export default function MobileSchedule({
           {todaySchedule.map(({ event, category }) => {
             const isCurrent = isCurrentMobileEvent(
               event,
-              currentDay,
+              currentDate,
               currentMinutes,
             );
             const displayTitle = event.title?.trim() || category.name;

@@ -17,6 +17,7 @@ function createEvent(
     status: "pending",
     linkType: "none",
     offsetMinutes: 0,
+    date: "2026-06-29",
     day: 0,
     start: 9 * 60,
     end: 19 * 60,
@@ -28,7 +29,11 @@ function createEvent(
 describe("テンプレート重複防止", () => {
   it("同じ週・曜日・時間・カテゴリの予定を重複追加しない", () => {
     const current = createEvent({ id: "current" });
-    const duplicate = createEvent({ id: "duplicate" });
+    const duplicate = createEvent({
+      id: "duplicate",
+      day: 6,
+      weekOffset: 99,
+    });
     const unique = createEvent({
       id: "unique",
       categoryId: "meal",
@@ -92,6 +97,7 @@ describe("仕事→ご飯→お風呂のRoutine処理", () => {
     const related = attachRoutineRelations([work, meal, bath]);
     const editedWork = {
       ...work,
+      date: "2026-07-08",
       day: 2,
       weekOffset: 1,
       end: 20 * 60,
@@ -99,12 +105,14 @@ describe("仕事→ご飯→お風呂のRoutine処理", () => {
     const updated = runRoutineEngine(related, work, editedWork);
 
     expect(updated.find((event) => event.id === "meal")).toMatchObject({
+      date: "2026-07-08",
       day: 2,
       weekOffset: 1,
       start: 20 * 60 + 30,
       end: 20 * 60 + 45,
     });
     expect(updated.find((event) => event.id === "bath")).toMatchObject({
+      date: "2026-07-08",
       day: 2,
       weekOffset: 1,
       start: 20 * 60 + 45,

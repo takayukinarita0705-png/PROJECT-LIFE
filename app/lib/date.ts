@@ -1,0 +1,52 @@
+const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export function formatCalendarDate(date: Date) {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function parseCalendarDate(value: string) {
+  const match = CALENDAR_DATE_PATTERN.exec(value);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day, 12);
+  return formatCalendarDate(date) === value ? date : null;
+}
+
+export function isCalendarDate(value: unknown): value is string {
+  return typeof value === "string" && parseCalendarDate(value) !== null;
+}
+
+export function getCalendarDateForWeekDay(
+  weekOffset: number,
+  day: number,
+  referenceDate = new Date(),
+) {
+  const monday = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+    12,
+  );
+  const currentDay = monday.getDay();
+  monday.setDate(
+    monday.getDate() +
+      (currentDay === 0 ? -6 : 1 - currentDay) +
+      weekOffset * 7 +
+      day,
+  );
+  return formatCalendarDate(monday);
+}
+
+export function addDaysToCalendarDate(value: string, days: number) {
+  const date = parseCalendarDate(value);
+  if (!date) return value;
+
+  date.setDate(date.getDate() + days);
+  return formatCalendarDate(date);
+}

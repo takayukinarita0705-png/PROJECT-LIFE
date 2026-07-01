@@ -1,4 +1,5 @@
 import { DAYS } from "@/app/lib/calendar";
+import { isCalendarDate } from "@/app/lib/date";
 import type {
   CalendarEvent,
   CalendarTemplate,
@@ -36,6 +37,7 @@ export function normalizeCalendarEvent(
     typeof event.id === "string" &&
     (event.title === undefined || typeof event.title === "string") &&
     typeof event.categoryId === "string" &&
+    isCalendarDate(event.date) &&
     (event.mode === undefined || isEventMode(event.mode)) &&
     (event.status === undefined || isEventStatus(event.status)) &&
     (event.linkedToEventId === undefined ||
