@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   addDaysToCalendarDate,
+  compareEventDates,
   formatCalendarDate,
   getCalendarDateForWeekDay,
   getDateFromWeekOffset,
+  isEventOnDate,
   isCalendarDate,
+  resolveEventDate,
 } from "@/app/lib/date";
 
 describe("Calendar date", () => {
@@ -39,5 +42,42 @@ describe("Calendar date", () => {
 
   it("絶対日付を基準に日数を加算する", () => {
     expect(addDaysToCalendarDate("2026-06-29", 7)).toBe("2026-07-06");
+  });
+
+  it("EventにdateがあればweekOffsetとdayより優先する", () => {
+    const event = {
+      date: "2026-08-15",
+      weekOffset: 0,
+      day: 0,
+    };
+
+    expect(resolveEventDate(event, referenceDate)).toBe("2026-08-15");
+    expect(isEventOnDate(event, "2026-08-15", referenceDate)).toBe(true);
+  });
+
+  it("Eventにdateがない場合だけweekOffsetとdayへフォールバックする", () => {
+    const event = {
+      weekOffset: 1,
+      day: 2,
+    };
+
+    expect(resolveEventDate(event, referenceDate)).toBe("2026-07-08");
+    expect(isEventOnDate(event, "2026-07-08", referenceDate)).toBe(true);
+  });
+
+  it("Eventを解決後の日付で比較する", () => {
+    const legacyEvent = {
+      weekOffset: 0,
+      day: 0,
+    };
+    const datedEvent = {
+      date: "2026-07-08",
+      weekOffset: -10,
+      day: 0,
+    };
+
+    expect(compareEventDates(legacyEvent, datedEvent, referenceDate)).toBeLessThan(
+      0,
+    );
   });
 });

@@ -1,11 +1,12 @@
 import type { CalendarEvent } from "@/app/types/calendar";
+import { resolveEventDate } from "@/app/lib/date";
 
 function hasScheduleChanged(
   originalEvent: CalendarEvent,
   movedEvent: CalendarEvent,
 ) {
   return (
-    originalEvent.date !== movedEvent.date ||
+    resolveEventDate(originalEvent) !== resolveEventDate(movedEvent) ||
     originalEvent.start !== movedEvent.start ||
     originalEvent.end !== movedEvent.end
   );

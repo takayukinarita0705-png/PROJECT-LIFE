@@ -2,7 +2,10 @@ import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import EventCard from "./EventCard";
 import { DAYS, dateLabel } from "@/app/lib/calendar";
-import { formatCalendarDate } from "@/app/lib/date";
+import {
+  formatCalendarDate,
+  isEventOnDate,
+} from "@/app/lib/date";
 import {
   DISPLAY_ROWS,
   MINUTES_PER_ROW,
@@ -244,7 +247,7 @@ export default function CalendarGrid({
                 const rowEnd = rowStart + MINUTES_PER_ROW;
                 const eventsStartingInRow = visibleEvents.filter(
                   (event) =>
-                    event.date === columnDate &&
+                    isEventOnDate(event, columnDate) &&
                     event.start >= rowStart &&
                     event.start < rowEnd,
                 );

@@ -1,3 +1,5 @@
+import type { CalendarEvent } from "@/app/types/calendar";
+
 const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export function formatCalendarDate(date: Date) {
@@ -58,6 +60,37 @@ export function getCalendarDateForWeekDay(
       day,
   );
   return formatCalendarDate(monday);
+}
+
+export function resolveEventDate(
+  event: Pick<CalendarEvent, "date" | "weekOffset" | "day">,
+  referenceDate = new Date(),
+) {
+  return isCalendarDate(event.date)
+    ? event.date
+    : getCalendarDateForWeekDay(
+        event.weekOffset,
+        event.day,
+        referenceDate,
+      );
+}
+
+export function isEventOnDate(
+  event: Pick<CalendarEvent, "date" | "weekOffset" | "day">,
+  date: string,
+  referenceDate = new Date(),
+) {
+  return resolveEventDate(event, referenceDate) === date;
+}
+
+export function compareEventDates(
+  a: Pick<CalendarEvent, "date" | "weekOffset" | "day">,
+  b: Pick<CalendarEvent, "date" | "weekOffset" | "day">,
+  referenceDate = new Date(),
+) {
+  return resolveEventDate(a, referenceDate).localeCompare(
+    resolveEventDate(b, referenceDate),
+  );
 }
 
 export function addDaysToCalendarDate(value: string, days: number) {

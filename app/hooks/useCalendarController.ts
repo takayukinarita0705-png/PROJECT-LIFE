@@ -14,6 +14,7 @@ import {
 import {
   addDaysToCalendarDate,
   formatCalendarDate,
+  resolveEventDate,
 } from "@/app/lib/date";
 import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
 import { CURRENT_SCHEMA_VERSION } from "@/app/lib/migrations/calendarState";
@@ -53,7 +54,9 @@ export default function useCalendarController(weekOffset: number) {
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const weekDates = getWeekDates(weekOffset);
-  const weekDateKeys = new Set(weekDates.map(formatCalendarDate));
+  const weekDateKeys = new Set<string | undefined>(
+    weekDates.map(formatCalendarDate),
+  );
   const activeCategoryId = categories.some(
     (category) => category.id === selectedCategoryId,
   )
@@ -191,7 +194,7 @@ export default function useCalendarController(weekOffset: number) {
     );
     if (
       isDuplicate ||
-      (event.date === movedEvent.date &&
+      (resolveEventDate(event) === resolveEventDate(movedEvent) &&
         event.start === movedEvent.start)
     ) {
       return;
@@ -242,7 +245,7 @@ export default function useCalendarController(weekOffset: number) {
     if (deletedEvent?.routineRelation) {
       nextEvents = nextEvents.map((event) =>
         event.categoryId === "work" &&
-        event.date === deletedEvent.date
+        resolveEventDate(event) === resolveEventDate(deletedEvent)
           ? { ...event, routineDetached: true }
           : event,
       );
@@ -302,13 +305,13 @@ export default function useCalendarController(weekOffset: number) {
   function createNextWeek() {
     clearUndo();
     const thisWeekEvents = events.filter(
-      (event) => weekDateKeys.has(event.date),
+      (event) => weekDateKeys.has(resolveEventDate(event)),
     );
     const copied = attachRoutineRelations(
       thisWeekEvents.map((event) => ({
         ...event,
         id: crypto.randomUUID(),
-        date: addDaysToCalendarDate(event.date, 7),
+        date: addDaysToCalendarDate(resolveEventDate(event), 7),
         weekOffset: weekOffset + 1,
         status: "pending",
         linkedToEventId: undefined,

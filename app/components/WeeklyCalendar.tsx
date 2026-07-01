@@ -14,8 +14,11 @@ import {
   getWeekDates,
 } from "@/app/lib/calendar";
 import {
+  compareEventDates,
   formatCalendarDate,
   getCalendarDateForWeekDay,
+  isEventOnDate,
+  resolveEventDate,
 } from "@/app/lib/date";
 import {
   MINUTES_PER_ROW,
@@ -88,7 +91,9 @@ export default function WeeklyCalendar() {
   const weekDates = getWeekDates(weekOffset);
   const weekDateKeys = new Set(weekDates.map(formatCalendarDate));
   const visibleEvents = hasLoadedEvents
-    ? events.filter((event) => weekDateKeys.has(event.date))
+    ? events.filter((event) =>
+        weekDateKeys.has(resolveEventDate(event)),
+      )
     : [];
   const movingCalendarEvent = eventMove
     ? events.find((event) => event.id === eventMove.eventId) ?? null
@@ -119,7 +124,7 @@ export default function WeeklyCalendar() {
     ? events.filter((event) =>
         mobileDayColumns.some(
           (column) =>
-            formatCalendarDate(column.date) === event.date,
+            isEventOnDate(event, formatCalendarDate(column.date)),
         ),
       )
     : [];
@@ -133,7 +138,7 @@ export default function WeeklyCalendar() {
     currentDate === null || !hasLoadedEvents
       ? []
       : events
-          .filter((event) => event.date === currentDate)
+          .filter((event) => isEventOnDate(event, currentDate))
           .flatMap((event) => {
             const category = categories.find(
               (item) => item.id === event.categoryId,
@@ -142,8 +147,9 @@ export default function WeeklyCalendar() {
           })
           .sort(
             (a, b) =>
+              compareEventDates(a.event, b.event) ||
               minutesFromDisplayStart(a.event.start) -
-              minutesFromDisplayStart(b.event.start),
+                minutesFromDisplayStart(b.event.start),
           );
   useEffect(() => {
     let cancelled = false;

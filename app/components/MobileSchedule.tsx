@@ -1,5 +1,8 @@
 import { DAYS, dateLabel } from "@/app/lib/calendar";
-import { formatCalendarDate } from "@/app/lib/date";
+import {
+  formatCalendarDate,
+  isEventOnDate,
+} from "@/app/lib/date";
 import { formatTime } from "@/app/lib/time";
 import type { CalendarEvent, ScheduleItem } from "@/app/types/calendar";
 
@@ -17,7 +20,7 @@ export function isCurrentMobileEvent(
   if (
     currentDate === null ||
     currentMinutes === null ||
-    event.date !== currentDate
+    !isEventOnDate(event, currentDate)
   ) {
     return false;
   }

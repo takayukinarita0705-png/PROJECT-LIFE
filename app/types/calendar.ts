@@ -13,7 +13,7 @@ export type CalendarEvent = {
   linkType: EventLinkType;
   offsetMinutes: number;
   /** 予定日のローカル日付（YYYY-MM-DD） */
-  date: string;
+  date?: string;
   day: number;
   /** 0時からの経過分 */
   start: number;

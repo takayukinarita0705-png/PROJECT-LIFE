@@ -10,7 +10,10 @@ import {
   displayRowToTimeRow,
   toMinutes,
 } from "@/app/lib/time";
-import { isCalendarDate } from "@/app/lib/date";
+import {
+  isCalendarDate,
+  resolveEventDate,
+} from "@/app/lib/date";
 
 export const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 
@@ -167,11 +170,16 @@ export function createFixedTemplateEvents(
 export function eventKey(
   event: Pick<
     CalendarEvent,
-    "categoryId" | "date" | "start" | "end"
+    | "categoryId"
+    | "date"
+    | "day"
+    | "weekOffset"
+    | "start"
+    | "end"
   >,
 ) {
   return [
-    event.date,
+    resolveEventDate(event),
     event.start,
     event.end,
     event.categoryId,
@@ -201,7 +209,7 @@ export function attachRoutineRelations(events: CalendarEvent[]) {
       (candidate) =>
         candidate.categoryId === "work" &&
         candidate.mode === "fixed" &&
-        candidate.date === event.date &&
+        resolveEventDate(candidate) === resolveEventDate(event) &&
         event.start === candidate.end + 30 &&
         event.end === event.start + 15,
     );
@@ -224,7 +232,7 @@ export function attachRoutineRelations(events: CalendarEvent[]) {
       (candidate) =>
         candidate.mode === "linked" &&
         candidate.routineRelation === "after-work-meal" &&
-        candidate.date === event.date &&
+        resolveEventDate(candidate) === resolveEventDate(event) &&
         event.start === candidate.end &&
         event.end === event.start + 25,
     );
@@ -250,7 +258,7 @@ export function updateRoutineManually(
     if (event.id === originalRoutine.id) return editedRoutine;
     if (
       event.categoryId === "work" &&
-      event.date === originalRoutine.date
+      resolveEventDate(event) === resolveEventDate(originalRoutine)
     ) {
       return { ...event, routineDetached: true };
     }
