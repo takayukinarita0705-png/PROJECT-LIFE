@@ -150,6 +150,17 @@ export default function WeeklyCalendar() {
               minutesFromDisplayStart(a.event.start) -
                 minutesFromDisplayStart(b.event.start),
           );
+  const currentWeekSchedule = hasLoadedEvents
+    ? filterEventsByDates(
+        events,
+        getWeekDates(0).map(formatCalendarDate),
+      ).flatMap((event) => {
+        const category = categories.find(
+          (item) => item.id === event.categoryId,
+        );
+        return category ? [{ event, category }] : [];
+      })
+    : [];
   useEffect(() => {
     let cancelled = false;
     const updateCurrentTime = () => {
@@ -431,6 +442,7 @@ export default function WeeklyCalendar() {
             onToggleCompleted={toggleEventCompleted}
             onToggleSkipped={toggleEventSkip}
             todaySchedule={todaySchedule}
+            weekSchedule={currentWeekSchedule}
           />
         ) : (
           <section>

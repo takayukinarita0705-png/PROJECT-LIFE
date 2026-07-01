@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatActualMinutes,
-  getTodayActuals,
+  getActualsByCategory,
   getTodayProgress,
   isCurrentMobileEvent,
 } from "@/app/components/MobileSchedule";
@@ -108,7 +108,7 @@ describe("今日の実績", () => {
       name: "散歩",
       icon: "🚶",
     };
-    const actuals = getTodayActuals([
+    const actuals = getActualsByCategory([
       createScheduleItem("study-1", "completed", 540, 570),
       createScheduleItem("study-2", "completed", 600, 620),
       createScheduleItem("pending", "pending", 620, 680),

@@ -29,7 +29,7 @@ export function getTodayProgress(
   return { completed, total, percentage };
 }
 
-export function getTodayActuals(schedule: ScheduleItem[]) {
+export function getActualsByCategory(schedule: ScheduleItem[]) {
   const actualsByCategory = new Map<
     string,
     {
@@ -73,6 +73,48 @@ export function formatActualMinutes(minutes: number) {
   return `${hours}時間${remainingMinutes}分`;
 }
 
+function ActualsSection({
+  title,
+  actuals,
+}: {
+  title: string;
+  actuals: ReturnType<typeof getActualsByCategory>;
+}) {
+  return (
+    <section
+      aria-label={title}
+      className="mb-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+    >
+      <p className="text-xs font-bold tracking-wide text-slate-500">
+        {title}
+      </p>
+      {actuals.length === 0 ? (
+        <p className="mt-1 text-xs text-slate-400">
+          完了した予定はまだありません
+        </p>
+      ) : (
+        <ul className="mt-2 flex flex-wrap gap-1.5">
+          {actuals.map((actual) => (
+            <li
+              key={actual.categoryId}
+              className="flex items-center gap-1.5 rounded-lg border bg-slate-50 px-2 py-1 text-xs"
+              style={{ borderColor: actual.color }}
+            >
+              <span aria-hidden="true">{actual.icon}</span>
+              <span className="font-bold text-slate-700">
+                {actual.name}
+              </span>
+              <span className="font-bold tabular-nums text-slate-500">
+                {formatActualMinutes(actual.minutes)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export function isCurrentMobileEvent(
   event: CalendarEvent,
   currentDate: string | null,
@@ -109,6 +151,7 @@ type MobileScheduleProps = {
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
   todaySchedule: ScheduleItem[];
+  weekSchedule: ScheduleItem[];
 };
 
 export default function MobileSchedule({
@@ -119,6 +162,7 @@ export default function MobileSchedule({
   onToggleCompleted,
   onToggleSkipped,
   todaySchedule,
+  weekSchedule,
 }: MobileScheduleProps) {
   const currentMinutes =
     currentTime === null
@@ -131,7 +175,8 @@ export default function MobileSchedule({
   const todayProgress = getTodayProgress(
     todaySchedule.map(({ event }) => event),
   );
-  const todayActuals = getTodayActuals(todaySchedule);
+  const todayActuals = getActualsByCategory(todaySchedule);
+  const weekActuals = getActualsByCategory(weekSchedule);
 
   return (
     <section className="md:hidden">
@@ -186,37 +231,11 @@ export default function MobileSchedule({
       )}
 
       {hasLoadedEvents && currentDay !== null && (
-        <section
-          aria-label="今日の実績"
-          className="mb-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-        >
-          <p className="text-xs font-bold tracking-wide text-slate-500">
-            今日の実績
-          </p>
-          {todayActuals.length === 0 ? (
-            <p className="mt-1 text-xs text-slate-400">
-              完了した予定はまだありません
-            </p>
-          ) : (
-            <ul className="mt-2 flex flex-wrap gap-1.5">
-              {todayActuals.map((actual) => (
-                <li
-                  key={actual.categoryId}
-                  className="flex items-center gap-1.5 rounded-lg border bg-slate-50 px-2 py-1 text-xs"
-                  style={{ borderColor: actual.color }}
-                >
-                  <span aria-hidden="true">{actual.icon}</span>
-                  <span className="font-bold text-slate-700">
-                    {actual.name}
-                  </span>
-                  <span className="font-bold tabular-nums text-slate-500">
-                    {formatActualMinutes(actual.minutes)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <ActualsSection title="今日の実績" actuals={todayActuals} />
+      )}
+
+      {hasLoadedEvents && currentDay !== null && (
+        <ActualsSection title="今週の実績" actuals={weekActuals} />
       )}
 
       {!hasLoadedEvents || currentDay === null ? (
