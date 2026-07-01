@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatActualMinutes,
   getActualsByCategory,
+  getScheduleRecord,
   getTodayProgress,
   isCurrentMobileEvent,
 } from "@/app/components/MobileSchedule";
@@ -138,5 +139,43 @@ describe("今日の実績", () => {
     expect(formatActualMinutes(50)).toBe("50分");
     expect(formatActualMinutes(600)).toBe("10時間");
     expect(formatActualMinutes(90)).toBe("1時間30分");
+  });
+});
+
+describe("今週の記録", () => {
+  it("完了・スキップ・未完了・実績時間・達成率を集計する", () => {
+    const schedule = [
+      createScheduleItem("completed-1", "completed", 540, 600),
+      createScheduleItem("completed-2", "completed", 600, 690),
+      createScheduleItem("skipped", "skipped", 690, 750),
+      createScheduleItem("pending", "pending", 750, 810),
+    ];
+
+    expect(getScheduleRecord(schedule)).toMatchObject({
+      total: 4,
+      completed: 2,
+      skipped: 1,
+      pending: 1,
+      percentage: 50,
+      totalMinutes: 150,
+      actuals: [
+        {
+          categoryId: "study",
+          minutes: 150,
+        },
+      ],
+    });
+  });
+
+  it("予定がない週は達成率と実績時間を0にする", () => {
+    expect(getScheduleRecord([])).toEqual({
+      total: 0,
+      completed: 0,
+      skipped: 0,
+      pending: 0,
+      percentage: 0,
+      totalMinutes: 0,
+      actuals: [],
+    });
   });
 });

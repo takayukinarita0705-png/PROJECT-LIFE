@@ -65,12 +65,72 @@ export function getActualsByCategory(schedule: ScheduleItem[]) {
   return [...actualsByCategory.values()];
 }
 
+export function getScheduleRecord(schedule: ScheduleItem[]) {
+  const total = schedule.length;
+  const completed = schedule.filter(
+    ({ event }) => event.status === "completed",
+  ).length;
+  const skipped = schedule.filter(
+    ({ event }) => event.status === "skipped",
+  ).length;
+  const pending = total - completed - skipped;
+  const actuals = getActualsByCategory(schedule);
+  const totalMinutes = actuals.reduce(
+    (sum, actual) => sum + actual.minutes,
+    0,
+  );
+  const percentage =
+    total === 0 ? 0 : Math.round((completed / total) * 100);
+
+  return {
+    total,
+    completed,
+    skipped,
+    pending,
+    percentage,
+    totalMinutes,
+    actuals,
+  };
+}
+
 export function formatActualMinutes(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   if (hours === 0) return `${remainingMinutes}分`;
   if (remainingMinutes === 0) return `${hours}時間`;
   return `${hours}時間${remainingMinutes}分`;
+}
+
+function ActualsList({
+  actuals,
+}: {
+  actuals: ReturnType<typeof getActualsByCategory>;
+}) {
+  if (actuals.length === 0) {
+    return (
+      <p className="mt-1 text-xs text-slate-400">
+        完了した予定はまだありません
+      </p>
+    );
+  }
+
+  return (
+    <ul className="mt-2 flex flex-wrap gap-1.5">
+      {actuals.map((actual) => (
+        <li
+          key={actual.categoryId}
+          className="flex items-center gap-1.5 rounded-lg border bg-slate-50 px-2 py-1 text-xs"
+          style={{ borderColor: actual.color }}
+        >
+          <span aria-hidden="true">{actual.icon}</span>
+          <span className="font-bold text-slate-700">{actual.name}</span>
+          <span className="font-bold tabular-nums text-slate-500">
+            {formatActualMinutes(actual.minutes)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function ActualsSection({
@@ -88,29 +148,55 @@ function ActualsSection({
       <p className="text-xs font-bold tracking-wide text-slate-500">
         {title}
       </p>
-      {actuals.length === 0 ? (
-        <p className="mt-1 text-xs text-slate-400">
-          完了した予定はまだありません
+      <ActualsList actuals={actuals} />
+    </section>
+  );
+}
+
+function WeeklyRecordSection({
+  record,
+}: {
+  record: ReturnType<typeof getScheduleRecord>;
+}) {
+  return (
+    <section
+      aria-label="今週の記録"
+      className="mb-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold tracking-wide text-slate-500">
+          今週の記録
         </p>
-      ) : (
-        <ul className="mt-2 flex flex-wrap gap-1.5">
-          {actuals.map((actual) => (
-            <li
-              key={actual.categoryId}
-              className="flex items-center gap-1.5 rounded-lg border bg-slate-50 px-2 py-1 text-xs"
-              style={{ borderColor: actual.color }}
-            >
-              <span aria-hidden="true">{actual.icon}</span>
-              <span className="font-bold text-slate-700">
-                {actual.name}
-              </span>
-              <span className="font-bold tabular-nums text-slate-500">
-                {formatActualMinutes(actual.minutes)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
+        <p className="text-lg font-bold tabular-nums text-emerald-700">
+          {record.percentage}%
+        </p>
+      </div>
+      <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-lg bg-emerald-50 px-2 py-1.5">
+          <dt className="text-[10px] font-bold text-emerald-700">完了</dt>
+          <dd className="font-bold tabular-nums text-emerald-800">
+            {record.completed}件
+          </dd>
+        </div>
+        <div className="rounded-lg bg-slate-100 px-2 py-1.5">
+          <dt className="text-[10px] font-bold text-slate-500">
+            スキップ
+          </dt>
+          <dd className="font-bold tabular-nums text-slate-700">
+            {record.skipped}件
+          </dd>
+        </div>
+        <div className="rounded-lg bg-blue-50 px-2 py-1.5">
+          <dt className="text-[10px] font-bold text-blue-600">実績時間</dt>
+          <dd className="font-bold tabular-nums text-blue-700">
+            {formatActualMinutes(record.totalMinutes)}
+          </dd>
+        </div>
+      </dl>
+      <p className="mt-2 text-[10px] font-bold text-slate-400">
+        カテゴリ別実績
+      </p>
+      <ActualsList actuals={record.actuals} />
     </section>
   );
 }
@@ -176,7 +262,7 @@ export default function MobileSchedule({
     todaySchedule.map(({ event }) => event),
   );
   const todayActuals = getActualsByCategory(todaySchedule);
-  const weekActuals = getActualsByCategory(weekSchedule);
+  const weekRecord = getScheduleRecord(weekSchedule);
 
   return (
     <section className="md:hidden">
@@ -235,7 +321,7 @@ export default function MobileSchedule({
       )}
 
       {hasLoadedEvents && currentDay !== null && (
-        <ActualsSection title="今週の実績" actuals={weekActuals} />
+        <WeeklyRecordSection record={weekRecord} />
       )}
 
       {!hasLoadedEvents || currentDay === null ? (
