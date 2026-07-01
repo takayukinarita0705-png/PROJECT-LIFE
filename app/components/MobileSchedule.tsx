@@ -44,6 +44,7 @@ type MobileScheduleProps = {
   currentTime: Date | null;
   currentDay: number | null;
   hasLoadedEvents: boolean;
+  onToggleCompleted: (eventId: string) => void;
   todaySchedule: ScheduleItem[];
 };
 
@@ -51,6 +52,7 @@ export default function MobileSchedule({
   currentTime,
   currentDay,
   hasLoadedEvents,
+  onToggleCompleted,
   todaySchedule,
 }: MobileScheduleProps) {
   const currentMinutes =
@@ -91,12 +93,15 @@ export default function MobileSchedule({
       ) : (
         <div className="grid gap-1.5">
           {todaySchedule.map(({ event, category }) => {
-            const isCurrent = isCurrentMobileEvent(
-              event,
-              currentDate,
-              currentMinutes,
-            );
             const displayTitle = event.title?.trim() || category.name;
+            const isCompleted = event.status === "completed";
+            const isCurrent =
+              !isCompleted &&
+              isCurrentMobileEvent(
+                event,
+                currentDate,
+                currentMinutes,
+              );
 
             return (
               <article
@@ -117,7 +122,13 @@ export default function MobileSchedule({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="truncate font-bold text-slate-900">
+                    <h3
+                      className={`truncate font-bold ${
+                        isCompleted
+                          ? "text-slate-400 line-through"
+                          : "text-slate-900"
+                      }`}
+                    >
                       {displayTitle}
                     </h3>
                     {isCurrent && (
@@ -130,6 +141,17 @@ export default function MobileSchedule({
                     {formatTime(event.start)}〜{formatTime(event.end)}
                   </p>
                 </div>
+                <input
+                  type="checkbox"
+                  checked={isCompleted}
+                  onChange={() => onToggleCompleted(event.id)}
+                  aria-label={
+                    isCompleted
+                      ? `${displayTitle}の完了を解除`
+                      : `${displayTitle}を完了`
+                  }
+                  className="h-6 w-6 shrink-0 cursor-pointer accent-emerald-600"
+                />
               </article>
             );
           })}

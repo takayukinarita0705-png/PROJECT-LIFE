@@ -61,6 +61,7 @@ export default function WeeklyCalendar() {
     startAddingCategory,
     startEditingCategory,
     templates,
+    toggleEventCompleted,
     undoLastOperation,
     undoSnapshot,
   } = useCalendarController(weekOffset);
@@ -424,6 +425,7 @@ export default function WeeklyCalendar() {
             currentTime={currentTime}
             currentDay={currentDay}
             hasLoadedEvents={hasLoadedEvents}
+            onToggleCompleted={toggleEventCompleted}
             todaySchedule={todaySchedule}
           />
         ) : (

@@ -4,6 +4,7 @@ import {
   filterEventsByDate,
   filterEventsByDates,
   mergeUniqueEvents,
+  toggleEventCompletion,
   updateRoutineManually,
 } from "@/app/lib/calendar";
 import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
@@ -112,6 +113,23 @@ describe("date中心のEvent抽出", () => {
     expect(
       filterEventsByDates(events, ["2026-08-15"], referenceDate),
     ).toEqual([datedEvent]);
+  });
+});
+
+describe("Event完了状態", () => {
+  it("対象Eventをpendingとcompletedの間で切り替える", () => {
+    const pending = createEvent({ id: "target", status: "pending" });
+    const other = createEvent({ id: "other", status: "pending" });
+
+    const completed = toggleEventCompletion([pending, other], "target");
+    expect(completed).toEqual([
+      { ...pending, status: "completed" },
+      other,
+    ]);
+    expect(toggleEventCompletion(completed, "target")).toEqual([
+      pending,
+      other,
+    ]);
   });
 });
 

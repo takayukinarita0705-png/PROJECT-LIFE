@@ -207,6 +207,23 @@ export function filterEventsByDates(
   );
 }
 
+export function toggleEventCompletion(
+  events: CalendarEvent[],
+  eventId: string,
+) {
+  return events.map((event) =>
+    event.id === eventId
+      ? {
+          ...event,
+          status:
+            event.status === "completed"
+              ? ("pending" as const)
+              : ("completed" as const),
+        }
+      : event,
+  );
+}
+
 export function mergeUniqueEvents(
   current: CalendarEvent[],
   additions: CalendarEvent[],
