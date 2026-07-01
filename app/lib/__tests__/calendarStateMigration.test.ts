@@ -78,6 +78,33 @@ describe("保存StateのSchema Migration", () => {
     });
   });
 
+  it("schemaVersion: 1の保存データをV2 Migrationへ通す", () => {
+    const migrated = migrateState(
+      {
+        version: 1,
+        schemaVersion: 1,
+        events: [
+          {
+            id: "current-week-sunday",
+            day: 6,
+            weekOffset: 0,
+          },
+        ],
+      },
+      migrationDate,
+    );
+
+    expect(migrated).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      events: [
+        {
+          id: "current-week-sunday",
+          date: "2026-07-05",
+        },
+      ],
+    });
+  });
+
   it("現在Versionのデータ内容を変更しない", () => {
     const state = {
       version: 1 as const,
