@@ -11,6 +11,7 @@ import {
   getWeekDates,
   mergeUniqueEvents,
   toggleEventCompletion,
+  toggleEventSkipped,
   updateRoutineManually,
 } from "@/app/lib/calendar";
 import {
@@ -263,6 +264,10 @@ export default function useCalendarController(weekOffset: number) {
 
   function toggleEventCompleted(id: string) {
     setEvents((current) => toggleEventCompletion(current, id));
+  }
+
+  function toggleEventSkip(id: string) {
+    setEvents((current) => toggleEventSkipped(current, id));
   }
 
   function saveEventEdit(draft: EventEditDraft) {
@@ -546,6 +551,7 @@ export default function useCalendarController(weekOffset: number) {
     startEditingCategory,
     templates,
     toggleEventCompleted,
+    toggleEventSkip,
     undoLastOperation,
     undoSnapshot,
   };

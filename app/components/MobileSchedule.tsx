@@ -62,6 +62,7 @@ type MobileScheduleProps = {
   currentDay: number | null;
   hasLoadedEvents: boolean;
   onToggleCompleted: (eventId: string) => void;
+  onToggleSkipped: (eventId: string) => void;
   todaySchedule: ScheduleItem[];
 };
 
@@ -70,6 +71,7 @@ export default function MobileSchedule({
   currentDay,
   hasLoadedEvents,
   onToggleCompleted,
+  onToggleSkipped,
   todaySchedule,
 }: MobileScheduleProps) {
   const currentMinutes =
@@ -149,8 +151,10 @@ export default function MobileSchedule({
           {todaySchedule.map(({ event, category }) => {
             const displayTitle = event.title?.trim() || category.name;
             const isCompleted = event.status === "completed";
+            const isSkipped = event.status === "skipped";
             const isCurrent =
               !isCompleted &&
+              !isSkipped &&
               isCurrentMobileEvent(
                 event,
                 currentDate,
@@ -162,7 +166,11 @@ export default function MobileSchedule({
                 key={event.id}
                 aria-current={isCurrent ? "time" : undefined}
                 className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border border-l-4 px-3 py-2 text-left shadow-sm ${
-                  isCurrent
+                  isCompleted
+                    ? "border-emerald-200 bg-emerald-50"
+                    : isSkipped
+                      ? "border-dashed border-slate-300 bg-slate-100"
+                      : isCurrent
                     ? "border-rose-400 bg-rose-50 outline outline-2 outline-rose-300 shadow-md"
                     : "border-slate-200 bg-white"
                 }`}
@@ -179,8 +187,10 @@ export default function MobileSchedule({
                     <h3
                       className={`truncate font-bold ${
                         isCompleted
-                          ? "text-slate-400 line-through"
-                          : "text-slate-900"
+                          ? "text-emerald-700 line-through"
+                          : isSkipped
+                            ? "text-slate-400 line-through"
+                            : "text-slate-900"
                       }`}
                     >
                       {displayTitle}
@@ -190,22 +200,45 @@ export default function MobileSchedule({
                         進行中
                       </span>
                     )}
+                    {isSkipped && (
+                      <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                        スキップ
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm font-medium tabular-nums text-slate-500">
+                  <p
+                    className={`text-sm font-medium tabular-nums ${
+                      isSkipped ? "text-slate-400" : "text-slate-500"
+                    }`}
+                  >
                     {formatTime(event.start)}〜{formatTime(event.end)}
                   </p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={isCompleted}
-                  onChange={() => onToggleCompleted(event.id)}
-                  aria-label={
-                    isCompleted
-                      ? `${displayTitle}の完了を解除`
-                      : `${displayTitle}を完了`
-                  }
-                  className="h-6 w-6 shrink-0 cursor-pointer accent-emerald-600"
-                />
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    aria-pressed={isSkipped}
+                    onClick={() => onToggleSkipped(event.id)}
+                    className={`rounded-lg px-2 py-1.5 text-xs font-bold ${
+                      isSkipped
+                        ? "bg-slate-700 text-white"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {isSkipped ? "解除" : "スキップ"}
+                  </button>
+                  <input
+                    type="checkbox"
+                    checked={isCompleted}
+                    onChange={() => onToggleCompleted(event.id)}
+                    aria-label={
+                      isCompleted
+                        ? `${displayTitle}の完了を解除`
+                        : `${displayTitle}を完了`
+                    }
+                    className="h-6 w-6 cursor-pointer accent-emerald-600"
+                  />
+                </div>
               </article>
             );
           })}

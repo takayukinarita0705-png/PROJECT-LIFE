@@ -224,6 +224,23 @@ export function toggleEventCompletion(
   );
 }
 
+export function toggleEventSkipped(
+  events: CalendarEvent[],
+  eventId: string,
+) {
+  return events.map((event) =>
+    event.id === eventId
+      ? {
+          ...event,
+          status:
+            event.status === "skipped"
+              ? ("pending" as const)
+              : ("skipped" as const),
+        }
+      : event,
+  );
+}
+
 export function mergeUniqueEvents(
   current: CalendarEvent[],
   additions: CalendarEvent[],

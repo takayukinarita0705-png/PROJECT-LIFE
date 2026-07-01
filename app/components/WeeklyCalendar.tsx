@@ -62,6 +62,7 @@ export default function WeeklyCalendar() {
     startEditingCategory,
     templates,
     toggleEventCompleted,
+    toggleEventSkip,
     undoLastOperation,
     undoSnapshot,
   } = useCalendarController(weekOffset);
@@ -426,6 +427,7 @@ export default function WeeklyCalendar() {
             currentDay={currentDay}
             hasLoadedEvents={hasLoadedEvents}
             onToggleCompleted={toggleEventCompleted}
+            onToggleSkipped={toggleEventSkip}
             todaySchedule={todaySchedule}
           />
         ) : (

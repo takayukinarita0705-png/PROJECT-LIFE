@@ -44,13 +44,14 @@ describe("今日の達成状況", () => {
     expect(
       getTodayProgress([
         { status: "completed" },
+        { status: "skipped" },
         { status: "pending" },
         {},
       ]),
     ).toEqual({
       completed: 1,
-      total: 3,
-      percentage: 33,
+      total: 4,
+      percentage: 25,
     });
   });
 

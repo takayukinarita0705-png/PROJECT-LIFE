@@ -5,6 +5,7 @@ import {
   filterEventsByDates,
   mergeUniqueEvents,
   toggleEventCompletion,
+  toggleEventSkipped,
   updateRoutineManually,
 } from "@/app/lib/calendar";
 import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
@@ -130,6 +131,14 @@ describe("Event完了状態", () => {
       pending,
       other,
     ]);
+  });
+
+  it("対象Eventをpendingとskippedの間で切り替える", () => {
+    const pending = createEvent({ id: "target", status: "pending" });
+
+    const skipped = toggleEventSkipped([pending], "target");
+    expect(skipped).toEqual([{ ...pending, status: "skipped" }]);
+    expect(toggleEventSkipped(skipped, "target")).toEqual([pending]);
   });
 });
 
