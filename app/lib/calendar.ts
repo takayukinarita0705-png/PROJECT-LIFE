@@ -241,6 +241,17 @@ export function toggleEventSkipped(
   );
 }
 
+export function resetEventStatus(
+  events: CalendarEvent[],
+  eventId: string,
+) {
+  return events.map((event) =>
+    event.id === eventId && event.status !== "pending"
+      ? { ...event, status: "pending" as const }
+      : event,
+  );
+}
+
 export function mergeUniqueEvents(
   current: CalendarEvent[],
   additions: CalendarEvent[],

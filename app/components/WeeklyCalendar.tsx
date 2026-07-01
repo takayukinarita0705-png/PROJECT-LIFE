@@ -52,6 +52,7 @@ export default function WeeklyCalendar() {
     hasLoadedEvents,
     hasLoadedTemplates,
     moveEvent: moveCalendarEvent,
+    resetEventToPending,
     saveCategory,
     saveCurrentWeekAsTemplate,
     saveEventEdit,
@@ -426,6 +427,7 @@ export default function WeeklyCalendar() {
             currentTime={currentTime}
             currentDay={currentDay}
             hasLoadedEvents={hasLoadedEvents}
+            onResetStatus={resetEventToPending}
             onToggleCompleted={toggleEventCompleted}
             onToggleSkipped={toggleEventSkip}
             todaySchedule={todaySchedule}

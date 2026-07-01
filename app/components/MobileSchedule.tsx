@@ -61,6 +61,7 @@ type MobileScheduleProps = {
   currentTime: Date | null;
   currentDay: number | null;
   hasLoadedEvents: boolean;
+  onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
   todaySchedule: ScheduleItem[];
@@ -70,6 +71,7 @@ export default function MobileSchedule({
   currentTime,
   currentDay,
   hasLoadedEvents,
+  onResetStatus,
   onToggleCompleted,
   onToggleSkipped,
   todaySchedule,
@@ -215,29 +217,37 @@ export default function MobileSchedule({
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    aria-pressed={isSkipped}
-                    onClick={() => onToggleSkipped(event.id)}
-                    className={`rounded-lg px-2 py-1.5 text-xs font-bold ${
-                      isSkipped
-                        ? "bg-slate-700 text-white"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {isSkipped ? "解除" : "スキップ"}
-                  </button>
-                  <input
-                    type="checkbox"
-                    checked={isCompleted}
-                    onChange={() => onToggleCompleted(event.id)}
-                    aria-label={
-                      isCompleted
-                        ? `${displayTitle}の完了を解除`
-                        : `${displayTitle}を完了`
-                    }
-                    className="h-6 w-6 cursor-pointer accent-emerald-600"
-                  />
+                  {isCompleted || isSkipped ? (
+                    <button
+                      type="button"
+                      onClick={() => onResetStatus(event.id)}
+                      aria-label={`${displayTitle}を未完了に戻す`}
+                      className={`rounded-lg px-2.5 py-1.5 text-xs font-bold ${
+                        isCompleted
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-slate-700 text-white"
+                      }`}
+                    >
+                      戻す
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onToggleSkipped(event.id)}
+                        className="rounded-lg bg-slate-100 px-2 py-1.5 text-xs font-bold text-slate-500"
+                      >
+                        スキップ
+                      </button>
+                      <input
+                        type="checkbox"
+                        checked={false}
+                        onChange={() => onToggleCompleted(event.id)}
+                        aria-label={`${displayTitle}を完了`}
+                        className="h-6 w-6 cursor-pointer accent-emerald-600"
+                      />
+                    </>
+                  )}
                 </div>
               </article>
             );

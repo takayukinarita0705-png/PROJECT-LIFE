@@ -4,6 +4,7 @@ import {
   filterEventsByDate,
   filterEventsByDates,
   mergeUniqueEvents,
+  resetEventStatus,
   toggleEventCompletion,
   toggleEventSkipped,
   updateRoutineManually,
@@ -139,6 +140,23 @@ describe("Event完了状態", () => {
     const skipped = toggleEventSkipped([pending], "target");
     expect(skipped).toEqual([{ ...pending, status: "skipped" }]);
     expect(toggleEventSkipped(skipped, "target")).toEqual([pending]);
+  });
+
+  it("completedとskippedをpendingへ戻す", () => {
+    const completed = createEvent({
+      id: "completed",
+      status: "completed",
+    });
+    const skipped = createEvent({ id: "skipped", status: "skipped" });
+
+    expect(resetEventStatus([completed, skipped], "completed")).toEqual([
+      { ...completed, status: "pending" },
+      skipped,
+    ]);
+    expect(resetEventStatus([completed, skipped], "skipped")).toEqual([
+      completed,
+      { ...skipped, status: "pending" },
+    ]);
   });
 });
 

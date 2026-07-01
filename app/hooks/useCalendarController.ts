@@ -10,6 +10,7 @@ import {
   filterEventsByDates,
   getWeekDates,
   mergeUniqueEvents,
+  resetEventStatus,
   toggleEventCompletion,
   toggleEventSkipped,
   updateRoutineManually,
@@ -268,6 +269,10 @@ export default function useCalendarController(weekOffset: number) {
 
   function toggleEventSkip(id: string) {
     setEvents((current) => toggleEventSkipped(current, id));
+  }
+
+  function resetEventToPending(id: string) {
+    setEvents((current) => resetEventStatus(current, id));
   }
 
   function saveEventEdit(draft: EventEditDraft) {
@@ -541,6 +546,7 @@ export default function useCalendarController(weekOffset: number) {
     hasLoadedEvents,
     hasLoadedTemplates,
     moveEvent,
+    resetEventToPending,
     saveCategory,
     saveCurrentWeekAsTemplate,
     saveEventEdit,
