@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { isCurrentMobileEvent } from "@/app/components/MobileSchedule";
 import {
   formatActualMinutes,
   getActualsByCategory,
   getScheduleRecord,
   getTodayProgress,
-  isCurrentMobileEvent,
-} from "@/app/components/MobileSchedule";
+} from "@/app/lib/records";
 import type {
   CalendarEvent,
   Category,

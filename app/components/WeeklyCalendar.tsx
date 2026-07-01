@@ -5,7 +5,10 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import CalendarGrid from "./CalendarGrid";
 import CategoryDialog from "./CategoryDialog";
 import EventDialog, { MobileWeekEventDialog } from "./EventDialog";
+import MobileBottomTabs from "./MobileBottomTabs";
+import type { MobilePage } from "./MobileBottomTabs";
 import MobileSchedule from "./MobileSchedule";
+import MobileWeekReview from "./MobileWeekReview";
 import WeekToolbar from "./WeekToolbar";
 import {
   DAYS,
@@ -26,6 +29,7 @@ import {
   formatTime,
   minutesFromDisplayStart,
 } from "@/app/lib/time";
+import { getScheduleRecord } from "@/app/lib/records";
 import useCalendarController from "@/app/hooks/useCalendarController";
 import type {
   CalendarEvent,
@@ -67,6 +71,7 @@ export default function WeeklyCalendar() {
     undoLastOperation,
     undoSnapshot,
   } = useCalendarController(weekOffset);
+  const [mobilePage, setMobilePage] = useState<MobilePage>("today");
   const [mobileView, setMobileView] = useState<"today" | "week">("today");
   const [mobileDayOffset, setMobileDayOffset] = useState(0);
   const [dragStart, setDragStart] = useState<{
@@ -161,6 +166,7 @@ export default function WeeklyCalendar() {
         return category ? [{ event, category }] : [];
       })
     : [];
+  const currentWeekRecord = getScheduleRecord(currentWeekSchedule);
   useEffect(() => {
     let cancelled = false;
     const updateCurrentTime = () => {
@@ -403,37 +409,49 @@ export default function WeeklyCalendar() {
     setWeekOffset((previous) => previous + 1);
   }
 
+  function handleMobilePageChange(page: MobilePage) {
+    setMobilePage(page);
+    if (page === "today") setMobileView("today");
+  }
+
   return (
     <div className="weekly-calendar">
-      <div className="md:hidden">
-        <div className="mb-4 inline-flex rounded-xl bg-slate-200/70 p-1">
-          <button
-            type="button"
-            onClick={() => setMobileView("today")}
-            aria-pressed={mobileView === "today"}
-            className={`min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${
-              mobileView === "today"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500"
-            }`}
-          >
-            今日表示
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileView("week")}
-            aria-pressed={mobileView === "week"}
-            className={`min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${
-              mobileView === "week"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500"
-            }`}
-          >
-            週間表示
-          </button>
-        </div>
+      <div className="pb-24 md:hidden">
+        {mobilePage === "today" && (
+          <div className="mb-4 inline-flex rounded-xl bg-slate-200/70 p-1">
+            <button
+              type="button"
+              onClick={() => setMobileView("today")}
+              aria-pressed={mobileView === "today"}
+              className={`min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${
+                mobileView === "today"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500"
+              }`}
+            >
+              今日表示
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileView("week")}
+              aria-pressed={mobileView === "week"}
+              className={`min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${
+                mobileView === "week"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500"
+              }`}
+            >
+              週間表示
+            </button>
+          </div>
+        )}
 
-        {mobileView === "today" ? (
+        {mobilePage === "week" ? (
+          <MobileWeekReview
+            hasLoadedEvents={hasLoadedEvents}
+            record={currentWeekRecord}
+          />
+        ) : mobileView === "today" ? (
           <MobileSchedule
             currentTime={currentTime}
             currentDay={currentDay}
@@ -442,7 +460,7 @@ export default function WeeklyCalendar() {
             onToggleCompleted={toggleEventCompleted}
             onToggleSkipped={toggleEventSkip}
             todaySchedule={todaySchedule}
-            weekSchedule={currentWeekSchedule}
+            weekRecord={currentWeekRecord}
           />
         ) : (
           <section>
@@ -510,6 +528,11 @@ export default function WeeklyCalendar() {
             />
           </section>
         )}
+
+        <MobileBottomTabs
+          activePage={mobilePage}
+          onChange={handleMobilePageChange}
+        />
       </div>
 
       {mobileWeekEditDraft && (
