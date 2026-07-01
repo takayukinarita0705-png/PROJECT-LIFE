@@ -85,6 +85,14 @@ export function materializeEventDate<T extends CalendarEvent>(
     : { ...event, date };
 }
 
+export function resolveEventDay(
+  event: Pick<CalendarEvent, "date" | "weekOffset" | "day">,
+  referenceDate = new Date(),
+) {
+  const date = parseCalendarDate(resolveEventDate(event, referenceDate));
+  return date === null ? event.day : (date.getDay() + 6) % 7;
+}
+
 export function isEventOnDate(
   event: Pick<CalendarEvent, "date" | "weekOffset" | "day">,
   date: string,

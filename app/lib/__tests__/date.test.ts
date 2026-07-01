@@ -8,6 +8,7 @@ import {
   isEventOnDate,
   isCalendarDate,
   materializeEventDate,
+  resolveEventDay,
   resolveEventDate,
 } from "@/app/lib/date";
 
@@ -106,5 +107,27 @@ describe("Calendar date", () => {
       "2026-07-08",
     );
     expect(materializeEventDate(datedEvent, referenceDate)).toBe(datedEvent);
+  });
+
+  it("Template用の曜日はweekOffset/dayではなくdateから導出する", () => {
+    expect(
+      resolveEventDay(
+        {
+          date: "2026-07-05",
+          day: 0,
+          weekOffset: -10,
+        },
+        referenceDate,
+      ),
+    ).toBe(6);
+    expect(
+      resolveEventDay(
+        {
+          day: 2,
+          weekOffset: 1,
+        },
+        referenceDate,
+      ),
+    ).toBe(2);
   });
 });

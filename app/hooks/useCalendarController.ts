@@ -16,6 +16,7 @@ import {
   addDaysToCalendarDate,
   formatCalendarDate,
   materializeEventDate,
+  resolveEventDay,
   resolveEventDate,
 } from "@/app/lib/date";
 import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
@@ -56,7 +57,7 @@ export default function useCalendarController(weekOffset: number) {
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
 
   const weekDates = getWeekDates(weekOffset);
-  const weekDateKeys = new Set<string | undefined>(
+  const weekDateKeys = new Set(
     weekDates.map(formatCalendarDate),
   );
   const activeCategoryId = categories.some(
@@ -363,7 +364,7 @@ export default function useCalendarController(weekOffset: number) {
     setEvents((previous) => {
       const withoutCurrentTemplate = previous.filter(
         (event) =>
-          !weekDateKeys.has(event.date) ||
+          !weekDateKeys.has(resolveEventDate(event)) ||
           event.source !== "fixed-template",
       );
       return mergeUniqueEvents(withoutCurrentTemplate, nextEvents);
@@ -375,8 +376,9 @@ export default function useCalendarController(weekOffset: number) {
   }
 
   function saveCurrentWeekAsTemplate() {
-    const currentWeekEvents = events.filter(
-      (event) => weekDateKeys.has(event.date),
+    const currentWeekEvents = filterEventsByDates(
+      events,
+      weekDates.map(formatCalendarDate),
     );
     if (currentWeekEvents.length === 0) {
       window.alert("現在の週に保存できる予定がありません。");
@@ -395,7 +397,7 @@ export default function useCalendarController(weekOffset: number) {
       title: event.title,
       categoryId: event.categoryId,
       mode: event.mode,
-      day: event.day,
+      day: resolveEventDay(event),
       start: event.start,
       end: event.end,
       routineRelation: event.routineRelation,
