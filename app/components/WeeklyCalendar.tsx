@@ -35,7 +35,10 @@ import {
   formatTime,
   minutesFromDisplayStart,
 } from "@/app/lib/time";
-import { getScheduleRecord } from "@/app/lib/records";
+import {
+  getCompletionStreak,
+  getScheduleRecord,
+} from "@/app/lib/records";
 import { isRoutineLinkedEvent } from "@/app/lib/engine/routineEngine";
 import {
   getInitialMobilePage,
@@ -214,6 +217,10 @@ export default function WeeklyCalendar() {
       })
     : [];
   const currentWeekRecord = getScheduleRecord(currentWeekSchedule);
+  const completionStreak =
+    currentTime === null || !hasLoadedEvents
+      ? 0
+      : getCompletionStreak(events, currentTime);
   useEffect(() => {
     let cancelled = false;
     const updateCurrentTime = () => {
@@ -545,6 +552,7 @@ export default function WeeklyCalendar() {
 
         {mobilePage === "week" ? (
           <MobileWeekReview
+            completionStreak={completionStreak}
             hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedEvents={hasLoadedEvents}
             isReviewDay={

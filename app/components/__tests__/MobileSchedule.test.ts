@@ -3,6 +3,7 @@ import { isCurrentMobileEvent } from "@/app/components/MobileSchedule";
 import {
   formatActualMinutes,
   getActualsByCategory,
+  getCompletionStreak,
   getScheduleRecord,
   getTodayProgress,
   getWeeklyReviewMessage,
@@ -190,5 +191,56 @@ describe("今週の記録", () => {
     expect(getWeeklyReviewMessage(49)).toBe(
       "来週は少し予定を軽くしてもよさそうです",
     );
+  });
+});
+
+describe("連続達成", () => {
+  const referenceDate = new Date(2026, 6, 3, 12);
+
+  function completedEvent(id: string, date: string): CalendarEvent {
+    return {
+      ...overnightSleep,
+      id,
+      date,
+      status: "completed",
+    };
+  }
+
+  it("今日から連続してcompletedがある日数を数える", () => {
+    expect(
+      getCompletionStreak(
+        [
+          completedEvent("today", "2026-07-03"),
+          completedEvent("yesterday", "2026-07-02"),
+          completedEvent("two-days-ago", "2026-07-01"),
+          completedEvent("old", "2026-06-29"),
+        ],
+        referenceDate,
+      ),
+    ).toBe(3);
+  });
+
+  it("同じ日に複数完了しても1日として数える", () => {
+    expect(
+      getCompletionStreak(
+        [
+          completedEvent("today-1", "2026-07-03"),
+          completedEvent("today-2", "2026-07-03"),
+        ],
+        referenceDate,
+      ),
+    ).toBe(1);
+  });
+
+  it("今日completedがなければ0日とする", () => {
+    expect(
+      getCompletionStreak(
+        [
+          completedEvent("yesterday", "2026-07-02"),
+          { ...completedEvent("today", "2026-07-03"), status: "pending" },
+        ],
+        referenceDate,
+      ),
+    ).toBe(0);
   });
 });

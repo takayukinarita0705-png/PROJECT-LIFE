@@ -6,6 +6,7 @@ import {
 import type { ScheduleRecord } from "@/app/lib/records";
 
 type MobileWeekReviewProps = {
+  completionStreak: number;
   hasCheckedLocalCache: boolean;
   hasLoadedEvents: boolean;
   isReviewDay: boolean;
@@ -13,6 +14,7 @@ type MobileWeekReviewProps = {
 };
 
 export default function MobileWeekReview({
+  completionStreak,
   hasCheckedLocalCache,
   hasLoadedEvents,
   isReviewDay,
@@ -39,6 +41,13 @@ export default function MobileWeekReview({
         </div>
       ) : hasLoadedEvents ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-3 rounded-2xl bg-amber-50 px-4 py-3">
+            <p className="text-sm font-bold text-amber-800">
+              {completionStreak > 0
+                ? `🔥 ${completionStreak}日連続達成中`
+                : "今日はまだ記録がありません"}
+            </p>
+          </div>
           <div className="border-b border-slate-100 pb-3">
             <div>
               <p className="text-xs font-bold text-slate-400">今週の達成率</p>

@@ -1,7 +1,13 @@
 import type {
+  CalendarEvent,
   EventStatus,
   ScheduleItem,
 } from "@/app/types/calendar";
+import {
+  addDaysToCalendarDate,
+  formatCalendarDate,
+  resolveEventDate,
+} from "@/app/lib/date";
 
 const MINUTES_PER_DAY = 24 * 60;
 
@@ -83,6 +89,26 @@ export function getScheduleRecord(schedule: ScheduleItem[]) {
 }
 
 export type ScheduleRecord = ReturnType<typeof getScheduleRecord>;
+
+export function getCompletionStreak(
+  events: CalendarEvent[],
+  referenceDate = new Date(),
+) {
+  const completedDates = new Set(
+    events
+      .filter((event) => event.status === "completed")
+      .map((event) => resolveEventDate(event, referenceDate)),
+  );
+  let streak = 0;
+  let date = formatCalendarDate(referenceDate);
+
+  while (completedDates.has(date)) {
+    streak += 1;
+    date = addDaysToCalendarDate(date, -1);
+  }
+
+  return streak;
+}
 
 export function getWeeklyReviewMessage(percentage: number) {
   if (percentage >= 80) return "今週はかなり良いペースです";
