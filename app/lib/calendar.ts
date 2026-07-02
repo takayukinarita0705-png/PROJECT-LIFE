@@ -10,7 +10,6 @@ import {
   displayRowToTimeRow,
   toMinutes,
 } from "@/app/lib/time";
-import { WORKDAY_ROUTINE } from "@/app/lib/engine/routineEngine";
 import {
   isCalendarDate,
   resolveEventDate,
@@ -19,6 +18,13 @@ import {
 export const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
 
 const BUILT_IN_CATEGORY_TIMESTAMP = "2026-07-01T00:00:00.000Z";
+
+export const WORKDAY_ROUTINE = {
+  workCategoryId: "work",
+  mealCategoryId: "meal",
+  bathCategoryId: "bath",
+  mealDelayMinutes: 30,
+} as const;
 
 function createBuiltInCategory(
   id: string,
@@ -369,23 +375,6 @@ export function attachRoutineRelations(events: CalendarEvent[]) {
           routineRelation: "after-work-bath" as const,
         }
       : event;
-  });
-}
-
-export function updateRoutineManually(
-  events: CalendarEvent[],
-  originalRoutine: CalendarEvent,
-  editedRoutine: CalendarEvent,
-) {
-  return events.map((event) => {
-    if (event.id === originalRoutine.id) return editedRoutine;
-    if (
-      event.categoryId === WORKDAY_ROUTINE.workCategoryId &&
-      resolveEventDate(event) === resolveEventDate(originalRoutine)
-    ) {
-      return { ...event, routineDetached: true };
-    }
-    return event;
   });
 }
 

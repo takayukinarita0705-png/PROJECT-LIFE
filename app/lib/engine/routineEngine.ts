@@ -1,50 +1,55 @@
 import type { CalendarEvent } from "@/app/types/calendar";
-import {
-  materializeEventDate,
-  resolveEventDate,
-} from "@/app/lib/date";
 
-export const WORKDAY_ROUTINE = {
-  workCategoryId: "work",
-  mealCategoryId: "meal",
-  bathCategoryId: "bath",
-  mealDelayMinutes: 30,
-} as const;
+const MINUTES_PER_DAY = 24 * 60;
 
-function hasScheduleChanged(
-  originalEvent: CalendarEvent,
-  movedEvent: CalendarEvent,
+function getEventDuration(event: CalendarEvent) {
+  const duration = event.end - event.start;
+  return duration >= 0 ? duration : MINUTES_PER_DAY + duration;
+}
+
+function recalculateLinkedEvent(
+  event: CalendarEvent,
+  parent: CalendarEvent,
 ) {
-  return (
-    resolveEventDate(originalEvent) !== resolveEventDate(movedEvent) ||
-    originalEvent.start !== movedEvent.start ||
-    originalEvent.end !== movedEvent.end
-  );
+  const duration = getEventDuration(event);
+  if (event.linkType === "after") {
+    const start = parent.end + event.offsetMinutes;
+    return {
+      ...event,
+      date: parent.date,
+      day: parent.day,
+      weekOffset: parent.weekOffset,
+      start,
+      end: start + duration,
+    };
+  }
+  if (event.linkType === "before") {
+    const end = parent.start - event.offsetMinutes;
+    return {
+      ...event,
+      date: parent.date,
+      day: parent.day,
+      weekOffset: parent.weekOffset,
+      start: end - duration,
+      end,
+    };
+  }
+  return event;
 }
 
 export function runRoutineEngine(
   events: CalendarEvent[],
-  originalEvent: CalendarEvent,
-  movedEvent: CalendarEvent,
+  changedEvent: CalendarEvent,
 ): CalendarEvent[] {
   const updatedEvents = events.map((event) =>
-    event.id === originalEvent.id ? movedEvent : event,
+    event.id === changedEvent.id ? changedEvent : event,
   );
-  if (
-    originalEvent.categoryId !== WORKDAY_ROUTINE.workCategoryId ||
-    movedEvent.categoryId !== WORKDAY_ROUTINE.workCategoryId ||
-    originalEvent.mode !== "fixed" ||
-    movedEvent.mode !== "fixed" ||
-    originalEvent.routineDetached ||
-    !hasScheduleChanged(originalEvent, movedEvent)
-  ) {
-    return updatedEvents;
-  }
-
   const eventsById = new Map(
     updatedEvents.map((event) => [event.id, event]),
   );
-  const pendingParentIds = [movedEvent.id];
+  if (!eventsById.has(changedEvent.id)) return updatedEvents;
+
+  const pendingParentIds = [changedEvent.id];
   const processedIds = new Set<string>();
 
   while (pendingParentIds.length > 0) {
@@ -58,25 +63,18 @@ export function runRoutineEngine(
     updatedEvents
       .filter(
         (event) =>
-          event.mode === "linked" &&
-          event.linkType === "after" &&
-          event.linkedToEventId === parentId,
+          event.linkedToEventId === parentId &&
+          event.linkType !== "none",
       )
       .forEach((event) => {
         if (processedIds.has(event.id)) return;
 
-        const duration = event.end - event.start;
-        const start = parent.end + event.offsetMinutes;
         eventsById.set(
           event.id,
-          materializeEventDate({
-            ...event,
-            date: resolveEventDate(parent),
-            day: parent.day,
-            weekOffset: parent.weekOffset,
-            start,
-            end: start + duration,
-          }),
+          recalculateLinkedEvent(
+            eventsById.get(event.id) ?? event,
+            parent,
+          ),
         );
         pendingParentIds.push(event.id);
       });

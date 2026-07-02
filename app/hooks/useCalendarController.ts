@@ -15,7 +15,7 @@ import {
   resetEventStatus,
   toggleEventCompletion,
   toggleEventSkipped,
-  updateRoutineManually,
+  WORKDAY_ROUTINE,
 } from "@/app/lib/calendar";
 import {
   addDaysToCalendarDate,
@@ -24,10 +24,7 @@ import {
   resolveEventDay,
   resolveEventDate,
 } from "@/app/lib/date";
-import {
-  WORKDAY_ROUTINE,
-  runRoutineEngine,
-} from "@/app/lib/engine/routineEngine";
+import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
 import { CURRENT_SCHEMA_VERSION } from "@/app/lib/migrations/calendarState";
 import {
   loadSharedCalendarState,
@@ -215,20 +212,7 @@ export default function useCalendarController(weekOffset: number) {
     }
 
     showUndo(events);
-    if (
-      event.categoryId === WORKDAY_ROUTINE.workCategoryId &&
-      event.mode === "fixed"
-    ) {
-      setEvents(runRoutineEngine(events, event, datedMovedEvent));
-    } else if (event.routineRelation) {
-      setEvents(updateRoutineManually(events, event, datedMovedEvent));
-    } else {
-      setEvents(
-        events.map((item) =>
-          item.id === event.id ? datedMovedEvent : item,
-        ),
-      );
-    }
+    setEvents(runRoutineEngine(events, datedMovedEvent));
   }
 
   function addEvent(draft: Draft) {
@@ -263,16 +247,7 @@ export default function useCalendarController(weekOffset: number) {
   }
 
   function deleteEvent(id: string) {
-    const deletedEvent = events.find((event) => event.id === id);
-    let nextEvents = events.filter((event) => event.id !== id);
-    if (deletedEvent?.routineRelation) {
-      nextEvents = nextEvents.map((event) =>
-        event.categoryId === WORKDAY_ROUTINE.workCategoryId &&
-        resolveEventDate(event) === resolveEventDate(deletedEvent)
-          ? { ...event, routineDetached: true }
-          : event,
-      );
-    }
+    const nextEvents = events.filter((event) => event.id !== id);
     if (nextEvents.length !== events.length) {
       showUndo(events);
       setEvents(nextEvents);
@@ -322,23 +297,7 @@ export default function useCalendarController(weekOffset: number) {
     if (isDuplicate) return "同じ時間に同じ予定がすでにあります。";
 
     showUndo(events);
-    if (
-      event.categoryId === WORKDAY_ROUTINE.workCategoryId &&
-      editedEvent.categoryId === WORKDAY_ROUTINE.workCategoryId &&
-      event.mode === "fixed" &&
-      editedEvent.mode === "fixed" &&
-      (event.start !== editedEvent.start || event.end !== editedEvent.end)
-    ) {
-      setEvents(runRoutineEngine(events, event, editedEvent));
-    } else if (event.routineRelation) {
-      setEvents(updateRoutineManually(events, event, editedEvent));
-    } else {
-      setEvents(
-        events.map((item) =>
-          item.id === event.id ? editedEvent : item,
-        ),
-      );
-    }
+    setEvents(runRoutineEngine(events, editedEvent));
     return null;
   }
 

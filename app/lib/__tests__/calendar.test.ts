@@ -3,6 +3,7 @@ import {
   DEFAULT_CATEGORIES,
   FREE_CATEGORY,
   FREE_CATEGORY_ID,
+  WORKDAY_ROUTINE,
   attachRoutineRelations,
   ensureFreeCategory,
   filterEventsByDate,
@@ -12,12 +13,8 @@ import {
   resetEventStatus,
   toggleEventCompletion,
   toggleEventSkipped,
-  updateRoutineManually,
 } from "@/app/lib/calendar";
-import {
-  WORKDAY_ROUTINE,
-  runRoutineEngine,
-} from "@/app/lib/engine/routineEngine";
+import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
 import type { CalendarEvent } from "@/app/types/calendar";
 
 function createEvent(
@@ -270,7 +267,7 @@ describe("仕事→ご飯→お風呂のRoutine処理", () => {
       weekOffset: 1,
       end: 20 * 60,
     };
-    const updated = runRoutineEngine(related, work, editedWork);
+    const updated = runRoutineEngine(related, editedWork);
 
     expect(updated.find((event) => event.id === "meal")).toMatchObject({
       date: "2026-07-08",
@@ -329,7 +326,6 @@ describe("仕事→ご飯→お風呂のRoutine処理", () => {
     });
     const updated = runRoutineEngine(
       [...related, freeEvent],
-      freeEvent,
       { ...freeEvent, end: 20 * 60 },
     );
 
@@ -343,45 +339,71 @@ describe("仕事→ご飯→お風呂のRoutine処理", () => {
     });
   });
 
-  it("Routineを手動変更すると同日の仕事を自動調整対象外にする", () => {
+  it("子の変更を孫へ連鎖する", () => {
     const related = attachRoutineRelations([work, meal, bath]);
     const originalMeal = related.find((event) => event.id === "meal");
     expect(originalMeal).toBeDefined();
 
-    const updated = updateRoutineManually(
+    const updated = runRoutineEngine(
       related,
-      originalMeal!,
       { ...originalMeal!, start: 21 * 60, end: 21 * 60 + 15 },
     );
 
-    expect(updated.find((event) => event.id === "work")?.routineDetached).toBe(
-      true,
-    );
-
-    const detachedWork = updated.find((event) => event.id === "work");
-    expect(detachedWork).toBeDefined();
-    const moved = runRoutineEngine(
-      updated,
-      detachedWork!,
-      { ...detachedWork!, end: 20 * 60 },
-    );
-    expect(moved.find((event) => event.id === "meal")).toMatchObject({
+    expect(updated.find((event) => event.id === "meal")).toMatchObject({
       start: 21 * 60,
       end: 21 * 60 + 15,
     });
+    expect(updated.find((event) => event.id === "bath")).toMatchObject({
+      start: 21 * 60 + 15,
+      end: 21 * 60 + 40,
+    });
   });
 
-  it("fixed以外の仕事ではリンク予定を再計算しない", () => {
+  it("カテゴリやmodeに依存せず親IDから子を再計算する", () => {
     const related = attachRoutineRelations([work, meal, bath]);
-    const linkedWork = { ...work, mode: "linked" as const };
-    const updated = runRoutineEngine(related, linkedWork, {
-      ...linkedWork,
+    const updated = runRoutineEngine(related, {
+      ...work,
+      categoryId: "free",
+      mode: "flexible" as const,
       end: 20 * 60,
     });
 
     expect(updated.find((event) => event.id === "meal")).toMatchObject({
-      start: 19 * 60 + 30,
-      end: 19 * 60 + 45,
+      start: 20 * 60 + 30,
+      end: 20 * 60 + 45,
+    });
+    expect(updated.find((event) => event.id === "bath")).toMatchObject({
+      start: 20 * 60 + 45,
+      end: 21 * 60 + 10,
+    });
+  });
+
+  it("beforeリンクは親の開始時刻より前へ再配置する", () => {
+    const parent = createEvent({
+      id: "parent",
+      categoryId: "free",
+      start: 12 * 60,
+      end: 13 * 60,
+    });
+    const child = createEvent({
+      id: "child",
+      categoryId: "walk",
+      mode: "linked",
+      linkedToEventId: parent.id,
+      linkType: "before",
+      offsetMinutes: 15,
+      start: 11 * 60,
+      end: 11 * 60 + 30,
+    });
+    const updated = runRoutineEngine([parent, child], {
+      ...parent,
+      start: 14 * 60,
+      end: 15 * 60,
+    });
+
+    expect(updated.find((event) => event.id === "child")).toMatchObject({
+      start: 13 * 60 + 15,
+      end: 13 * 60 + 45,
     });
   });
 });
