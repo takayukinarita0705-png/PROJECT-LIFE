@@ -2,11 +2,23 @@ import { normalizeSharedCalendarState } from "@/app/lib/supabaseStorage";
 import type { SharedCalendarState } from "@/app/types/calendar";
 
 const CALENDAR_CACHE_KEY = "project-life-shared-state-v2";
+type CacheReader = Pick<Storage, "getItem">;
+type CacheWriter = Pick<Storage, "setItem">;
 
 export function serializeSharedCalendarState(
   state: SharedCalendarState,
 ) {
   return JSON.stringify(state);
+}
+
+export function areSharedCalendarStatesEqual(
+  first: SharedCalendarState,
+  second: SharedCalendarState,
+) {
+  return (
+    serializeSharedCalendarState(first) ===
+    serializeSharedCalendarState(second)
+  );
 }
 
 export function parseCachedCalendarState(value: string | null) {
@@ -19,19 +31,24 @@ export function parseCachedCalendarState(value: string | null) {
   }
 }
 
-export function loadCachedCalendarState() {
+export function loadCachedCalendarState(
+  storage: CacheReader = window.localStorage,
+) {
   try {
     return parseCachedCalendarState(
-      window.localStorage.getItem(CALENDAR_CACHE_KEY),
+      storage.getItem(CALENDAR_CACHE_KEY),
     );
   } catch {
     return null;
   }
 }
 
-export function saveCachedCalendarState(state: SharedCalendarState) {
+export function saveCachedCalendarState(
+  state: SharedCalendarState,
+  storage: CacheWriter = window.localStorage,
+) {
   try {
-    window.localStorage.setItem(
+    storage.setItem(
       CALENDAR_CACHE_KEY,
       serializeSharedCalendarState(state),
     );

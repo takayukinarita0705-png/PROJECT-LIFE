@@ -29,6 +29,7 @@ import {
   runRoutineEngine,
 } from "@/app/lib/engine/routineEngine";
 import {
+  areSharedCalendarStatesEqual,
   loadCachedCalendarState,
   saveCachedCalendarState,
   serializeSharedCalendarState,
@@ -124,7 +125,7 @@ export default function useCalendarController(weekOffset: number) {
         saveCachedCalendarState(sharedState);
         if (
           currentState === null ||
-          serializeSharedCalendarState(currentState) !== serializedState
+          !areSharedCalendarStatesEqual(currentState, sharedState)
         ) {
           currentSharedStateRef.current = sharedState;
           setCategories(sharedState.categories);
