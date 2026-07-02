@@ -3,11 +3,13 @@ import type { ScheduleRecord } from "@/app/lib/records";
 
 type MobileWeekReviewProps = {
   hasLoadedEvents: boolean;
+  isReviewDay: boolean;
   record: ScheduleRecord;
 };
 
 export default function MobileWeekReview({
   hasLoadedEvents,
+  isReviewDay,
   record,
 }: MobileWeekReviewProps) {
   return (
@@ -18,6 +20,12 @@ export default function MobileWeekReview({
         </p>
         <h2 className="mt-1 text-2xl font-bold text-slate-900">今週</h2>
       </header>
+
+      {isReviewDay && (
+        <p className="mb-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-bold text-violet-700">
+          今日は週間レビューの日です
+        </p>
+      )}
 
       {!hasLoadedEvents ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">

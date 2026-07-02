@@ -30,6 +30,10 @@ import {
   minutesFromDisplayStart,
 } from "@/app/lib/time";
 import { getScheduleRecord } from "@/app/lib/records";
+import {
+  getInitialMobilePage,
+  isWeeklyReviewDay,
+} from "@/app/lib/review";
 import useCalendarController from "@/app/hooks/useCalendarController";
 import type {
   CalendarEvent,
@@ -95,6 +99,7 @@ export default function WeeklyCalendar() {
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const dragGhostRef = useRef<HTMLDivElement>(null);
   const eventMoveDidMoveRef = useRef(false);
+  const hasInitializedMobilePageRef = useRef(false);
 
   const weekDates = getWeekDates(weekOffset);
   const visibleEvents = hasLoadedEvents
@@ -170,7 +175,14 @@ export default function WeeklyCalendar() {
   useEffect(() => {
     let cancelled = false;
     const updateCurrentTime = () => {
-      if (!cancelled) setCurrentTime(new Date());
+      if (cancelled) return;
+
+      const now = new Date();
+      if (!hasInitializedMobilePageRef.current) {
+        hasInitializedMobilePageRef.current = true;
+        setMobilePage(getInitialMobilePage(now));
+      }
+      setCurrentTime(now);
     };
 
     queueMicrotask(updateCurrentTime);
@@ -449,6 +461,9 @@ export default function WeeklyCalendar() {
         {mobilePage === "week" ? (
           <MobileWeekReview
             hasLoadedEvents={hasLoadedEvents}
+            isReviewDay={
+              currentTime !== null && isWeeklyReviewDay(currentTime)
+            }
             record={currentWeekRecord}
           />
         ) : mobileView === "today" ? (
