@@ -10,6 +10,7 @@ import {
   displayRowToTimeRow,
   toMinutes,
 } from "@/app/lib/time";
+import { WORKDAY_ROUTINE } from "@/app/lib/engine/routineEngine";
 import {
   isCalendarDate,
   resolveEventDate,
@@ -191,17 +192,27 @@ export function createFixedTemplateEvents(
   });
 
   workDays.forEach((day) => {
-    addTemplateEvent("meal", day, toMinutes(7, 30), toMinutes(8));
-    addTemplateEvent("work", day, toMinutes(9), toMinutes(19));
     addTemplateEvent(
-      "meal",
+      WORKDAY_ROUTINE.mealCategoryId,
+      day,
+      toMinutes(7, 30),
+      toMinutes(8),
+    );
+    addTemplateEvent(
+      WORKDAY_ROUTINE.workCategoryId,
+      day,
+      toMinutes(9),
+      toMinutes(19),
+    );
+    addTemplateEvent(
+      WORKDAY_ROUTINE.mealCategoryId,
       day,
       toMinutes(19, 30),
       toMinutes(19, 45),
       "after-work-meal",
     );
     addTemplateEvent(
-      "bath",
+      WORKDAY_ROUTINE.bathCategoryId,
       day,
       toMinutes(19, 45),
       toMinutes(20, 10),
@@ -314,14 +325,15 @@ export function mergeUniqueEvents(
 
 export function attachRoutineRelations(events: CalendarEvent[]) {
   const withMeals = events.map((event) => {
-    if (event.categoryId !== "meal") return event;
+    if (event.categoryId !== WORKDAY_ROUTINE.mealCategoryId) return event;
 
     const parentWork = events.find(
       (candidate) =>
-        candidate.categoryId === "work" &&
+        candidate.categoryId === WORKDAY_ROUTINE.workCategoryId &&
         candidate.mode === "fixed" &&
         resolveEventDate(candidate) === resolveEventDate(event) &&
-        event.start === candidate.end + 30 &&
+        event.start ===
+          candidate.end + WORKDAY_ROUTINE.mealDelayMinutes &&
         event.end === event.start + 15,
     );
     return parentWork
@@ -330,14 +342,14 @@ export function attachRoutineRelations(events: CalendarEvent[]) {
           mode: "linked" as const,
           linkedToEventId: parentWork.id,
           linkType: "after" as const,
-          offsetMinutes: 30,
+          offsetMinutes: WORKDAY_ROUTINE.mealDelayMinutes,
           routineRelation: "after-work-meal" as const,
         }
       : event;
   });
 
   return withMeals.map((event) => {
-    if (event.categoryId !== "bath") return event;
+    if (event.categoryId !== WORKDAY_ROUTINE.bathCategoryId) return event;
 
     const relatedMeal = withMeals.find(
       (candidate) =>
@@ -368,7 +380,7 @@ export function updateRoutineManually(
   return events.map((event) => {
     if (event.id === originalRoutine.id) return editedRoutine;
     if (
-      event.categoryId === "work" &&
+      event.categoryId === WORKDAY_ROUTINE.workCategoryId &&
       resolveEventDate(event) === resolveEventDate(originalRoutine)
     ) {
       return { ...event, routineDetached: true };

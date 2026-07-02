@@ -4,6 +4,13 @@ import {
   resolveEventDate,
 } from "@/app/lib/date";
 
+export const WORKDAY_ROUTINE = {
+  workCategoryId: "work",
+  mealCategoryId: "meal",
+  bathCategoryId: "bath",
+  mealDelayMinutes: 30,
+} as const;
+
 function hasScheduleChanged(
   originalEvent: CalendarEvent,
   movedEvent: CalendarEvent,
@@ -24,8 +31,8 @@ export function runRoutineEngine(
     event.id === originalEvent.id ? movedEvent : event,
   );
   if (
-    originalEvent.categoryId !== "work" ||
-    movedEvent.categoryId !== "work" ||
+    originalEvent.categoryId !== WORKDAY_ROUTINE.workCategoryId ||
+    movedEvent.categoryId !== WORKDAY_ROUTINE.workCategoryId ||
     originalEvent.mode !== "fixed" ||
     movedEvent.mode !== "fixed" ||
     originalEvent.routineDetached ||

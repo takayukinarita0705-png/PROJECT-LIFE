@@ -24,7 +24,10 @@ import {
   resolveEventDay,
   resolveEventDate,
 } from "@/app/lib/date";
-import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
+import {
+  WORKDAY_ROUTINE,
+  runRoutineEngine,
+} from "@/app/lib/engine/routineEngine";
 import { CURRENT_SCHEMA_VERSION } from "@/app/lib/migrations/calendarState";
 import {
   loadSharedCalendarState,
@@ -53,7 +56,9 @@ export default function useCalendarController(weekOffset: number) {
   const [canPersistSharedState, setCanPersistSharedState] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(null);
   const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
-  const [selectedCategoryId, setSelectedCategoryId] = useState("work");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
+    WORKDAY_ROUTINE.workCategoryId,
+  );
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft | null>(
     null,
   );
@@ -210,7 +215,10 @@ export default function useCalendarController(weekOffset: number) {
     }
 
     showUndo(events);
-    if (event.categoryId === "work" && event.mode === "fixed") {
+    if (
+      event.categoryId === WORKDAY_ROUTINE.workCategoryId &&
+      event.mode === "fixed"
+    ) {
       setEvents(runRoutineEngine(events, event, datedMovedEvent));
     } else if (event.routineRelation) {
       setEvents(updateRoutineManually(events, event, datedMovedEvent));
@@ -259,7 +267,7 @@ export default function useCalendarController(weekOffset: number) {
     let nextEvents = events.filter((event) => event.id !== id);
     if (deletedEvent?.routineRelation) {
       nextEvents = nextEvents.map((event) =>
-        event.categoryId === "work" &&
+        event.categoryId === WORKDAY_ROUTINE.workCategoryId &&
         resolveEventDate(event) === resolveEventDate(deletedEvent)
           ? { ...event, routineDetached: true }
           : event,
@@ -315,8 +323,8 @@ export default function useCalendarController(weekOffset: number) {
 
     showUndo(events);
     if (
-      event.categoryId === "work" &&
-      editedEvent.categoryId === "work" &&
+      event.categoryId === WORKDAY_ROUTINE.workCategoryId &&
+      editedEvent.categoryId === WORKDAY_ROUTINE.workCategoryId &&
       event.mode === "fixed" &&
       editedEvent.mode === "fixed" &&
       (event.start !== editedEvent.start || event.end !== editedEvent.end)

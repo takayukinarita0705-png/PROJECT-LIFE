@@ -14,7 +14,10 @@ import {
   toggleEventSkipped,
   updateRoutineManually,
 } from "@/app/lib/calendar";
-import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
+import {
+  WORKDAY_ROUTINE,
+  runRoutineEngine,
+} from "@/app/lib/engine/routineEngine";
 import type { CalendarEvent } from "@/app/types/calendar";
 
 function createEvent(
@@ -276,12 +279,67 @@ describe("仕事→ご飯→お風呂のRoutine処理", () => {
       start: 20 * 60 + 30,
       end: 20 * 60 + 45,
     });
+    expect(
+      updated.find((event) => event.id === "meal")!.start -
+        editedWork.end,
+    ).toBe(WORKDAY_ROUTINE.mealDelayMinutes);
     expect(updated.find((event) => event.id === "bath")).toMatchObject({
       date: "2026-07-08",
       day: 2,
       weekOffset: 1,
       start: 20 * 60 + 45,
       end: 21 * 60 + 10,
+    });
+  });
+
+  it("別日のご飯とお風呂は仕事日のRoutineへ関連付けない", () => {
+    const nextDayMeal = {
+      ...meal,
+      id: "next-day-meal",
+      date: "2026-06-30",
+      day: 1,
+    };
+    const nextDayBath = {
+      ...bath,
+      id: "next-day-bath",
+      date: "2026-06-30",
+      day: 1,
+    };
+    const related = attachRoutineRelations([
+      work,
+      nextDayMeal,
+      nextDayBath,
+    ]);
+
+    expect(
+      related.find((event) => event.id === "next-day-meal")?.linkedToEventId,
+    ).toBeUndefined();
+    expect(
+      related.find((event) => event.id === "next-day-bath")?.linkedToEventId,
+    ).toBeUndefined();
+  });
+
+  it("仕事以外の予定変更ではRoutineを再配置しない", () => {
+    const related = attachRoutineRelations([work, meal, bath]);
+    const freeEvent = createEvent({
+      id: "free",
+      categoryId: "free",
+      start: 18 * 60,
+      end: 19 * 60,
+    });
+    const updated = runRoutineEngine(
+      [...related, freeEvent],
+      freeEvent,
+      { ...freeEvent, end: 20 * 60 },
+    );
+
+    expect(updated.find((event) => event.id === "meal")).toMatchObject({
+      start: 19 * 60 + 30,
+      end: 19 * 60 + 45,
+    });
+    expect(updated.find((event) => event.id === "bath")).toMatchObject({
+      start: 19 * 60 + 45,
+      end: 20 * 60 + 10,
     });
   });
 
