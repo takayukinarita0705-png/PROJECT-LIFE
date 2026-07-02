@@ -2,6 +2,22 @@ import type { CalendarEvent } from "@/app/types/calendar";
 
 const MINUTES_PER_DAY = 24 * 60;
 
+export function isRoutineLinkedEvent(event: CalendarEvent) {
+  return Boolean(event.linkedToEventId) && event.linkType !== "none";
+}
+
+export function detachEventFromRoutine(
+  event: CalendarEvent,
+): CalendarEvent {
+  return {
+    ...event,
+    linkedToEventId: undefined,
+    linkType: "none",
+    offsetMinutes: 0,
+    mode: "fixed",
+  };
+}
+
 function getEventDuration(event: CalendarEvent) {
   const duration = event.end - event.start;
   return duration >= 0 ? duration : MINUTES_PER_DAY + duration;

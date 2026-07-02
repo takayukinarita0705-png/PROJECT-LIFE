@@ -9,6 +9,7 @@ import MobileBottomTabs from "./MobileBottomTabs";
 import type { MobilePage } from "./MobileBottomTabs";
 import MobileSchedule from "./MobileSchedule";
 import MobileWeekReview from "./MobileWeekReview";
+import RoutineDetachDialog from "./RoutineDetachDialog";
 import WeekToolbar from "./WeekToolbar";
 import {
   DAYS,
@@ -30,6 +31,7 @@ import {
   minutesFromDisplayStart,
 } from "@/app/lib/time";
 import { getScheduleRecord } from "@/app/lib/records";
+import { isRoutineLinkedEvent } from "@/app/lib/engine/routineEngine";
 import {
   getInitialMobilePage,
   isWeeklyReviewDay,
@@ -95,6 +97,18 @@ export default function WeeklyCalendar() {
   const [mobileWeekEditDraft, setMobileWeekEditDraft] =
     useState<EventEditDraft | null>(null);
   const [mobileWeekEditError, setMobileWeekEditError] = useState("");
+  const [pendingRoutineChange, setPendingRoutineChange] = useState<
+    | {
+        kind: "move";
+        event: CalendarEvent;
+        changedEvent: CalendarEvent;
+      }
+    | {
+        kind: "edit";
+        draft: EventEditDraft;
+      }
+    | null
+  >(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const dragGhostRef = useRef<HTMLDivElement>(null);
@@ -362,7 +376,15 @@ export default function WeeklyCalendar() {
           start,
           end: start + duration,
         };
-        moveCalendarEvent(event, movedEvent);
+        if (isRoutineLinkedEvent(event)) {
+          setPendingRoutineChange({
+            kind: "move",
+            event,
+            changedEvent: movedEvent,
+          });
+        } else {
+          moveCalendarEvent(event, movedEvent);
+        }
       }
     }
 
@@ -400,13 +422,48 @@ export default function WeeklyCalendar() {
 
   function saveMobileWeekEdit() {
     if (!mobileWeekEditDraft) return;
-    const error = saveEventEdit(mobileWeekEditDraft);
+    const event = events.find(
+      (item) => item.id === mobileWeekEditDraft.eventId,
+    );
+    if (event && isRoutineLinkedEvent(event)) {
+      setPendingRoutineChange({
+        kind: "edit",
+        draft: mobileWeekEditDraft,
+      });
+      return;
+    }
+    completeMobileWeekEdit(mobileWeekEditDraft, false);
+  }
+
+  function completeMobileWeekEdit(
+    editDraft: EventEditDraft,
+    detachFromRoutine: boolean,
+  ) {
+    const error = saveEventEdit(editDraft, detachFromRoutine);
     if (error) {
       setMobileWeekEditError(error);
       return;
     }
     setMobileWeekEditDraft(null);
     setMobileWeekEditError("");
+  }
+
+  function completePendingRoutineChange(detachFromRoutine: boolean) {
+    if (!pendingRoutineChange) return;
+
+    if (pendingRoutineChange.kind === "move") {
+      moveCalendarEvent(
+        pendingRoutineChange.event,
+        pendingRoutineChange.changedEvent,
+        detachFromRoutine,
+      );
+    } else {
+      completeMobileWeekEdit(
+        pendingRoutineChange.draft,
+        detachFromRoutine,
+      );
+    }
+    setPendingRoutineChange(null);
   }
 
   function deleteMobileWeekEvent() {
@@ -562,6 +619,13 @@ export default function WeeklyCalendar() {
           }}
           onDelete={deleteMobileWeekEvent}
           onSave={saveMobileWeekEdit}
+        />
+      )}
+
+      {pendingRoutineChange && (
+        <RoutineDetachDialog
+          onDetach={() => completePendingRoutineChange(true)}
+          onKeep={() => completePendingRoutineChange(false)}
         />
       )}
 

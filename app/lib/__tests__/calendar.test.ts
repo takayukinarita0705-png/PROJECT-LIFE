@@ -14,7 +14,11 @@ import {
   toggleEventCompletion,
   toggleEventSkipped,
 } from "@/app/lib/calendar";
-import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
+import {
+  detachEventFromRoutine,
+  isRoutineLinkedEvent,
+  runRoutineEngine,
+} from "@/app/lib/engine/routineEngine";
 import type { CalendarEvent } from "@/app/types/calendar";
 
 function createEvent(
@@ -233,6 +237,47 @@ describe("仕事→ご飯→お風呂のRoutine処理", () => {
     categoryId: "bath",
     start: 19 * 60 + 45,
     end: 20 * 60 + 10,
+  });
+
+  it("リンク予定を固定予定としてルーティンから切り離す", () => {
+    const related = attachRoutineRelations([work, meal, bath]);
+    const linkedMeal = related.find((event) => event.id === "meal")!;
+    const detachedMeal = detachEventFromRoutine(linkedMeal);
+
+    expect(isRoutineLinkedEvent(linkedMeal)).toBe(true);
+    expect(detachedMeal).toMatchObject({
+      mode: "fixed",
+      linkType: "none",
+      offsetMinutes: 0,
+    });
+    expect(detachedMeal.linkedToEventId).toBeUndefined();
+    expect(isRoutineLinkedEvent(detachedMeal)).toBe(false);
+    expect(linkedMeal.linkedToEventId).toBe("work");
+  });
+
+  it("解除後は親イベントを変更しても再配置しない", () => {
+    const related = attachRoutineRelations([work, meal, bath]);
+    const detached = related.map((event) =>
+      event.id === "meal"
+        ? detachEventFromRoutine({
+            ...event,
+            start: 21 * 60,
+            end: 21 * 60 + 15,
+          })
+        : event,
+    );
+    const updated = runRoutineEngine(detached, {
+      ...work,
+      end: 20 * 60,
+    });
+
+    expect(updated.find((event) => event.id === "meal")).toMatchObject({
+      start: 21 * 60,
+      end: 21 * 60 + 15,
+      mode: "fixed",
+      linkType: "none",
+      offsetMinutes: 0,
+    });
   });
 
   it("時刻関係からご飯とお風呂をRoutineとして関連付ける", () => {

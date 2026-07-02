@@ -24,7 +24,10 @@ import {
   resolveEventDay,
   resolveEventDate,
 } from "@/app/lib/date";
-import { runRoutineEngine } from "@/app/lib/engine/routineEngine";
+import {
+  detachEventFromRoutine,
+  runRoutineEngine,
+} from "@/app/lib/engine/routineEngine";
 import { CURRENT_SCHEMA_VERSION } from "@/app/lib/migrations/calendarState";
 import {
   loadSharedCalendarState,
@@ -197,8 +200,13 @@ export default function useCalendarController(weekOffset: number) {
   function moveEvent(
     event: CalendarEvent,
     movedEvent: CalendarEvent,
+    detachFromRoutine = false,
   ) {
-    const datedMovedEvent = materializeEventDate(movedEvent);
+    const datedMovedEvent = materializeEventDate(
+      detachFromRoutine
+        ? detachEventFromRoutine(movedEvent)
+        : movedEvent,
+    );
     const isDuplicate = events.some(
       (item) =>
         item.id !== event.id && eventKey(item) === eventKey(datedMovedEvent),
@@ -266,7 +274,10 @@ export default function useCalendarController(weekOffset: number) {
     setEvents((current) => resetEventStatus(current, id));
   }
 
-  function saveEventEdit(draft: EventEditDraft) {
+  function saveEventEdit(
+    draft: EventEditDraft,
+    detachFromRoutine = false,
+  ) {
     const start = parseTime(draft.start);
     const end = parseTime(draft.end);
     const normalizedTitle = normalizeNewEventTitle(
@@ -290,14 +301,17 @@ export default function useCalendarController(weekOffset: number) {
       start,
       end,
     });
+    const eventToSave = detachFromRoutine
+      ? detachEventFromRoutine(editedEvent)
+      : editedEvent;
     const isDuplicate = events.some(
       (item) =>
-        item.id !== event.id && eventKey(item) === eventKey(editedEvent),
+        item.id !== event.id && eventKey(item) === eventKey(eventToSave),
     );
     if (isDuplicate) return "同じ時間に同じ予定がすでにあります。";
 
     showUndo(events);
-    setEvents(runRoutineEngine(events, editedEvent));
+    setEvents(runRoutineEngine(events, eventToSave));
     return null;
   }
 
