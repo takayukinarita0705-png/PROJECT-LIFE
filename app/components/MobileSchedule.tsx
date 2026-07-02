@@ -149,6 +149,7 @@ export function isCurrentMobileEvent(
 type MobileScheduleProps = {
   currentTime: Date | null;
   currentDay: number | null;
+  hasCheckedLocalCache: boolean;
   hasLoadedEvents: boolean;
   onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
@@ -160,6 +161,7 @@ type MobileScheduleProps = {
 export default function MobileSchedule({
   currentTime,
   currentDay,
+  hasCheckedLocalCache,
   hasLoadedEvents,
   onResetStatus,
   onToggleCompleted,
@@ -240,11 +242,11 @@ export default function MobileSchedule({
         <WeeklyRecordSection record={weekRecord} />
       )}
 
-      {!hasLoadedEvents || currentDay === null ? (
+      {hasCheckedLocalCache && !hasLoadedEvents ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
           予定を読み込んでいます…
         </div>
-      ) : todaySchedule.length === 0 ? (
+      ) : currentDay === null ? null : todaySchedule.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
           今日の予定はありません
         </div>

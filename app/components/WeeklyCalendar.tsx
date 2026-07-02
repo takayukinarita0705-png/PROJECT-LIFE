@@ -85,8 +85,10 @@ export default function WeeklyCalendar() {
     deleteEvent: deleteCalendarEvent,
     deleteTemplate,
     events,
+    hasCheckedLocalCache,
     hasLoadedEvents,
     hasLoadedTemplates,
+    isSyncingSharedState,
     moveEvent: moveCalendarEvent,
     resetEventToPending,
     saveCategory,
@@ -543,6 +545,7 @@ export default function WeeklyCalendar() {
 
         {mobilePage === "week" ? (
           <MobileWeekReview
+            hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedEvents={hasLoadedEvents}
             isReviewDay={
               currentTime !== null && isWeeklyReviewDay(currentTime)
@@ -553,6 +556,7 @@ export default function WeeklyCalendar() {
           <MobileSchedule
             currentTime={currentTime}
             currentDay={currentDay}
+            hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedEvents={hasLoadedEvents}
             onResetStatus={resetEventToPending}
             onToggleCompleted={toggleEventCompleted}
@@ -653,6 +657,20 @@ export default function WeeklyCalendar() {
           onDetach={() => completePendingRoutineChange(true)}
           onKeep={() => completePendingRoutineChange(false)}
         />
+      )}
+
+      {isSyncingSharedState && hasLoadedEvents && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed right-4 top-4 z-[110] flex items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 py-1.5 text-xs font-bold text-slate-500 shadow-sm backdrop-blur"
+        >
+          <span
+            aria-hidden="true"
+            className="h-3 w-3 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500"
+          />
+          同期中…
+        </div>
       )}
 
       {isDesktopViewport && (

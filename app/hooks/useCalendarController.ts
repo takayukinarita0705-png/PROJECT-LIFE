@@ -70,6 +70,8 @@ export default function useCalendarController(weekOffset: number) {
   const [hasLoadedEvents, setHasLoadedEvents] = useState(false);
   const [templates, setTemplates] = useState<CalendarTemplate[]>([]);
   const [hasLoadedTemplates, setHasLoadedTemplates] = useState(false);
+  const [hasCheckedLocalCache, setHasCheckedLocalCache] = useState(false);
+  const [isSyncingSharedState, setIsSyncingSharedState] = useState(false);
   const [canPersistSharedState, setCanPersistSharedState] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(null);
   const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
@@ -111,6 +113,8 @@ export default function useCalendarController(weekOffset: number) {
         setHasLoadedEvents(true);
         setHasLoadedTemplates(true);
       }
+      setHasCheckedLocalCache(true);
+      setIsSyncingSharedState(true);
 
       try {
         const loadedState = await loadSharedCalendarState();
@@ -137,6 +141,7 @@ export default function useCalendarController(weekOffset: number) {
         console.error("Supabaseから予定データを復元できませんでした。", error);
       } finally {
         if (cancelled) return;
+        setIsSyncingSharedState(false);
         setHasLoadedEvents(true);
         setHasLoadedTemplates(true);
       }
@@ -590,8 +595,10 @@ export default function useCalendarController(weekOffset: number) {
     deleteEvent,
     deleteTemplate,
     events,
+    hasCheckedLocalCache,
     hasLoadedEvents,
     hasLoadedTemplates,
+    isSyncingSharedState,
     moveEvent,
     resetEventToPending,
     saveCategory,

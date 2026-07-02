@@ -2,12 +2,14 @@ import { formatActualMinutes } from "@/app/lib/records";
 import type { ScheduleRecord } from "@/app/lib/records";
 
 type MobileWeekReviewProps = {
+  hasCheckedLocalCache: boolean;
   hasLoadedEvents: boolean;
   isReviewDay: boolean;
   record: ScheduleRecord;
 };
 
 export default function MobileWeekReview({
+  hasCheckedLocalCache,
   hasLoadedEvents,
   isReviewDay,
   record,
@@ -27,11 +29,11 @@ export default function MobileWeekReview({
         </p>
       )}
 
-      {!hasLoadedEvents ? (
+      {hasCheckedLocalCache && !hasLoadedEvents ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
           記録を読み込んでいます…
         </div>
-      ) : (
+      ) : hasLoadedEvents ? (
         <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="border-b border-slate-100 pb-3">
             <div>
@@ -69,7 +71,7 @@ export default function MobileWeekReview({
             </div>
           </dl>
         </div>
-      )}
+      ) : null}
     </section>
   );
 }
