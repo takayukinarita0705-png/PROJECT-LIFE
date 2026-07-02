@@ -29,7 +29,7 @@ function hasNoNull<T>(values: (T | null)[]): values is T[] {
   return values.every((value) => value !== null);
 }
 
-function normalizeSharedCalendarState(
+export function normalizeSharedCalendarState(
   value: unknown,
 ): SharedCalendarState | null {
   if (typeof value !== "object" || value === null) return null;

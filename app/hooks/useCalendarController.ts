@@ -28,6 +28,11 @@ import {
   detachEventFromRoutine,
   runRoutineEngine,
 } from "@/app/lib/engine/routineEngine";
+import {
+  loadCachedCalendarState,
+  saveCachedCalendarState,
+  serializeSharedCalendarState,
+} from "@/app/lib/calendarCache";
 import { CURRENT_SCHEMA_VERSION } from "@/app/lib/migrations/calendarState";
 import {
   loadSharedCalendarState,
@@ -44,7 +49,18 @@ import type {
   SaveStatus,
   TemplateEvent,
   UndoSnapshot,
+  SharedCalendarState,
 } from "@/app/types/calendar";
+
+function prepareSharedCalendarState(
+  state: SharedCalendarState,
+): SharedCalendarState {
+  return {
+    ...state,
+    categories: ensureFreeCategory(state.categories),
+    events: attachRoutineRelations(state.events),
+  };
+}
 
 export default function useCalendarController(weekOffset: number) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -65,6 +81,8 @@ export default function useCalendarController(weekOffset: number) {
   const undoTimerRef = useRef<number | null>(null);
   const undoIdRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const currentSharedStateRef = useRef<SharedCalendarState | null>(null);
+  const lastSyncedStateRef = useRef<string | null>(null);
 
   const weekDates = getWeekDates(weekOffset);
   const weekDateKeys = new Set(
@@ -80,13 +98,39 @@ export default function useCalendarController(weekOffset: number) {
     let cancelled = false;
 
     async function restoreSharedState() {
+      const cachedState = loadCachedCalendarState();
+      if (cachedState) {
+        const preparedCache = prepareSharedCalendarState(cachedState);
+        currentSharedStateRef.current = preparedCache;
+        lastSyncedStateRef.current =
+          serializeSharedCalendarState(preparedCache);
+        setCategories(preparedCache.categories);
+        setEvents(preparedCache.events);
+        setTemplates(preparedCache.templates);
+        setHasLoadedEvents(true);
+        setHasLoadedTemplates(true);
+      }
+
       try {
-        const sharedState = await loadSharedCalendarState();
+        const loadedState = await loadSharedCalendarState();
         if (cancelled) return;
 
-        setCategories(ensureFreeCategory(sharedState.categories));
-        setEvents(attachRoutineRelations(sharedState.events));
-        setTemplates(sharedState.templates);
+        const sharedState = prepareSharedCalendarState(loadedState);
+        const serializedState =
+          serializeSharedCalendarState(sharedState);
+        const currentState = currentSharedStateRef.current;
+
+        lastSyncedStateRef.current = serializedState;
+        saveCachedCalendarState(sharedState);
+        if (
+          currentState === null ||
+          serializeSharedCalendarState(currentState) !== serializedState
+        ) {
+          currentSharedStateRef.current = sharedState;
+          setCategories(sharedState.categories);
+          setEvents(sharedState.events);
+          setTemplates(sharedState.templates);
+        }
         setCanPersistSharedState(true);
       } catch (error) {
         console.error("Supabaseから予定データを復元できませんでした。", error);
@@ -105,10 +149,24 @@ export default function useCalendarController(weekOffset: number) {
   }, []);
 
   useEffect(() => {
+    if (!hasLoadedEvents || !hasLoadedTemplates) {
+      return;
+    }
+
+    const sharedState = {
+      version: 1,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      categories,
+      events,
+      templates,
+    } as const;
+    const serializedState = serializeSharedCalendarState(sharedState);
+    currentSharedStateRef.current = sharedState;
+    saveCachedCalendarState(sharedState);
+
     if (
-      !hasLoadedEvents ||
-      !hasLoadedTemplates ||
-      !canPersistSharedState
+      !canPersistSharedState ||
+      serializedState === lastSyncedStateRef.current
     ) {
       return;
     }
@@ -118,13 +176,6 @@ export default function useCalendarController(weekOffset: number) {
     const persistTimer = window.setTimeout(() => {
       setSaveStatus("saving");
 
-      const sharedState = {
-        version: 1,
-        schemaVersion: CURRENT_SCHEMA_VERSION,
-        categories,
-        events,
-        templates,
-      } as const;
       const saveRequest = saveQueueRef.current.then(
         () => saveSharedCalendarState(sharedState),
         () => saveSharedCalendarState(sharedState),
@@ -134,6 +185,7 @@ export default function useCalendarController(weekOffset: number) {
       void saveRequest
         .then(() => {
           if (cancelled) return;
+          lastSyncedStateRef.current = serializedState;
           setSaveStatus("saved");
           hideTimer = window.setTimeout(() => setSaveStatus(null), 2000);
         })
