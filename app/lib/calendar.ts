@@ -49,7 +49,7 @@ export const FREE_CATEGORY_ID = "free";
 export const FREE_CATEGORY = createBuiltInCategory(
   FREE_CATEGORY_ID,
   "フリー",
-  "#64748b",
+  "#F59E0B",
   "📝",
   "other",
 );
@@ -100,9 +100,28 @@ export const DEFAULT_CATEGORIES: Category[] = [
 ];
 
 export function ensureFreeCategory(categories: Category[]) {
-  return categories.some((category) => category.id === FREE_CATEGORY_ID)
-    ? categories
-    : [...categories, { ...FREE_CATEGORY }];
+  const currentFreeCategory = categories.find(
+    (category) => category.id === FREE_CATEGORY_ID,
+  );
+  if (!currentFreeCategory) {
+    return [...categories, { ...FREE_CATEGORY }];
+  }
+  if (
+    currentFreeCategory.color === FREE_CATEGORY.color &&
+    currentFreeCategory.icon === FREE_CATEGORY.icon
+  ) {
+    return categories;
+  }
+
+  return categories.map((category) =>
+    category.id === FREE_CATEGORY_ID
+      ? {
+          ...category,
+          color: FREE_CATEGORY.color,
+          icon: FREE_CATEGORY.icon,
+        }
+      : category,
+  );
 }
 
 export function normalizeNewEventTitle(

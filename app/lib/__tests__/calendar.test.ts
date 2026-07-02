@@ -66,11 +66,11 @@ describe("テンプレート重複防止", () => {
 });
 
 describe("フリー予定", () => {
-  it("中立色とメモアイコンのフリーカテゴリを提供する", () => {
+  it("睡眠と区別できる色とメモアイコンを提供する", () => {
     expect(FREE_CATEGORY).toMatchObject({
       id: FREE_CATEGORY_ID,
       name: "フリー",
-      color: "#64748b",
+      color: "#F59E0B",
       icon: "📝",
       group: "other",
     });
@@ -91,6 +91,24 @@ describe("フリー予定", () => {
       withFree.filter((category) => category.id === FREE_CATEGORY_ID),
     ).toHaveLength(1);
     expect(ensureFreeCategory(withFree)).toBe(withFree);
+  });
+
+  it("保存済みフリーカテゴリの旧色だけを新しいデザインへ更新する", () => {
+    const work = DEFAULT_CATEGORIES.find(
+      (category) => category.id === "work",
+    )!;
+    const legacyFree = {
+      ...FREE_CATEGORY,
+      color: "#64748b",
+    };
+    const updated = ensureFreeCategory([work, legacyFree]);
+
+    expect(updated.find((category) => category.id === FREE_CATEGORY_ID))
+      .toMatchObject({
+        color: "#F59E0B",
+        icon: "📝",
+      });
+    expect(updated.find((category) => category.id === "work")).toBe(work);
   });
 
   it("フリーだけ自由入力名を保存対象にする", () => {
