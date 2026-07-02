@@ -84,6 +84,12 @@ export function getScheduleRecord(schedule: ScheduleItem[]) {
 
 export type ScheduleRecord = ReturnType<typeof getScheduleRecord>;
 
+export function getWeeklyReviewMessage(percentage: number) {
+  if (percentage >= 80) return "今週はかなり良いペースです";
+  if (percentage >= 50) return "まずまず進められています";
+  return "来週は少し予定を軽くしてもよさそうです";
+}
+
 export function formatActualMinutes(minutes: number) {
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;

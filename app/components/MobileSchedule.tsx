@@ -1,4 +1,5 @@
 import { DAYS, dateLabel } from "@/app/lib/calendar";
+import ActualsList from "./ActualsList";
 import {
   formatCalendarDate,
   isEventOnDate,
@@ -16,38 +17,6 @@ const MINUTES_PER_DAY = 24 * 60;
 
 function normalizeDayMinutes(minutes: number) {
   return ((minutes % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
-}
-
-function ActualsList({
-  actuals,
-}: {
-  actuals: ReturnType<typeof getActualsByCategory>;
-}) {
-  if (actuals.length === 0) {
-    return (
-      <p className="mt-1 text-xs text-slate-400">
-        完了した予定はまだありません
-      </p>
-    );
-  }
-
-  return (
-    <ul className="mt-2 flex flex-wrap gap-1.5">
-      {actuals.map((actual) => (
-        <li
-          key={actual.categoryId}
-          className="flex items-center gap-1.5 rounded-lg border bg-slate-50 px-2 py-1 text-xs"
-          style={{ borderColor: actual.color }}
-        >
-          <span aria-hidden="true">{actual.icon}</span>
-          <span className="font-bold text-slate-700">{actual.name}</span>
-          <span className="font-bold tabular-nums text-slate-500">
-            {formatActualMinutes(actual.minutes)}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
 }
 
 function ActualsSection({

@@ -5,6 +5,7 @@ import {
   getActualsByCategory,
   getScheduleRecord,
   getTodayProgress,
+  getWeeklyReviewMessage,
 } from "@/app/lib/records";
 import type {
   CalendarEvent,
@@ -177,5 +178,17 @@ describe("今週の記録", () => {
       totalMinutes: 0,
       actuals: [],
     });
+  });
+
+  it("達成率に応じた固定レビューコメントを返す", () => {
+    expect(getWeeklyReviewMessage(80)).toBe(
+      "今週はかなり良いペースです",
+    );
+    expect(getWeeklyReviewMessage(50)).toBe(
+      "まずまず進められています",
+    );
+    expect(getWeeklyReviewMessage(49)).toBe(
+      "来週は少し予定を軽くしてもよさそうです",
+    );
   });
 });

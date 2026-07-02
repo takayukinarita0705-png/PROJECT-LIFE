@@ -1,4 +1,8 @@
-import { formatActualMinutes } from "@/app/lib/records";
+import ActualsList from "./ActualsList";
+import {
+  formatActualMinutes,
+  getWeeklyReviewMessage,
+} from "@/app/lib/records";
 import type { ScheduleRecord } from "@/app/lib/records";
 
 type MobileWeekReviewProps = {
@@ -70,6 +74,18 @@ export default function MobileWeekReview({
               </dd>
             </div>
           </dl>
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <p className="text-xs font-bold text-slate-400">
+              カテゴリ別実績時間
+            </p>
+            <ActualsList actuals={record.actuals} />
+          </div>
+          <div className="mt-4 rounded-2xl bg-violet-50 px-4 py-3">
+            <p className="text-xs font-bold text-violet-500">今週の一言</p>
+            <p className="mt-1 text-sm font-bold text-violet-800">
+              {getWeeklyReviewMessage(record.percentage)}
+            </p>
+          </div>
         </div>
       ) : null}
     </section>
