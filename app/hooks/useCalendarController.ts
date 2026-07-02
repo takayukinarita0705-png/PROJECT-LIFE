@@ -9,7 +9,9 @@ import {
   eventKey,
   filterEventsByDates,
   getWeekDates,
+  ensureFreeCategory,
   mergeUniqueEvents,
+  normalizeNewEventTitle,
   resetEventStatus,
   toggleEventCompletion,
   toggleEventSkipped,
@@ -77,7 +79,7 @@ export default function useCalendarController(weekOffset: number) {
         const sharedState = await loadSharedCalendarState();
         if (cancelled) return;
 
-        setCategories(sharedState.categories);
+        setCategories(ensureFreeCategory(sharedState.categories));
         setEvents(attachRoutineRelations(sharedState.events));
         setTemplates(sharedState.templates);
         setCanPersistSharedState(true);
@@ -223,10 +225,16 @@ export default function useCalendarController(weekOffset: number) {
 
   function addEvent(draft: Draft) {
     if (!activeCategoryId) return;
+    const title = normalizeNewEventTitle(
+      activeCategoryId,
+      draft.title,
+    );
+    if (title === null) return;
 
     const nextEvents = mergeUniqueEvents(events, [
       materializeEventDate({
         id: crypto.randomUUID(),
+        title,
         categoryId: activeCategoryId,
         mode: "fixed",
         status: "pending",
@@ -278,8 +286,13 @@ export default function useCalendarController(weekOffset: number) {
   function saveEventEdit(draft: EventEditDraft) {
     const start = parseTime(draft.start);
     const end = parseTime(draft.end);
-    const title = draft.title.trim();
-    if (!title) return "タイトルを入力してください。";
+    const normalizedTitle = normalizeNewEventTitle(
+      draft.categoryId,
+      draft.title,
+    );
+    if (normalizedTitle === null) return "タイトルを入力してください。";
+    const title =
+      (normalizedTitle ?? draft.title.trim()) || undefined;
     if (start === null || end === null || end <= start) {
       return "開始・終了時刻を HH:MM 形式で正しく入力してください。";
     }

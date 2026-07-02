@@ -693,6 +693,11 @@ export default function WeeklyCalendar() {
           categories={categories}
           activeCategoryId={activeCategoryId}
           onCategoryChange={setSelectedCategoryId}
+          onTitleChange={(title) =>
+            setDraft((current) =>
+              current ? { ...current, title } : current,
+            )
+          }
           onCancel={() => setDraft(null)}
           onAdd={addEvent}
         />

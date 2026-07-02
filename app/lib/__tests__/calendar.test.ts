@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_CATEGORIES,
+  FREE_CATEGORY,
+  FREE_CATEGORY_ID,
   attachRoutineRelations,
+  ensureFreeCategory,
   filterEventsByDate,
   filterEventsByDates,
   mergeUniqueEvents,
+  normalizeNewEventTitle,
   resetEventStatus,
   toggleEventCompletion,
   toggleEventSkipped,
@@ -57,6 +62,43 @@ describe("テンプレート重複防止", () => {
     const second = createEvent({ id: "second" });
 
     expect(mergeUniqueEvents([], [first, second])).toEqual([first]);
+  });
+});
+
+describe("フリー予定", () => {
+  it("中立色とメモアイコンのフリーカテゴリを提供する", () => {
+    expect(FREE_CATEGORY).toMatchObject({
+      id: FREE_CATEGORY_ID,
+      name: "フリー",
+      color: "#64748b",
+      icon: "📝",
+      group: "other",
+    });
+    expect(
+      DEFAULT_CATEGORIES.some(
+        (category) => category.id === FREE_CATEGORY_ID,
+      ),
+    ).toBe(true);
+  });
+
+  it("既存カテゴリへフリーを一度だけ補完する", () => {
+    const existing = DEFAULT_CATEGORIES.filter(
+      (category) => category.id !== FREE_CATEGORY_ID,
+    );
+    const withFree = ensureFreeCategory(existing);
+
+    expect(
+      withFree.filter((category) => category.id === FREE_CATEGORY_ID),
+    ).toHaveLength(1);
+    expect(ensureFreeCategory(withFree)).toBe(withFree);
+  });
+
+  it("フリーだけ自由入力名を保存対象にする", () => {
+    expect(normalizeNewEventTitle(FREE_CATEGORY_ID, "  通院  ")).toBe(
+      "通院",
+    );
+    expect(normalizeNewEventTitle(FREE_CATEGORY_ID, "  ")).toBeNull();
+    expect(normalizeNewEventTitle("work", "自由入力")).toBeUndefined();
   });
 });
 

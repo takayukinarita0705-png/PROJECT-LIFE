@@ -1,4 +1,4 @@
-import { DAYS } from "@/app/lib/calendar";
+import { DAYS, FREE_CATEGORY_ID } from "@/app/lib/calendar";
 import { formatTime } from "@/app/lib/time";
 import type {
   Category,
@@ -11,6 +11,7 @@ type EventDialogProps = {
   categories: Category[];
   activeCategoryId: string;
   onCategoryChange: (categoryId: string) => void;
+  onTitleChange: (title: string) => void;
   onCancel: () => void;
   onAdd: () => void;
 };
@@ -20,6 +21,7 @@ export default function EventDialog({
   categories,
   activeCategoryId,
   onCategoryChange,
+  onTitleChange,
   onCancel,
   onAdd,
 }: EventDialogProps) {
@@ -47,6 +49,21 @@ export default function EventDialog({
           ))}
         </select>
 
+        {activeCategoryId === FREE_CATEGORY_ID && (
+          <>
+            <label className="mt-4 block text-sm font-bold text-slate-700">
+              予定名
+            </label>
+            <input
+              value={draft.title ?? ""}
+              onChange={(event) => onTitleChange(event.target.value)}
+              placeholder="予定名を入力"
+              autoFocus
+              className="mt-1 w-full rounded-xl border p-3 text-slate-900"
+            />
+          </>
+        )}
+
         {categories.length === 0 && (
           <p className="mt-2 text-sm text-red-600">
             先にカテゴリ管理からカテゴリを追加してください。
@@ -62,7 +79,11 @@ export default function EventDialog({
           </button>
           <button
             onClick={onAdd}
-            disabled={categories.length === 0}
+            disabled={
+              categories.length === 0 ||
+              (activeCategoryId === FREE_CATEGORY_ID &&
+                !draft.title?.trim())
+            }
             className="flex-1 rounded-xl bg-blue-600 py-3 font-bold text-white disabled:opacity-40"
           >
             追加

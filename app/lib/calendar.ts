@@ -45,6 +45,15 @@ export const CLEANING_CATEGORY = createBuiltInCategory(
   "life",
 );
 
+export const FREE_CATEGORY_ID = "free";
+export const FREE_CATEGORY = createBuiltInCategory(
+  FREE_CATEGORY_ID,
+  "フリー",
+  "#64748b",
+  "📝",
+  "other",
+);
+
 export const DEFAULT_CATEGORIES: Category[] = [
   createBuiltInCategory("work", "仕事", "#3b82f6", "💼", "work"),
   createBuiltInCategory("commute", "通勤", "#60a5fa", "🚃", "work"),
@@ -87,7 +96,24 @@ export const DEFAULT_CATEGORIES: Category[] = [
     "leisure",
   ),
   createBuiltInCategory("reading", "読書", "#6366f1", "📚", "study"),
+  FREE_CATEGORY,
 ];
+
+export function ensureFreeCategory(categories: Category[]) {
+  return categories.some((category) => category.id === FREE_CATEGORY_ID)
+    ? categories
+    : [...categories, { ...FREE_CATEGORY }];
+}
+
+export function normalizeNewEventTitle(
+  categoryId: string,
+  title?: string,
+) {
+  if (categoryId !== FREE_CATEGORY_ID) return undefined;
+
+  const normalizedTitle = title?.trim() ?? "";
+  return normalizedTitle || null;
+}
 
 export function getMonday(offset: number) {
   const today = new Date();

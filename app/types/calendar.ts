@@ -85,6 +85,7 @@ export type Draft = {
   weekOffset: number;
   start: number;
   end: number;
+  title?: string;
 };
 
 export type EventEditDraft = {
