@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import CalendarGrid from "./CalendarGrid";
 import CategoryDialog from "./CategoryDialog";
@@ -45,7 +50,28 @@ import type {
   EventEditDraft,
 } from "@/app/types/calendar";
 
+const DESKTOP_MEDIA_QUERY = "(min-width: 768px)";
+
+function subscribeToDesktopViewport(onChange: () => void) {
+  const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
+  mediaQuery.addEventListener("change", onChange);
+  return () => mediaQuery.removeEventListener("change", onChange);
+}
+
+function getDesktopViewportSnapshot() {
+  return window.matchMedia(DESKTOP_MEDIA_QUERY).matches;
+}
+
+function getServerDesktopViewportSnapshot() {
+  return false;
+}
+
 export default function WeeklyCalendar() {
+  const isDesktopViewport = useSyncExternalStore(
+    subscribeToDesktopViewport,
+    getDesktopViewportSnapshot,
+    getServerDesktopViewportSnapshot,
+  );
   const [weekOffset, setWeekOffset] = useState(0);
   const {
     activeCategoryId,
@@ -629,72 +655,74 @@ export default function WeeklyCalendar() {
         />
       )}
 
-      <div className="hidden md:block">
-        <WeekToolbar
-          weekDates={weekDates}
-          templates={templates}
-          hasLoadedEvents={hasLoadedEvents}
-          hasLoadedTemplates={hasLoadedTemplates}
-          onPreviousWeek={() => setWeekOffset((value) => value - 1)}
-          onCurrentWeek={() => setWeekOffset(0)}
-          onNextWeek={() => setWeekOffset((value) => value + 1)}
-          onOpenCategoryManager={() => {
-            setCategoryDraft(null);
-            setIsCategoryManagerOpen(true);
-          }}
-          onCreateNextWeek={handleCreateNextWeek}
-          onApplyFixedTemplate={applyFixedTemplate}
-          onSaveCurrentWeekTemplate={saveCurrentWeekAsTemplate}
-          onApplyTemplate={(template) =>
-            applyTemplate(template.events, template.categories)
-          }
-          onDeleteTemplate={deleteTemplate}
-        />
-
-        <CalendarGrid
-          weekDates={weekDates}
-          visibleEvents={visibleEvents}
-          categories={categories}
-          dropTarget={dropTarget}
-          eventMove={eventMove}
-          weekOffset={weekOffset}
-          currentDate={currentDate}
-          currentMinutes={currentMinutes}
-          isSelecting={isSelecting}
-          onSelectionStart={startDrag}
-          onSelectionMove={moveDrag}
-          onSelectionEnd={endDrag}
-          onSelectionCancel={() => {
-            setDragStart(null);
-            setDragCurrent(null);
-          }}
-          onEventPointerDown={startEventMove}
-          onEventPointerMove={moveEvent}
-          onEventPointerUp={(pointerEvent) =>
-            finishEventMove(pointerEvent, true)
-          }
-          onEventPointerCancel={(pointerEvent) =>
-            finishEventMove(pointerEvent, false)
-          }
-          onDeleteEvent={deleteEvent}
-        />
-
-        {isCategoryManagerOpen && (
-          <CategoryDialog
-            categories={categories}
-            draft={categoryDraft}
-            onDraftChange={setCategoryDraft}
-            onClose={() => {
+      {isDesktopViewport && (
+        <div className="hidden md:block">
+          <WeekToolbar
+            weekDates={weekDates}
+            templates={templates}
+            hasLoadedEvents={hasLoadedEvents}
+            hasLoadedTemplates={hasLoadedTemplates}
+            onPreviousWeek={() => setWeekOffset((value) => value - 1)}
+            onCurrentWeek={() => setWeekOffset(0)}
+            onNextWeek={() => setWeekOffset((value) => value + 1)}
+            onOpenCategoryManager={() => {
               setCategoryDraft(null);
-              setIsCategoryManagerOpen(false);
+              setIsCategoryManagerOpen(true);
             }}
-            onAdd={startAddingCategory}
-            onEdit={startEditingCategory}
-            onDelete={deleteCategory}
-            onSave={saveCategory}
+            onCreateNextWeek={handleCreateNextWeek}
+            onApplyFixedTemplate={applyFixedTemplate}
+            onSaveCurrentWeekTemplate={saveCurrentWeekAsTemplate}
+            onApplyTemplate={(template) =>
+              applyTemplate(template.events, template.categories)
+            }
+            onDeleteTemplate={deleteTemplate}
           />
-        )}
-      </div>
+
+          <CalendarGrid
+            weekDates={weekDates}
+            visibleEvents={visibleEvents}
+            categories={categories}
+            dropTarget={dropTarget}
+            eventMove={eventMove}
+            weekOffset={weekOffset}
+            currentDate={currentDate}
+            currentMinutes={currentMinutes}
+            isSelecting={isSelecting}
+            onSelectionStart={startDrag}
+            onSelectionMove={moveDrag}
+            onSelectionEnd={endDrag}
+            onSelectionCancel={() => {
+              setDragStart(null);
+              setDragCurrent(null);
+            }}
+            onEventPointerDown={startEventMove}
+            onEventPointerMove={moveEvent}
+            onEventPointerUp={(pointerEvent) =>
+              finishEventMove(pointerEvent, true)
+            }
+            onEventPointerCancel={(pointerEvent) =>
+              finishEventMove(pointerEvent, false)
+            }
+            onDeleteEvent={deleteEvent}
+          />
+
+          {isCategoryManagerOpen && (
+            <CategoryDialog
+              categories={categories}
+              draft={categoryDraft}
+              onDraftChange={setCategoryDraft}
+              onClose={() => {
+                setCategoryDraft(null);
+                setIsCategoryManagerOpen(false);
+              }}
+              onAdd={startAddingCategory}
+              onEdit={startEditingCategory}
+              onDelete={deleteCategory}
+              onSave={saveCategory}
+            />
+          )}
+        </div>
+      )}
 
       {eventMove && movingCalendarEvent && movingCategory && (
         <div
