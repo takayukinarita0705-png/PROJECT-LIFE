@@ -36,6 +36,13 @@ export type CategoryActual = {
   minutes: number;
 };
 
+export type WeeklyMvp = CategoryActual & {
+  count: number;
+  hasPreviousData: boolean;
+  previousMinutes: number;
+  differenceMinutes: number;
+};
+
 export function getTodayProgress(
   events: Array<{ status?: EventStatus }>,
 ) {
@@ -105,6 +112,63 @@ export function getScheduleRecord(schedule: ScheduleItem[]) {
 }
 
 export type ScheduleRecord = ReturnType<typeof getScheduleRecord>;
+
+export function getWeeklyMvp(
+  currentSchedule: ScheduleItem[],
+  previousSchedule: ScheduleItem[],
+): WeeklyMvp | null {
+  function summarize(schedule: ScheduleItem[]) {
+    const summaries = new Map<
+      string,
+      CategoryActual & { count: number }
+    >();
+
+    schedule.forEach(({ event, category }) => {
+      if (event.status !== "completed") return;
+
+      const rawDuration = event.end - event.start;
+      const duration =
+        rawDuration >= 0 ? rawDuration : MINUTES_PER_DAY + rawDuration;
+      const current = summaries.get(category.id);
+      if (current) {
+        current.minutes += duration;
+        current.count += 1;
+        return;
+      }
+
+      summaries.set(category.id, {
+        categoryId: category.id,
+        name: category.name,
+        icon: category.icon,
+        color: category.color,
+        minutes: duration,
+        count: 1,
+      });
+    });
+
+    return summaries;
+  }
+
+  const currentSummaries = summarize(currentSchedule);
+  const winner = [...currentSummaries.values()].sort(
+    (first, second) =>
+      second.minutes - first.minutes ||
+      second.count - first.count ||
+      first.name.localeCompare(second.name, "ja"),
+  )[0];
+  if (!winner) return null;
+
+  const previousSummaries = summarize(previousSchedule);
+  const previousMinutes =
+    previousSummaries.get(winner.categoryId)?.minutes ?? 0;
+
+  return {
+    ...winner,
+    hasPreviousData: previousSummaries.size > 0,
+    previousMinutes,
+    differenceMinutes: winner.minutes - previousMinutes,
+  };
+}
 
 export function getHabitActualRanking(actuals: CategoryActual[]) {
   return actuals

@@ -1,6 +1,7 @@
 import ActualsList from "./ActualsList";
 import HabitActualRanking from "./HabitActualRanking";
 import HabitHeatmap from "./HabitHeatmap";
+import WeeklyMvpCard from "./WeeklyMvpCard";
 import {
   formatActualMinutes,
   getWeeklyReviewMessage,
@@ -8,6 +9,7 @@ import {
 import type {
   HabitHeatmapDay,
   ScheduleRecord,
+  WeeklyMvp,
 } from "@/app/lib/records";
 
 type MobileWeekReviewProps = {
@@ -17,6 +19,7 @@ type MobileWeekReviewProps = {
   habitHeatmap: HabitHeatmapDay[];
   isReviewDay: boolean;
   record: ScheduleRecord;
+  weeklyMvp: WeeklyMvp | null;
 };
 
 export default function MobileWeekReview({
@@ -26,6 +29,7 @@ export default function MobileWeekReview({
   habitHeatmap,
   isReviewDay,
   record,
+  weeklyMvp,
 }: MobileWeekReviewProps) {
   return (
     <section className="md:hidden">
@@ -98,6 +102,7 @@ export default function MobileWeekReview({
           </div>
           <HabitActualRanking actuals={record.actuals} />
           <HabitHeatmap days={habitHeatmap} />
+          <WeeklyMvpCard mvp={weeklyMvp} />
           <div className="mt-4 rounded-2xl bg-violet-50 px-4 py-3">
             <p className="text-xs font-bold text-violet-500">今週の一言</p>
             <p className="mt-1 text-sm font-bold text-violet-800">

@@ -8,6 +8,7 @@ import {
   getHabitActualRanking,
   getScheduleRecord,
   getTodayProgress,
+  getWeeklyMvp,
   getWeeklyReviewMessage,
 } from "@/app/lib/records";
 import type {
@@ -402,5 +403,77 @@ describe("習慣実績ランキング", () => {
     );
 
     expect(ranking).toEqual([]);
+  });
+});
+
+describe("今週一番頑張ったこと", () => {
+  const rightsCategory: Category = {
+    ...category,
+    id: "rights",
+    name: "権利関係",
+    icon: "⚖️",
+  };
+
+  it("時間が同率ならcompleted件数が多いカテゴリを選ぶ", () => {
+    const currentSchedule = [
+      createScheduleItem("study-1", "completed", 540, 600),
+      createScheduleItem("study-2", "completed", 600, 660),
+      createScheduleItem(
+        "rights",
+        "completed",
+        540,
+        660,
+        rightsCategory,
+      ),
+      createScheduleItem(
+        "pending",
+        "pending",
+        0,
+        600,
+        rightsCategory,
+      ),
+    ];
+    const mvp = getWeeklyMvp(currentSchedule, []);
+
+    expect(mvp).toMatchObject({
+      categoryId: category.id,
+      minutes: 120,
+      count: 2,
+      hasPreviousData: false,
+    });
+  });
+
+  it("今週MVPカテゴリの先週実績との差分を返す", () => {
+    const currentSchedule = [
+      createScheduleItem("study", "completed", 540, 800),
+    ];
+    const previousSchedule = [
+      createScheduleItem("study-old", "completed", 540, 600),
+      createScheduleItem(
+        "rights-old",
+        "completed",
+        600,
+        720,
+        rightsCategory,
+      ),
+    ];
+    const mvp = getWeeklyMvp(currentSchedule, previousSchedule);
+
+    expect(mvp).toMatchObject({
+      categoryId: category.id,
+      minutes: 260,
+      previousMinutes: 60,
+      differenceMinutes: 200,
+      hasPreviousData: true,
+    });
+  });
+
+  it("今週にcompleted実績がなければMVPなしとする", () => {
+    expect(
+      getWeeklyMvp(
+        [createScheduleItem("pending", "pending", 540, 600)],
+        [],
+      ),
+    ).toBeNull();
   });
 });

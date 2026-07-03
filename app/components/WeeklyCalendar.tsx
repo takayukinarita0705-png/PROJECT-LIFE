@@ -39,6 +39,7 @@ import {
   getCompletionStreak,
   getHabitHeatmap,
   getScheduleRecord,
+  getWeeklyMvp,
 } from "@/app/lib/records";
 import { isRoutineLinkedEvent } from "@/app/lib/engine/routineEngine";
 import {
@@ -218,6 +219,21 @@ export default function WeeklyCalendar() {
       })
     : [];
   const currentWeekRecord = getScheduleRecord(currentWeekSchedule);
+  const previousWeekSchedule = hasLoadedEvents
+    ? filterEventsByDates(
+        events,
+        getWeekDates(-1).map(formatCalendarDate),
+      ).flatMap((event) => {
+        const category = categories.find(
+          (item) => item.id === event.categoryId,
+        );
+        return category ? [{ event, category }] : [];
+      })
+    : [];
+  const weeklyMvp = getWeeklyMvp(
+    currentWeekSchedule,
+    previousWeekSchedule,
+  );
   const completionStreak =
     currentTime === null || !hasLoadedEvents
       ? 0
@@ -565,6 +581,7 @@ export default function WeeklyCalendar() {
               currentTime !== null && isWeeklyReviewDay(currentTime)
             }
             record={currentWeekRecord}
+            weeklyMvp={weeklyMvp}
           />
         ) : mobileView === "today" ? (
           <MobileSchedule
