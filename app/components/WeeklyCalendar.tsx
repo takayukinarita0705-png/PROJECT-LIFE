@@ -44,6 +44,7 @@ import {
   getHabitWeeklyComparison,
   getScheduleRecord,
   getWeeklyMvp,
+  isPerformanceTrackedCategory,
 } from "@/app/lib/records";
 import { isRoutineLinkedEvent } from "@/app/lib/engine/routineEngine";
 import { getCurrentWeekLifeLogs } from "@/app/lib/lifeLogs";
@@ -256,7 +257,17 @@ export default function WeeklyCalendar() {
   const completionStreak =
     currentTime === null || !hasLoadedEvents
       ? 0
-      : getCompletionStreak(events, currentTime);
+      : getCompletionStreak(
+          events.filter((event) => {
+            const category = categories.find(
+              (item) => item.id === event.categoryId,
+            );
+            return category
+              ? isPerformanceTrackedCategory(category)
+              : false;
+          }),
+          currentTime,
+        );
   const habitHeatmap =
     currentTime === null || !hasLoadedEvents
       ? []

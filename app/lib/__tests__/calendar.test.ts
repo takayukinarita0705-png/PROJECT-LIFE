@@ -5,6 +5,7 @@ import {
   FREE_CATEGORY_ID,
   WORKDAY_ROUTINE,
   attachRoutineRelations,
+  createFixedTemplateEvents,
   ensureFreeCategory,
   filterEventsByDate,
   filterEventsByDates,
@@ -66,6 +67,45 @@ describe("テンプレート重複防止", () => {
     const second = createEvent({ id: "second" });
 
     expect(mergeUniqueEvents([], [first, second])).toEqual([first]);
+  });
+});
+
+describe("週間固定テンプレート", () => {
+  const events = createFixedTemplateEvents(1).filter(
+    (event) => event.day === 0,
+  );
+
+  it("毎朝の起床と5:10開始の散歩を作成する", () => {
+    expect(events.find((event) => event.categoryId === "wake")).toMatchObject({
+      start: 5 * 60,
+      end: 5 * 60 + 10,
+    });
+    expect(events.find((event) => event.categoryId === "walk")).toMatchObject({
+      start: 5 * 60 + 10,
+      end: 5 * 60 + 30,
+    });
+  });
+
+  it("宅建学習ブロックの間を5分空ける", () => {
+    const studyEvents = ["takken-law", "rights", "regulations"].map(
+      (categoryId) =>
+        events.find((event) => event.categoryId === categoryId)!,
+    );
+
+    expect(studyEvents[1].start - studyEvents[0].end).toBe(5);
+    expect(studyEvents[2].start - studyEvents[1].end).toBe(5);
+  });
+
+  it("22時開始の睡眠を残す", () => {
+    expect(
+      events.find(
+        (event) =>
+          event.categoryId === "sleep" && event.start === 22 * 60,
+      ),
+    ).toMatchObject({
+      start: 22 * 60,
+      end: 24 * 60,
+    });
   });
 });
 

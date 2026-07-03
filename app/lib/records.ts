@@ -26,6 +26,11 @@ export const WEEKLY_GOAL_EXCLUDED_CATEGORY_NAMES = new Set([
   "お風呂",
   "通勤",
 ]);
+const PERFORMANCE_EXCLUDED_CATEGORY_NAMES = new Set(["睡眠"]);
+
+export function isPerformanceTrackedCategory(category: Category) {
+  return !PERFORMANCE_EXCLUDED_CATEGORY_NAMES.has(category.name.trim());
+}
 
 export type HabitHeatmapDay = {
   date: string;
@@ -80,7 +85,12 @@ export function getActualsByCategory(schedule: ScheduleItem[]) {
   const actualsByCategory = new Map<string, CategoryActual>();
 
   schedule.forEach(({ event, category }) => {
-    if (event.status !== "completed") return;
+    if (
+      event.status !== "completed" ||
+      !isPerformanceTrackedCategory(category)
+    ) {
+      return;
+    }
 
     const rawDuration = event.end - event.start;
     const duration =
@@ -104,15 +114,18 @@ export function getActualsByCategory(schedule: ScheduleItem[]) {
 }
 
 export function getScheduleRecord(schedule: ScheduleItem[]) {
-  const total = schedule.length;
-  const completed = schedule.filter(
+  const trackedSchedule = schedule.filter(({ category }) =>
+    isPerformanceTrackedCategory(category),
+  );
+  const total = trackedSchedule.length;
+  const completed = trackedSchedule.filter(
     ({ event }) => event.status === "completed",
   ).length;
-  const skipped = schedule.filter(
+  const skipped = trackedSchedule.filter(
     ({ event }) => event.status === "skipped",
   ).length;
   const pending = total - completed - skipped;
-  const actuals = getActualsByCategory(schedule);
+  const actuals = getActualsByCategory(trackedSchedule);
   const totalMinutes = actuals.reduce(
     (sum, actual) => sum + actual.minutes,
     0,

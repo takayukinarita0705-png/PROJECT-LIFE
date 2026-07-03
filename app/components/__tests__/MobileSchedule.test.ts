@@ -13,6 +13,7 @@ import {
   getWeeklyMvp,
   getWeeklyCategoryGoals,
   getWeeklyReviewMessage,
+  isPerformanceTrackedCategory,
 } from "@/app/lib/records";
 import type {
   CalendarEvent,
@@ -147,6 +148,30 @@ describe("今日の実績", () => {
     expect(formatActualMinutes(50)).toBe("50分");
     expect(formatActualMinutes(600)).toBe("10時間");
     expect(formatActualMinutes(90)).toBe("1時間30分");
+  });
+
+  it("睡眠を実績とチェック対象から除外する", () => {
+    const sleepCategory = {
+      ...category,
+      id: "sleep",
+      name: "睡眠",
+      icon: "🌙",
+    };
+    const sleep = createScheduleItem(
+      "sleep",
+      "completed",
+      22 * 60,
+      24 * 60,
+      sleepCategory,
+    );
+
+    expect(getActualsByCategory([sleep])).toEqual([]);
+    expect(getScheduleRecord([sleep])).toMatchObject({
+      total: 0,
+      completed: 0,
+      totalMinutes: 0,
+    });
+    expect(isPerformanceTrackedCategory(sleepCategory)).toBe(false);
   });
 });
 

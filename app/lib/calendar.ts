@@ -64,6 +64,7 @@ export const FREE_CATEGORY = createBuiltInCategory(
 export const DEFAULT_CATEGORIES: Category[] = [
   createBuiltInCategory("work", "仕事", "#3b82f6", "💼", "work"),
   createBuiltInCategory("commute", "通勤", "#60a5fa", "🚃", "work"),
+  createBuiltInCategory("wake", "起床", "#f59e0b", "☀️", "health"),
   createBuiltInCategory("takken-law", "宅建業法", "#ef4444", "📕", "study"),
   createBuiltInCategory("rights", "権利関係", "#f97316", "⚖️", "study"),
   createBuiltInCategory(
@@ -190,10 +191,11 @@ export function createFixedTemplateEvents(
 
   DAYS.forEach((_, day) => {
     addTemplateEvent("sleep", day, toMinutes(0), toMinutes(5));
-    addTemplateEvent("walk", day, toMinutes(5), toMinutes(5, 20));
-    addTemplateEvent("takken-law", day, toMinutes(5, 20), toMinutes(6, 10));
-    addTemplateEvent("rights", day, toMinutes(6, 10), toMinutes(6, 50));
-    addTemplateEvent("regulations", day, toMinutes(6, 50), toMinutes(7, 30));
+    addTemplateEvent("wake", day, toMinutes(5), toMinutes(5, 10));
+    addTemplateEvent("walk", day, toMinutes(5, 10), toMinutes(5, 30));
+    addTemplateEvent("takken-law", day, toMinutes(5, 30), toMinutes(6, 10));
+    addTemplateEvent("rights", day, toMinutes(6, 15), toMinutes(6, 50));
+    addTemplateEvent("regulations", day, toMinutes(6, 55), toMinutes(7, 30));
     addTemplateEvent("sleep", day, toMinutes(22), toMinutes(24));
   });
 

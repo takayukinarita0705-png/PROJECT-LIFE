@@ -8,6 +8,7 @@ import {
 import {
   getActualsByCategory,
   getTodayProgress,
+  isPerformanceTrackedCategory,
 } from "@/app/lib/records";
 import { formatTime } from "@/app/lib/time";
 import type {
@@ -88,6 +89,7 @@ function MobileEventCard({
   const displayTitle = event.title?.trim() || category.name;
   const isCompleted = event.status === "completed";
   const isSkipped = event.status === "skipped";
+  const isCheckable = isPerformanceTrackedCategory(category);
   const linkedLogs = getLifeLogsForEvent(logs, event.id);
 
   return (
@@ -155,7 +157,7 @@ function MobileEventCard({
         )}
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        {isCompleted || isSkipped ? (
+        {!isCheckable ? null : isCompleted || isSkipped ? (
           <button
             type="button"
             onClick={() => onResetStatus(event.id)}
@@ -224,7 +226,9 @@ export default function MobileSchedule({
   const currentDate =
     currentTime === null ? null : formatCalendarDate(currentTime);
   const todayProgress = getTodayProgress(
-    todaySchedule.map(({ event }) => event),
+    todaySchedule
+      .filter(({ category }) => isPerformanceTrackedCategory(category))
+      .map(({ event }) => event),
   );
   const todayActuals = getActualsByCategory(todaySchedule);
   const currentScheduleItem =
