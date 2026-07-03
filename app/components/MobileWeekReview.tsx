@@ -1,14 +1,19 @@
 import ActualsList from "./ActualsList";
+import HabitHeatmap from "./HabitHeatmap";
 import {
   formatActualMinutes,
   getWeeklyReviewMessage,
 } from "@/app/lib/records";
-import type { ScheduleRecord } from "@/app/lib/records";
+import type {
+  HabitHeatmapDay,
+  ScheduleRecord,
+} from "@/app/lib/records";
 
 type MobileWeekReviewProps = {
   completionStreak: number;
   hasCheckedLocalCache: boolean;
   hasLoadedEvents: boolean;
+  habitHeatmap: HabitHeatmapDay[];
   isReviewDay: boolean;
   record: ScheduleRecord;
 };
@@ -17,6 +22,7 @@ export default function MobileWeekReview({
   completionStreak,
   hasCheckedLocalCache,
   hasLoadedEvents,
+  habitHeatmap,
   isReviewDay,
   record,
 }: MobileWeekReviewProps) {
@@ -89,6 +95,7 @@ export default function MobileWeekReview({
             </p>
             <ActualsList actuals={record.actuals} />
           </div>
+          <HabitHeatmap days={habitHeatmap} />
           <div className="mt-4 rounded-2xl bg-violet-50 px-4 py-3">
             <p className="text-xs font-bold text-violet-500">今週の一言</p>
             <p className="mt-1 text-sm font-bold text-violet-800">

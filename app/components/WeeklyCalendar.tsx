@@ -37,6 +37,7 @@ import {
 } from "@/app/lib/time";
 import {
   getCompletionStreak,
+  getHabitHeatmap,
   getScheduleRecord,
 } from "@/app/lib/records";
 import { isRoutineLinkedEvent } from "@/app/lib/engine/routineEngine";
@@ -221,6 +222,10 @@ export default function WeeklyCalendar() {
     currentTime === null || !hasLoadedEvents
       ? 0
       : getCompletionStreak(events, currentTime);
+  const habitHeatmap =
+    currentTime === null || !hasLoadedEvents
+      ? []
+      : getHabitHeatmap(events, categories, currentTime);
   useEffect(() => {
     let cancelled = false;
     const updateCurrentTime = () => {
@@ -555,6 +560,7 @@ export default function WeeklyCalendar() {
             completionStreak={completionStreak}
             hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedEvents={hasLoadedEvents}
+            habitHeatmap={habitHeatmap}
             isReviewDay={
               currentTime !== null && isWeeklyReviewDay(currentTime)
             }

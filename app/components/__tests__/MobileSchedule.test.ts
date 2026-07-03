@@ -4,6 +4,7 @@ import {
   formatActualMinutes,
   getActualsByCategory,
   getCompletionStreak,
+  getHabitHeatmap,
   getScheduleRecord,
   getTodayProgress,
   getWeeklyReviewMessage,
@@ -242,5 +243,99 @@ describe("連続達成", () => {
         referenceDate,
       ),
     ).toBe(0);
+  });
+});
+
+describe("習慣ヒートマップ", () => {
+  const referenceDate = new Date(2026, 6, 3, 12);
+  const excludedNames = [
+    "仕事",
+    "ご飯",
+    "ご飯作り",
+    "お風呂",
+    "睡眠",
+    "通勤",
+  ];
+  const excludedCategories = excludedNames.map((name, index) => ({
+    ...category,
+    id: `excluded-${index}`,
+    name,
+  }));
+
+  function habitEvent(
+    id: string,
+    date: string,
+    status: CalendarEvent["status"],
+    categoryId = category.id,
+  ): CalendarEvent {
+    return {
+      ...overnightSleep,
+      id,
+      date,
+      status,
+      categoryId,
+    };
+  }
+
+  it("今日を含む直近28日を古い日から返す", () => {
+    const heatmap = getHabitHeatmap([], [category], referenceDate);
+
+    expect(heatmap).toHaveLength(28);
+    expect(heatmap[0].date).toBe("2026-06-06");
+    expect(heatmap[27].date).toBe("2026-07-03");
+  });
+
+  it("日別達成率を4段階へ分類する", () => {
+    const events = [
+      habitEvent("high-1", "2026-07-03", "completed"),
+      habitEvent("high-2", "2026-07-03", "completed"),
+      habitEvent("high-3", "2026-07-03", "completed"),
+      habitEvent("high-4", "2026-07-03", "completed"),
+      habitEvent("high-pending", "2026-07-03", "pending"),
+      habitEvent("partial", "2026-07-02", "completed"),
+      habitEvent("partial-pending", "2026-07-02", "pending"),
+      habitEvent("zero", "2026-07-01", "pending"),
+    ];
+    const heatmap = getHabitHeatmap(events, [category], referenceDate);
+
+    expect(heatmap.at(-1)).toMatchObject({
+      percentage: 80,
+      level: "high",
+    });
+    expect(heatmap.at(-2)).toMatchObject({
+      percentage: 50,
+      level: "partial",
+    });
+    expect(heatmap.at(-3)).toMatchObject({
+      percentage: 0,
+      level: "zero",
+    });
+    expect(heatmap.at(-4)).toMatchObject({
+      percentage: null,
+      level: "none",
+    });
+  });
+
+  it("生活上の基本カテゴリをカウント対象から除外する", () => {
+    const events = excludedCategories.map((item) =>
+      habitEvent(
+        `event-${item.id}`,
+        "2026-07-03",
+        "completed",
+        item.id,
+      ),
+    );
+    const today = getHabitHeatmap(
+      events,
+      [category, ...excludedCategories],
+      referenceDate,
+    ).at(-1);
+
+    expect(today).toMatchObject({
+      total: 0,
+      completed: 0,
+      percentage: null,
+      level: "none",
+    });
   });
 });
