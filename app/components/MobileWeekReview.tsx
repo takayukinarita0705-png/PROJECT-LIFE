@@ -58,82 +58,97 @@ export default function MobileWeekReview({
         <h2 className="mt-1 text-2xl font-bold text-slate-900">今週</h2>
       </header>
 
-      {isReviewDay && (
-        <p className="mb-3 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-bold text-violet-700">
-          今日は週間レビューの日です
-        </p>
-      )}
-
       {hasCheckedLocalCache && !hasLoadedEvents ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
           記録を読み込んでいます…
         </div>
       ) : hasLoadedEvents ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 rounded-2xl bg-amber-50 px-4 py-3">
-            <p className="text-sm font-bold text-amber-800">
-              {completionStreak > 0
-                ? `🔥 ${completionStreak}日連続達成中`
-                : "今日はまだ記録がありません"}
+        <div className="grid gap-3">
+          <section
+            aria-label="水曜レビュー"
+            className="rounded-3xl border border-violet-100 bg-white p-4 shadow-sm"
+          >
+            <p className="text-xs font-bold text-violet-500">
+              水曜レビュー
             </p>
-          </div>
-          <div className="border-b border-slate-100 pb-3">
-            <div>
+            {isReviewDay && (
+              <p className="mt-2 rounded-2xl bg-violet-50 px-4 py-3 text-sm font-bold text-violet-700">
+                今日は週間レビューの日です
+              </p>
+            )}
+            <WeeklyMvpCard mvp={weeklyMvp} />
+            <div className="mt-3 rounded-2xl bg-violet-50 px-4 py-3">
+              <p className="text-xs font-bold text-violet-500">今週の一言</p>
+              <p className="mt-1 text-sm font-bold text-violet-800">
+                {getWeeklyReviewMessage(record.percentage)}
+              </p>
+            </div>
+          </section>
+
+          <section
+            aria-label="今週の達成率"
+            className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <div className="border-b border-slate-100 pb-3">
               <p className="text-xs font-bold text-slate-400">今週の達成率</p>
               <p className="mt-1 text-3xl font-bold tabular-nums text-emerald-700">
                 {record.percentage}%
               </p>
             </div>
-          </div>
+            <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-xl bg-emerald-50 px-2 py-3">
+                <dt className="text-[10px] font-bold text-emerald-700">
+                  完了数
+                </dt>
+                <dd className="mt-0.5 text-lg font-bold tabular-nums text-emerald-800">
+                  {record.completed}件
+                </dd>
+              </div>
+              <div className="rounded-xl bg-slate-100 px-2 py-3">
+                <dt className="text-[10px] font-bold text-slate-500">
+                  スキップ数
+                </dt>
+                <dd className="mt-0.5 text-lg font-bold tabular-nums text-slate-700">
+                  {record.skipped}件
+                </dd>
+              </div>
+              <div className="rounded-xl bg-blue-50 px-2 py-3">
+                <dt className="text-[10px] font-bold text-blue-600">
+                  合計実績時間
+                </dt>
+                <dd className="mt-0.5 text-sm font-bold tabular-nums text-blue-700">
+                  {formatActualMinutes(record.totalMinutes)}
+                </dd>
+              </div>
+            </dl>
+            <div className="mt-3 border-t border-slate-100 pt-3">
+              <p className="text-xs font-bold text-slate-400">
+                カテゴリ別実績時間
+              </p>
+              <ActualsList actuals={record.actuals} />
+            </div>
+          </section>
 
-          <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-emerald-50 px-2 py-3">
-              <dt className="text-[10px] font-bold text-emerald-700">
-                完了数
-              </dt>
-              <dd className="mt-0.5 text-lg font-bold tabular-nums text-emerald-800">
-                {record.completed}件
-              </dd>
-            </div>
-            <div className="rounded-xl bg-slate-100 px-2 py-3">
-              <dt className="text-[10px] font-bold text-slate-500">
-                スキップ数
-              </dt>
-              <dd className="mt-0.5 text-lg font-bold tabular-nums text-slate-700">
-                {record.skipped}件
-              </dd>
-            </div>
-            <div className="rounded-xl bg-blue-50 px-2 py-3">
-              <dt className="text-[10px] font-bold text-blue-600">
-                合計実績時間
-              </dt>
-              <dd className="mt-0.5 text-sm font-bold tabular-nums text-blue-700">
-                {formatActualMinutes(record.totalMinutes)}
-              </dd>
-            </div>
-          </dl>
-          <div className="mt-4 border-t border-slate-100 pt-3">
-            <p className="text-xs font-bold text-slate-400">
-              カテゴリ別実績時間
-            </p>
-            <ActualsList actuals={record.actuals} />
-          </div>
-          <HabitActualRanking actuals={record.actuals} />
           <HabitWeeklyComparison comparison={habitWeeklyComparison} />
+          <HabitActualRanking actuals={record.actuals} />
           <HabitHeatmap days={habitHeatmap} />
-          <WeeklyMvpCard mvp={weeklyMvp} />
+          <section
+            aria-label="連続達成"
+            className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm"
+          >
+            <p className="text-xs font-bold text-amber-600">連続達成</p>
+            <p className="mt-2 text-sm font-bold text-amber-800">
+              {completionStreak > 0
+                ? `🔥 ${completionStreak}日連続達成中`
+                : "今日はまだ記録がありません"}
+            </p>
+          </section>
           <WeeklyLifeLogs
             categories={categories}
             events={events}
             logs={logs}
             onViewAll={onViewAllLogs}
           />
-          <div className="mt-4 rounded-2xl bg-violet-50 px-4 py-3">
-            <p className="text-xs font-bold text-violet-500">今週の一言</p>
-            <p className="mt-1 text-sm font-bold text-violet-800">
-              {getWeeklyReviewMessage(record.percentage)}
-            </p>
-          </div>
         </div>
       ) : null}
     </section>

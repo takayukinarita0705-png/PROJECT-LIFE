@@ -22,7 +22,7 @@ export default function WeeklyLifeLogs({
   return (
     <section
       aria-label="今週のログ"
-      className="mt-4 border-t border-slate-100 pt-3"
+      className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold text-slate-500">

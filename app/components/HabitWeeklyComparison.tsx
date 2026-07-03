@@ -19,7 +19,7 @@ export default function HabitWeeklyComparison({
   return (
     <section
       aria-label="先週との比較"
-      className="mt-4 border-t border-slate-100 pt-3"
+      className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
     >
       <p className="text-xs font-bold text-slate-400">先週との比較</p>
       <dl className="mt-2 grid grid-cols-3 gap-2 text-center">

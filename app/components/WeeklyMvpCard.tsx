@@ -12,7 +12,7 @@ export default function WeeklyMvpCard({
   return (
     <section
       aria-label="今週一番頑張ったこと"
-      className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3"
+      className="mt-3 rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3"
     >
       <p className="text-xs font-bold text-amber-700">
         🏆 今週一番頑張ったこと

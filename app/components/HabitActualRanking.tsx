@@ -14,7 +14,7 @@ export default function HabitActualRanking({
   return (
     <section
       aria-label="習慣実績ランキング"
-      className="mt-4 border-t border-slate-100 pt-3"
+      className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
     >
       <p className="text-xs font-bold text-slate-400">
         習慣実績ランキング
