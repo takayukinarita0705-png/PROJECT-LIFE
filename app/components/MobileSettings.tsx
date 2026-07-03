@@ -1,10 +1,4 @@
-type MobileSettingsProps = {
-  onOpenWeeklyGoals: () => void;
-};
-
-export default function MobileSettings({
-  onOpenWeeklyGoals,
-}: MobileSettingsProps) {
+export default function MobileSettings() {
   return (
     <section className="md:hidden">
       <header className="mb-4">
@@ -28,29 +22,18 @@ export default function MobileSettings({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onOpenWeeklyGoals}
-          className="flex min-h-16 w-full touch-manipulation items-center gap-3 border-b border-slate-100 px-4 py-3 text-left active:bg-slate-50"
-        >
+        <div className="flex min-h-16 items-center gap-3 border-b border-slate-100 px-4 py-3">
           <span
             aria-hidden="true"
             className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50"
           >
             🎯
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-bold text-slate-800">
-              週間目標設定
-            </span>
-            <span className="block text-xs text-slate-400">
-              今週ページで設定
-            </span>
-          </span>
-          <span aria-hidden="true" className="text-slate-300">
-            ›
-          </span>
-        </button>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-slate-800">週間目標設定</p>
+            <p className="text-xs text-slate-400">準備中</p>
+          </div>
+        </div>
 
         <div className="flex min-h-16 items-center gap-3 border-b border-slate-100 px-4 py-3">
           <span

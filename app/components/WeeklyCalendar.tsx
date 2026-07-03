@@ -650,9 +650,7 @@ export default function WeeklyCalendar() {
             onEdit={openLifeLogEditor}
           />
         ) : mobilePage === "settings" ? (
-          <MobileSettings
-            onOpenWeeklyGoals={() => handleMobilePageChange("week")}
-          />
+          <MobileSettings />
         ) : mobileView === "today" ? (
           <MobileSchedule
             currentTime={currentTime}
