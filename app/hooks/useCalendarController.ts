@@ -40,6 +40,7 @@ import {
   saveSharedCalendarState,
 } from "@/app/lib/supabaseStorage";
 import { parseTime } from "@/app/lib/time";
+import { normalizeLifeLogBody } from "@/app/lib/lifeLogs";
 import type {
   CalendarEvent,
   CalendarTemplate,
@@ -51,6 +52,7 @@ import type {
   TemplateEvent,
   UndoSnapshot,
   SharedCalendarState,
+  LifeLog,
 } from "@/app/types/calendar";
 
 function prepareSharedCalendarState(
@@ -69,6 +71,7 @@ export default function useCalendarController(weekOffset: number) {
     useState<Category[]>(DEFAULT_CATEGORIES);
   const [hasLoadedEvents, setHasLoadedEvents] = useState(false);
   const [templates, setTemplates] = useState<CalendarTemplate[]>([]);
+  const [logs, setLogs] = useState<LifeLog[]>([]);
   const [hasLoadedTemplates, setHasLoadedTemplates] = useState(false);
   const [hasCheckedLocalCache, setHasCheckedLocalCache] = useState(false);
   const [isSyncingSharedState, setIsSyncingSharedState] = useState(false);
@@ -110,6 +113,7 @@ export default function useCalendarController(weekOffset: number) {
         setCategories(preparedCache.categories);
         setEvents(preparedCache.events);
         setTemplates(preparedCache.templates);
+        setLogs(preparedCache.logs);
         setHasLoadedEvents(true);
         setHasLoadedTemplates(true);
       }
@@ -135,6 +139,7 @@ export default function useCalendarController(weekOffset: number) {
           setCategories(sharedState.categories);
           setEvents(sharedState.events);
           setTemplates(sharedState.templates);
+          setLogs(sharedState.logs);
         }
         setCanPersistSharedState(true);
       } catch (error) {
@@ -165,6 +170,7 @@ export default function useCalendarController(weekOffset: number) {
       categories,
       events,
       templates,
+      logs,
     } as const;
     const serializedState = serializeSharedCalendarState(sharedState);
     currentSharedStateRef.current = sharedState;
@@ -214,6 +220,7 @@ export default function useCalendarController(weekOffset: number) {
     hasLoadedEvents,
     hasLoadedTemplates,
     templates,
+    logs,
   ]);
 
   useEffect(() => {
@@ -583,8 +590,48 @@ export default function useCalendarController(weekOffset: number) {
     }
   }
 
+  function addLifeLog(body: string) {
+    const normalizedBody = normalizeLifeLogBody(body);
+    if (normalizedBody === null) return false;
+
+    const createdAt = new Date().toISOString();
+    setLogs((current) => [
+      {
+        id: crypto.randomUUID(),
+        body: normalizedBody,
+        createdAt,
+        updatedAt: createdAt,
+      },
+      ...current,
+    ]);
+    return true;
+  }
+
+  function updateLifeLog(id: string, body: string) {
+    const normalizedBody = normalizeLifeLogBody(body);
+    if (normalizedBody === null) return false;
+
+    setLogs((current) =>
+      current.map((log) =>
+        log.id === id
+          ? {
+              ...log,
+              body: normalizedBody,
+              updatedAt: new Date().toISOString(),
+            }
+          : log,
+      ),
+    );
+    return true;
+  }
+
+  function deleteLifeLog(id: string) {
+    setLogs((current) => current.filter((log) => log.id !== id));
+  }
+
   return {
     activeCategoryId,
+    addLifeLog,
     addEvent,
     applyFixedTemplate,
     applyTemplate,
@@ -594,11 +641,13 @@ export default function useCalendarController(weekOffset: number) {
     deleteCategory,
     deleteEvent,
     deleteTemplate,
+    deleteLifeLog,
     events,
     hasCheckedLocalCache,
     hasLoadedEvents,
     hasLoadedTemplates,
     isSyncingSharedState,
+    logs,
     moveEvent,
     resetEventToPending,
     saveCategory,
@@ -612,6 +661,7 @@ export default function useCalendarController(weekOffset: number) {
     templates,
     toggleEventCompleted,
     toggleEventSkip,
+    updateLifeLog,
     undoLastOperation,
     undoSnapshot,
   };

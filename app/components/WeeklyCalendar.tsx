@@ -13,7 +13,9 @@ import EventDialog, { MobileWeekEventDialog } from "./EventDialog";
 import MobileBottomTabs from "./MobileBottomTabs";
 import type { MobilePage } from "./MobileBottomTabs";
 import MobileSchedule from "./MobileSchedule";
+import MobileLifeLog from "./MobileLifeLog";
 import MobileWeekReview from "./MobileWeekReview";
+import LifeLogDialog from "./LifeLogDialog";
 import RoutineDetachDialog from "./RoutineDetachDialog";
 import WeekToolbar from "./WeekToolbar";
 import {
@@ -54,6 +56,7 @@ import type {
   DropTarget,
   EventMove,
   EventEditDraft,
+  LifeLog,
 } from "@/app/types/calendar";
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 768px)";
@@ -81,6 +84,7 @@ export default function WeeklyCalendar() {
   const [weekOffset, setWeekOffset] = useState(0);
   const {
     activeCategoryId,
+    addLifeLog,
     addEvent: addCalendarEvent,
     applyFixedTemplate,
     applyTemplate,
@@ -90,11 +94,13 @@ export default function WeeklyCalendar() {
     deleteCategory,
     deleteEvent: deleteCalendarEvent,
     deleteTemplate,
+    deleteLifeLog,
     events,
     hasCheckedLocalCache,
     hasLoadedEvents,
     hasLoadedTemplates,
     isSyncingSharedState,
+    logs,
     moveEvent: moveCalendarEvent,
     resetEventToPending,
     saveCategory,
@@ -108,6 +114,7 @@ export default function WeeklyCalendar() {
     templates,
     toggleEventCompleted,
     toggleEventSkip,
+    updateLifeLog,
     undoLastOperation,
     undoSnapshot,
   } = useCalendarController(weekOffset);
@@ -143,6 +150,10 @@ export default function WeeklyCalendar() {
       }
     | null
   >(null);
+  const [isLifeLogDialogOpen, setIsLifeLogDialogOpen] = useState(false);
+  const [editingLifeLog, setEditingLifeLog] = useState<LifeLog | null>(
+    null,
+  );
   const [draft, setDraft] = useState<Draft | null>(null);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const dragGhostRef = useRef<HTMLDivElement>(null);
@@ -544,6 +555,32 @@ export default function WeeklyCalendar() {
     if (page === "today") setMobileView("today");
   }
 
+  function openNewLifeLog() {
+    setEditingLifeLog(null);
+    setIsLifeLogDialogOpen(true);
+  }
+
+  function openLifeLogEditor(log: LifeLog) {
+    setEditingLifeLog(log);
+    setIsLifeLogDialogOpen(true);
+  }
+
+  function saveLifeLog(body: string) {
+    const saved = editingLifeLog
+      ? updateLifeLog(editingLifeLog.id, body)
+      : addLifeLog(body);
+    if (saved) {
+      setIsLifeLogDialogOpen(false);
+      setEditingLifeLog(null);
+    }
+    return saved;
+  }
+
+  function removeLifeLog(log: LifeLog) {
+    if (!window.confirm("このログを削除しますか？")) return;
+    deleteLifeLog(log.id);
+  }
+
   return (
     <div className="weekly-calendar">
       <div className="pb-24 md:hidden">
@@ -588,6 +625,15 @@ export default function WeeklyCalendar() {
             }
             record={currentWeekRecord}
             weeklyMvp={weeklyMvp}
+          />
+        ) : mobilePage === "log" ? (
+          <MobileLifeLog
+            hasCheckedLocalCache={hasCheckedLocalCache}
+            hasLoadedState={hasLoadedEvents}
+            logs={logs}
+            onAdd={openNewLifeLog}
+            onDelete={removeLifeLog}
+            onEdit={openLifeLogEditor}
           />
         ) : mobileView === "today" ? (
           <MobileSchedule
@@ -693,6 +739,17 @@ export default function WeeklyCalendar() {
         <RoutineDetachDialog
           onDetach={() => completePendingRoutineChange(true)}
           onKeep={() => completePendingRoutineChange(false)}
+        />
+      )}
+
+      {isLifeLogDialogOpen && (
+        <LifeLogDialog
+          log={editingLifeLog}
+          onCancel={() => {
+            setIsLifeLogDialogOpen(false);
+            setEditingLifeLog(null);
+          }}
+          onSave={saveLifeLog}
         />
       )}
 

@@ -65,12 +65,20 @@ export type Template = {
 
 export type CalendarTemplate = Template;
 
+export type LifeLog = {
+  id: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type SharedCalendarState = {
   version: 1;
   schemaVersion: 2;
   categories: Category[];
   events: CalendarEvent[];
   templates: CalendarTemplate[];
+  logs: LifeLog[];
 };
 
 export type CalendarDayColumn = {

@@ -1,4 +1,4 @@
-export type MobilePage = "today" | "week";
+export type MobilePage = "today" | "week" | "log";
 
 type MobileBottomTabsProps = {
   activePage: MobilePage;
@@ -8,6 +8,7 @@ type MobileBottomTabsProps = {
 const TABS: Array<{ page: MobilePage; label: string; icon: string }> = [
   { page: "today", label: "今日", icon: "📅" },
   { page: "week", label: "今週", icon: "📊" },
+  { page: "log", label: "ログ", icon: "📝" },
 ];
 
 export default function MobileBottomTabs({
@@ -19,7 +20,7 @@ export default function MobileBottomTabs({
       aria-label="スマホページ"
       className="fixed inset-x-0 bottom-0 z-[110] border-t border-slate-200 bg-white/95 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
     >
-      <div className="mx-auto grid max-w-sm grid-cols-2 gap-2">
+      <div className="mx-auto grid max-w-sm grid-cols-3 gap-2">
         {TABS.map((tab) => {
           const isActive = activePage === tab.page;
           return (

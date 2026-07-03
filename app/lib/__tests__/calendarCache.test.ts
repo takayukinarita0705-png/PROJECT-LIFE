@@ -13,6 +13,7 @@ const state: SharedCalendarState = {
   categories: [],
   events: [],
   templates: [],
+  logs: [],
 };
 
 describe("カレンダーのローカルキャッシュ", () => {
@@ -42,6 +43,7 @@ describe("カレンダーのローカルキャッシュ", () => {
     });
 
     expect(parseCachedCalendarState(cachedV1)?.schemaVersion).toBe(2);
+    expect(parseCachedCalendarState(cachedV1)?.logs).toEqual([]);
   });
 
   it("Supabase取得Stateの差分を判定する", () => {

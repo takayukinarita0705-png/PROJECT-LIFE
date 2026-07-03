@@ -7,6 +7,7 @@ import type {
   EventLinkType,
   EventMode,
   EventStatus,
+  LifeLog,
   TemplateEvent,
 } from "@/app/types/calendar";
 
@@ -103,6 +104,30 @@ export function normalizeCategory(value: unknown): Category | null {
       typeof category.updatedAt === "string"
         ? category.updatedAt
         : createdAt,
+  };
+}
+
+export function normalizeLifeLog(value: unknown): LifeLog | null {
+  if (typeof value !== "object" || value === null) return null;
+
+  const log = value as Record<string, unknown>;
+  if (
+    typeof log.id !== "string" ||
+    typeof log.body !== "string" ||
+    !log.body.trim() ||
+    typeof log.createdAt !== "string" ||
+    Number.isNaN(Date.parse(log.createdAt)) ||
+    typeof log.updatedAt !== "string" ||
+    Number.isNaN(Date.parse(log.updatedAt))
+  ) {
+    return null;
+  }
+
+  return {
+    id: log.id,
+    body: log.body.trim(),
+    createdAt: log.createdAt,
+    updatedAt: log.updatedAt,
   };
 }
 

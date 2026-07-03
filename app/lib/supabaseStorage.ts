@@ -3,6 +3,7 @@ import {
   normalizeCategory,
   normalizeCalendarEvent,
   normalizeCalendarTemplate,
+  normalizeLifeLog,
 } from "@/app/lib/storage";
 import {
   CURRENT_SCHEMA_VERSION,
@@ -22,6 +23,7 @@ function createEmptySharedState(): SharedCalendarState {
     categories: DEFAULT_CATEGORIES.map((category) => ({ ...category })),
     events: [],
     templates: [],
+    logs: [],
   };
 }
 
@@ -49,10 +51,14 @@ export function normalizeSharedCalendarState(
   const categories = state.categories.map(normalizeCategory);
   const events = state.events.map(normalizeCalendarEvent);
   const templates = state.templates.map(normalizeCalendarTemplate);
+  const logs = Array.isArray(state.logs)
+    ? state.logs.map(normalizeLifeLog)
+    : [];
   if (
     !hasNoNull(categories) ||
     !hasNoNull(events) ||
-    !hasNoNull(templates)
+    !hasNoNull(templates) ||
+    !hasNoNull(logs)
   ) {
     return null;
   }
@@ -63,6 +69,7 @@ export function normalizeSharedCalendarState(
     categories,
     events,
     templates,
+    logs,
   };
 }
 
