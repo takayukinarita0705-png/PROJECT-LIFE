@@ -28,6 +28,14 @@ export type HabitHeatmapDay = {
   level: "none" | "zero" | "partial" | "high";
 };
 
+export type CategoryActual = {
+  categoryId: string;
+  name: string;
+  icon: string;
+  color: string;
+  minutes: number;
+};
+
 export function getTodayProgress(
   events: Array<{ status?: EventStatus }>,
 ) {
@@ -42,16 +50,7 @@ export function getTodayProgress(
 }
 
 export function getActualsByCategory(schedule: ScheduleItem[]) {
-  const actualsByCategory = new Map<
-    string,
-    {
-      categoryId: string;
-      name: string;
-      icon: string;
-      color: string;
-      minutes: number;
-    }
-  >();
+  const actualsByCategory = new Map<string, CategoryActual>();
 
   schedule.forEach(({ event, category }) => {
     if (event.status !== "completed") return;
@@ -106,6 +105,20 @@ export function getScheduleRecord(schedule: ScheduleItem[]) {
 }
 
 export type ScheduleRecord = ReturnType<typeof getScheduleRecord>;
+
+export function getHabitActualRanking(actuals: CategoryActual[]) {
+  return actuals
+    .filter(
+      (actual) =>
+        actual.minutes > 0 &&
+        !HABIT_EXCLUDED_CATEGORY_NAMES.has(actual.name.trim()),
+    )
+    .sort(
+      (first, second) =>
+        second.minutes - first.minutes ||
+        first.name.localeCompare(second.name, "ja"),
+    );
+}
 
 export function getCompletionStreak(
   events: CalendarEvent[],

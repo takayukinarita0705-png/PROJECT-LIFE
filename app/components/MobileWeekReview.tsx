@@ -1,4 +1,5 @@
 import ActualsList from "./ActualsList";
+import HabitActualRanking from "./HabitActualRanking";
 import HabitHeatmap from "./HabitHeatmap";
 import {
   formatActualMinutes,
@@ -95,6 +96,7 @@ export default function MobileWeekReview({
             </p>
             <ActualsList actuals={record.actuals} />
           </div>
+          <HabitActualRanking actuals={record.actuals} />
           <HabitHeatmap days={habitHeatmap} />
           <div className="mt-4 rounded-2xl bg-violet-50 px-4 py-3">
             <p className="text-xs font-bold text-violet-500">今週の一言</p>

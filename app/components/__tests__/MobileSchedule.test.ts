@@ -5,6 +5,7 @@ import {
   getActualsByCategory,
   getCompletionStreak,
   getHabitHeatmap,
+  getHabitActualRanking,
   getScheduleRecord,
   getTodayProgress,
   getWeeklyReviewMessage,
@@ -337,5 +338,69 @@ describe("習慣ヒートマップ", () => {
       percentage: null,
       level: "none",
     });
+  });
+});
+
+describe("習慣実績ランキング", () => {
+  it("除外カテゴリと0分を除き実績時間の長い順に並べる", () => {
+    const ranking = getHabitActualRanking([
+      {
+        categoryId: "rights",
+        name: "権利関係",
+        icon: "⚖️",
+        color: "#f97316",
+        minutes: 130,
+      },
+      {
+        categoryId: "work",
+        name: "仕事",
+        icon: "💼",
+        color: "#3b82f6",
+        minutes: 600,
+      },
+      {
+        categoryId: "takken-law",
+        name: "宅建業法",
+        icon: "📕",
+        color: "#ef4444",
+        minutes: 260,
+      },
+      {
+        categoryId: "walk",
+        name: "散歩",
+        icon: "🚶",
+        color: "#84cc16",
+        minutes: 100,
+      },
+      {
+        categoryId: "reading",
+        name: "読書",
+        icon: "📚",
+        color: "#6366f1",
+        minutes: 0,
+      },
+    ]);
+
+    expect(ranking.map(({ categoryId }) => categoryId)).toEqual([
+      "takken-law",
+      "rights",
+      "walk",
+    ]);
+  });
+
+  it("除外対象6カテゴリをすべてランキングから外す", () => {
+    const ranking = getHabitActualRanking(
+      ["仕事", "ご飯", "ご飯作り", "お風呂", "睡眠", "通勤"].map(
+        (name, index) => ({
+          categoryId: `excluded-${index}`,
+          name,
+          icon: "•",
+          color: "#64748b",
+          minutes: 60,
+        }),
+      ),
+    );
+
+    expect(ranking).toEqual([]);
   });
 });
