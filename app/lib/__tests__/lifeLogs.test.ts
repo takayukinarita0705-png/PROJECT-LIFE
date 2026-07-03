@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getLifeLogsForEvent,
   normalizeLifeLogBody,
   sortLifeLogsNewestFirst,
 } from "@/app/lib/lifeLogs";
@@ -33,10 +34,30 @@ describe("ライフログ", () => {
   });
 
   it("保存データを正規化する", () => {
-    expect(normalizeLifeLog({ ...olderLog, body: "  記録  " })).toEqual({
+    expect(
+      normalizeLifeLog({
+        ...olderLog,
+        body: "  記録  ",
+        eventId: "event-1",
+      }),
+    ).toEqual({
       ...olderLog,
       body: "記録",
+      eventId: "event-1",
     });
     expect(normalizeLifeLog({ ...olderLog, createdAt: "invalid" })).toBeNull();
+  });
+
+  it("予定に紐付くログだけを新しい順で取得する", () => {
+    expect(
+      getLifeLogsForEvent(
+        [
+          { ...olderLog, eventId: "event-1" },
+          { ...newerLog, eventId: "event-1" },
+          { ...newerLog, id: "other", eventId: "event-2" },
+        ],
+        "event-1",
+      ).map(({ id }) => id),
+    ).toEqual(["newer", "older"]);
   });
 });

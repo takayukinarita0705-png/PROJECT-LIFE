@@ -11,3 +11,9 @@ export function sortLifeLogsNewestFirst(logs: LifeLog[]) {
       Date.parse(second.createdAt) - Date.parse(first.createdAt),
   );
 }
+
+export function getLifeLogsForEvent(logs: LifeLog[], eventId: string) {
+  return sortLifeLogsNewestFirst(
+    logs.filter((log) => log.eventId === eventId),
+  );
+}

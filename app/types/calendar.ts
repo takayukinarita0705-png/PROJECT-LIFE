@@ -68,6 +68,7 @@ export type CalendarTemplate = Template;
 export type LifeLog = {
   id: string;
   body: string;
+  eventId?: string;
   createdAt: string;
   updatedAt: string;
 };

@@ -115,6 +115,7 @@ export function normalizeLifeLog(value: unknown): LifeLog | null {
     typeof log.id !== "string" ||
     typeof log.body !== "string" ||
     !log.body.trim() ||
+    (log.eventId !== undefined && typeof log.eventId !== "string") ||
     typeof log.createdAt !== "string" ||
     Number.isNaN(Date.parse(log.createdAt)) ||
     typeof log.updatedAt !== "string" ||
@@ -126,6 +127,7 @@ export function normalizeLifeLog(value: unknown): LifeLog | null {
   return {
     id: log.id,
     body: log.body.trim(),
+    eventId: typeof log.eventId === "string" ? log.eventId : undefined,
     createdAt: log.createdAt,
     updatedAt: log.updatedAt,
   };

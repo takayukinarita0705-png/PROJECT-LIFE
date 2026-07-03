@@ -590,7 +590,7 @@ export default function useCalendarController(weekOffset: number) {
     }
   }
 
-  function addLifeLog(body: string) {
+  function addLifeLog(body: string, eventId?: string) {
     const normalizedBody = normalizeLifeLogBody(body);
     if (normalizedBody === null) return false;
 
@@ -599,6 +599,7 @@ export default function useCalendarController(weekOffset: number) {
       {
         id: crypto.randomUUID(),
         body: normalizedBody,
+        eventId: eventId || undefined,
         createdAt,
         updatedAt: createdAt,
       },
@@ -607,7 +608,7 @@ export default function useCalendarController(weekOffset: number) {
     return true;
   }
 
-  function updateLifeLog(id: string, body: string) {
+  function updateLifeLog(id: string, body: string, eventId?: string) {
     const normalizedBody = normalizeLifeLogBody(body);
     if (normalizedBody === null) return false;
 
@@ -617,6 +618,7 @@ export default function useCalendarController(weekOffset: number) {
           ? {
               ...log,
               body: normalizedBody,
+              eventId: eventId || undefined,
               updatedAt: new Date().toISOString(),
             }
           : log,

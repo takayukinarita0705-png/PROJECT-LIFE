@@ -565,10 +565,10 @@ export default function WeeklyCalendar() {
     setIsLifeLogDialogOpen(true);
   }
 
-  function saveLifeLog(body: string) {
+  function saveLifeLog(body: string, eventId?: string) {
     const saved = editingLifeLog
-      ? updateLifeLog(editingLifeLog.id, body)
-      : addLifeLog(body);
+      ? updateLifeLog(editingLifeLog.id, body, eventId)
+      : addLifeLog(body, eventId);
     if (saved) {
       setIsLifeLogDialogOpen(false);
       setEditingLifeLog(null);
@@ -641,6 +641,7 @@ export default function WeeklyCalendar() {
             currentDay={currentDay}
             hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedEvents={hasLoadedEvents}
+            logs={logs}
             onResetStatus={resetEventToPending}
             onToggleCompleted={toggleEventCompleted}
             onToggleSkipped={toggleEventSkip}
@@ -745,6 +746,7 @@ export default function WeeklyCalendar() {
       {isLifeLogDialogOpen && (
         <LifeLogDialog
           log={editingLifeLog}
+          schedule={todaySchedule}
           onCancel={() => {
             setIsLifeLogDialogOpen(false);
             setEditingLifeLog(null);

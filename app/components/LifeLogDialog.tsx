@@ -1,22 +1,32 @@
 import { useState } from "react";
-import type { LifeLog } from "@/app/types/calendar";
+import { formatTime } from "@/app/lib/time";
+import type {
+  LifeLog,
+  ScheduleItem,
+} from "@/app/types/calendar";
 
 type LifeLogDialogProps = {
   log: LifeLog | null;
+  schedule: ScheduleItem[];
   onCancel: () => void;
-  onSave: (body: string) => boolean;
+  onSave: (body: string, eventId?: string) => boolean;
 };
 
 export default function LifeLogDialog({
   log,
+  schedule,
   onCancel,
   onSave,
 }: LifeLogDialogProps) {
   const [body, setBody] = useState(log?.body ?? "");
+  const [eventId, setEventId] = useState(log?.eventId ?? "");
   const [error, setError] = useState("");
+  const hasSelectedEvent = schedule.some(
+    ({ event }) => event.id === eventId,
+  );
 
   function save() {
-    if (!onSave(body)) {
+    if (!onSave(body, eventId || undefined)) {
       setError("本文を入力してください。");
     }
   }
@@ -48,6 +58,25 @@ export default function LifeLogDialog({
             className="mt-2 w-full resize-none rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-500"
             placeholder="思いついたことや出来事を記録"
           />
+        </label>
+        <label className="mt-4 block text-sm font-bold text-slate-600">
+          予定に紐付ける（任意）
+          <select
+            value={eventId}
+            onChange={(event) => setEventId(event.target.value)}
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-slate-500"
+          >
+            <option value="">予定を選択しない</option>
+            {eventId && !hasSelectedEvent && (
+              <option value={eventId}>現在紐付いている予定</option>
+            )}
+            {schedule.map(({ event, category }) => (
+              <option key={event.id} value={event.id}>
+                {formatTime(event.start)} {category.icon}{" "}
+                {event.title?.trim() || category.name}
+              </option>
+            ))}
+          </select>
         </label>
         {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
         <div className="mt-5 grid grid-cols-2 gap-2">

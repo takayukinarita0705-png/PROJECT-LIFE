@@ -1,5 +1,6 @@
 import { DAYS, dateLabel } from "@/app/lib/calendar";
 import ActualsList from "./ActualsList";
+import { getLifeLogsForEvent } from "@/app/lib/lifeLogs";
 import {
   formatCalendarDate,
   isEventOnDate,
@@ -11,7 +12,11 @@ import {
 } from "@/app/lib/records";
 import { formatTime } from "@/app/lib/time";
 import type { ScheduleRecord } from "@/app/lib/records";
-import type { CalendarEvent, ScheduleItem } from "@/app/types/calendar";
+import type {
+  CalendarEvent,
+  LifeLog,
+  ScheduleItem,
+} from "@/app/types/calendar";
 
 const MINUTES_PER_DAY = 24 * 60;
 
@@ -120,6 +125,7 @@ type MobileScheduleProps = {
   currentDay: number | null;
   hasCheckedLocalCache: boolean;
   hasLoadedEvents: boolean;
+  logs: LifeLog[];
   onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
@@ -132,6 +138,7 @@ export default function MobileSchedule({
   currentDay,
   hasCheckedLocalCache,
   hasLoadedEvents,
+  logs,
   onResetStatus,
   onToggleCompleted,
   onToggleSkipped,
@@ -233,6 +240,7 @@ export default function MobileSchedule({
                 currentDate,
                 currentMinutes,
               );
+            const linkedLogs = getLifeLogsForEvent(logs, event.id);
 
             return (
               <article
@@ -286,6 +294,18 @@ export default function MobileSchedule({
                   >
                     {formatTime(event.start)}〜{formatTime(event.end)}
                   </p>
+                  {linkedLogs.length > 0 && (
+                    <div className="mt-1 grid gap-1">
+                      {linkedLogs.map((log) => (
+                        <p
+                          key={log.id}
+                          className="whitespace-pre-wrap break-words rounded-lg bg-slate-100/80 px-2 py-1 text-xs text-slate-600"
+                        >
+                          📝 {log.body}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   {isCompleted || isSkipped ? (
