@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getLifeLogTimelineGroups,
   getLifeLogsForEvent,
   normalizeLifeLogBody,
   sortLifeLogsNewestFirst,
@@ -59,5 +60,27 @@ describe("ライフログ", () => {
         "event-1",
       ).map(({ id }) => id),
     ).toEqual(["newer", "older"]);
+  });
+
+  it("日付ごとに今日・昨日の順でグループ化する", () => {
+    const referenceDate = new Date(2026, 6, 3, 12);
+    const todayLog: LifeLog = {
+      ...newerLog,
+      id: "today",
+      createdAt: new Date(2026, 6, 3, 14, 20).toISOString(),
+    };
+    const yesterdayLog: LifeLog = {
+      ...olderLog,
+      id: "yesterday",
+      createdAt: new Date(2026, 6, 2, 21, 10).toISOString(),
+    };
+    const groups = getLifeLogTimelineGroups(
+      [yesterdayLog, todayLog],
+      referenceDate,
+    );
+
+    expect(groups.map(({ label }) => label)).toEqual(["今日", "昨日"]);
+    expect(groups[0].logs.map(({ id }) => id)).toEqual(["today"]);
+    expect(groups[1].logs.map(({ id }) => id)).toEqual(["yesterday"]);
   });
 });

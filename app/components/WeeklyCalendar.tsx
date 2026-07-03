@@ -628,6 +628,8 @@ export default function WeeklyCalendar() {
           />
         ) : mobilePage === "log" ? (
           <MobileLifeLog
+            categories={categories}
+            events={events}
             hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedState={hasLoadedEvents}
             logs={logs}
