@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getCurrentWeekLifeLogs,
   getLifeLogTimelineGroups,
   getLifeLogsForEvent,
   normalizeLifeLogBody,
@@ -82,5 +83,30 @@ describe("ライフログ", () => {
     expect(groups.map(({ label }) => label)).toEqual(["今日", "昨日"]);
     expect(groups[0].logs.map(({ id }) => id)).toEqual(["today"]);
     expect(groups[1].logs.map(({ id }) => id)).toEqual(["yesterday"]);
+  });
+
+  it("今週作成されたログだけを新しい順で取得する", () => {
+    const referenceDate = new Date(2026, 6, 3, 12);
+    const logs = [
+      {
+        ...olderLog,
+        id: "last-week",
+        createdAt: new Date(2026, 5, 28, 12).toISOString(),
+      },
+      {
+        ...olderLog,
+        id: "monday",
+        createdAt: new Date(2026, 5, 29, 9).toISOString(),
+      },
+      {
+        ...newerLog,
+        id: "friday",
+        createdAt: new Date(2026, 6, 3, 18).toISOString(),
+      },
+    ];
+
+    expect(
+      getCurrentWeekLifeLogs(logs, referenceDate).map(({ id }) => id),
+    ).toEqual(["friday", "monday"]);
   });
 });

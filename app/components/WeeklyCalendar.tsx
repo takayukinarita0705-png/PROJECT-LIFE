@@ -45,6 +45,7 @@ import {
   getWeeklyMvp,
 } from "@/app/lib/records";
 import { isRoutineLinkedEvent } from "@/app/lib/engine/routineEngine";
+import { getCurrentWeekLifeLogs } from "@/app/lib/lifeLogs";
 import {
   getInitialMobilePage,
   isWeeklyReviewDay,
@@ -258,6 +259,10 @@ export default function WeeklyCalendar() {
     currentTime === null || !hasLoadedEvents
       ? []
       : getHabitHeatmap(events, categories, currentTime);
+  const currentWeekLogs =
+    currentTime === null || !hasLoadedEvents
+      ? []
+      : getCurrentWeekLifeLogs(logs, currentTime);
   useEffect(() => {
     let cancelled = false;
     const updateCurrentTime = () => {
@@ -615,7 +620,9 @@ export default function WeeklyCalendar() {
 
         {mobilePage === "week" ? (
           <MobileWeekReview
+            categories={categories}
             completionStreak={completionStreak}
+            events={events}
             hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedEvents={hasLoadedEvents}
             habitHeatmap={habitHeatmap}
@@ -623,6 +630,8 @@ export default function WeeklyCalendar() {
             isReviewDay={
               currentTime !== null && isWeeklyReviewDay(currentTime)
             }
+            logs={currentWeekLogs}
+            onViewAllLogs={() => handleMobilePageChange("log")}
             record={currentWeekRecord}
             weeklyMvp={weeklyMvp}
           />

@@ -1,4 +1,8 @@
-import { getLifeLogTimelineGroups } from "@/app/lib/lifeLogs";
+import LifeLogEventLink from "./LifeLogEventLink";
+import {
+  formatLifeLogTime,
+  getLifeLogTimelineGroups,
+} from "@/app/lib/lifeLogs";
 import type {
   CalendarEvent,
   Category,
@@ -16,13 +20,6 @@ type MobileLifeLogProps = {
   onEdit: (log: LifeLog) => void;
 };
 
-function formatLogTime(value: string) {
-  return new Intl.DateTimeFormat("ja-JP", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
 export default function MobileLifeLog({
   categories,
   events,
@@ -34,10 +31,6 @@ export default function MobileLifeLog({
   onEdit,
 }: MobileLifeLogProps) {
   const timelineGroups = getLifeLogTimelineGroups(logs);
-  const eventsById = new Map(events.map((event) => [event.id, event]));
-  const categoriesById = new Map(
-    categories.map((category) => [category.id, category]),
-  );
 
   return (
     <section className="md:hidden">
@@ -78,15 +71,7 @@ export default function MobileLifeLog({
                 {group.label}
               </h3>
               <div className="relative ml-3 border-l-2 border-slate-200 pl-5">
-                {group.logs.map((log) => {
-                  const linkedEvent = log.eventId
-                    ? eventsById.get(log.eventId)
-                    : undefined;
-                  const linkedCategory = linkedEvent
-                    ? categoriesById.get(linkedEvent.categoryId)
-                    : undefined;
-
-                  return (
+                {group.logs.map((log) => (
                     <article
                       key={log.id}
                       className="relative pb-4 last:pb-0"
@@ -100,22 +85,16 @@ export default function MobileLifeLog({
                           dateTime={log.createdAt}
                           className="text-xs font-bold tabular-nums text-slate-400"
                         >
-                          {formatLogTime(log.createdAt)}
+                          {formatLifeLogTime(log.createdAt)}
                         </time>
                         <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">
                           {log.body}
                         </p>
-                        {log.eventId && (
-                          <p className="mt-2 text-xs font-bold text-slate-400">
-                            {linkedCategory?.icon ?? "📅"}{" "}
-                            {linkedEvent
-                              ? linkedEvent.title?.trim() ||
-                                linkedCategory?.name ||
-                                "予定"
-                              : "削除済みの予定"}
-                            に紐付け
-                          </p>
-                        )}
+                        <LifeLogEventLink
+                          categories={categories}
+                          events={events}
+                          log={log}
+                        />
                         <div className="mt-2 flex justify-end gap-2">
                           <button
                             type="button"
@@ -134,8 +113,7 @@ export default function MobileLifeLog({
                         </div>
                       </div>
                     </article>
-                  );
-                })}
+                ))}
               </div>
             </section>
           ))}

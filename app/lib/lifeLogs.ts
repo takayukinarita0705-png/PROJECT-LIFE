@@ -2,6 +2,7 @@ import type { LifeLog } from "@/app/types/calendar";
 import {
   addDaysToCalendarDate,
   formatCalendarDate,
+  getCalendarDateForWeekDay,
 } from "@/app/lib/date";
 
 export function normalizeLifeLogBody(body: string) {
@@ -54,4 +55,24 @@ export function getLifeLogTimelineGroups(
             }).format(new Date(`${date}T12:00:00`)),
     logs: groupedLogs,
   }));
+}
+
+export function getCurrentWeekLifeLogs(
+  logs: LifeLog[],
+  referenceDate = new Date(),
+) {
+  const weekStart = getCalendarDateForWeekDay(0, 0, referenceDate);
+  const weekEnd = getCalendarDateForWeekDay(0, 6, referenceDate);
+
+  return sortLifeLogsNewestFirst(logs).filter((log) => {
+    const date = formatCalendarDate(new Date(log.createdAt));
+    return date >= weekStart && date <= weekEnd;
+  });
+}
+
+export function formatLifeLogTime(value: string) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }

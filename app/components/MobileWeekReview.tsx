@@ -3,6 +3,7 @@ import HabitActualRanking from "./HabitActualRanking";
 import HabitHeatmap from "./HabitHeatmap";
 import HabitWeeklyComparison from "./HabitWeeklyComparison";
 import WeeklyMvpCard from "./WeeklyMvpCard";
+import WeeklyLifeLogs from "./WeeklyLifeLogs";
 import {
   formatActualMinutes,
   getWeeklyReviewMessage,
@@ -13,25 +14,38 @@ import type {
   ScheduleRecord,
   WeeklyMvp,
 } from "@/app/lib/records";
+import type {
+  CalendarEvent,
+  Category,
+  LifeLog,
+} from "@/app/types/calendar";
 
 type MobileWeekReviewProps = {
+  categories: Category[];
   completionStreak: number;
+  events: CalendarEvent[];
   hasCheckedLocalCache: boolean;
   hasLoadedEvents: boolean;
   habitHeatmap: HabitHeatmapDay[];
   habitWeeklyComparison: HabitWeeklyComparisonValue;
   isReviewDay: boolean;
+  logs: LifeLog[];
+  onViewAllLogs: () => void;
   record: ScheduleRecord;
   weeklyMvp: WeeklyMvp | null;
 };
 
 export default function MobileWeekReview({
+  categories,
   completionStreak,
+  events,
   hasCheckedLocalCache,
   hasLoadedEvents,
   habitHeatmap,
   habitWeeklyComparison,
   isReviewDay,
+  logs,
+  onViewAllLogs,
   record,
   weeklyMvp,
 }: MobileWeekReviewProps) {
@@ -108,6 +122,12 @@ export default function MobileWeekReview({
           <HabitWeeklyComparison comparison={habitWeeklyComparison} />
           <HabitHeatmap days={habitHeatmap} />
           <WeeklyMvpCard mvp={weeklyMvp} />
+          <WeeklyLifeLogs
+            categories={categories}
+            events={events}
+            logs={logs}
+            onViewAll={onViewAllLogs}
+          />
           <div className="mt-4 rounded-2xl bg-violet-50 px-4 py-3">
             <p className="text-xs font-bold text-violet-500">今週の一言</p>
             <p className="mt-1 text-sm font-bold text-violet-800">

@@ -1,0 +1,74 @@
+import LifeLogEventLink from "./LifeLogEventLink";
+import { formatLifeLogTime } from "@/app/lib/lifeLogs";
+import type {
+  CalendarEvent,
+  Category,
+  LifeLog,
+} from "@/app/types/calendar";
+
+export default function WeeklyLifeLogs({
+  categories,
+  events,
+  logs,
+  onViewAll,
+}: {
+  categories: Category[];
+  events: CalendarEvent[];
+  logs: LifeLog[];
+  onViewAll: () => void;
+}) {
+  const latestLogs = logs.slice(0, 3);
+
+  return (
+    <section
+      aria-label="今週のログ"
+      className="mt-4 border-t border-slate-100 pt-3"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold text-slate-500">
+          📝 今週のログ {logs.length}件
+        </p>
+        {logs.length >= 3 && (
+          <button
+            type="button"
+            onClick={onViewAll}
+            className="min-h-9 rounded-lg px-2 text-xs font-bold text-blue-600"
+          >
+            すべて見る
+          </button>
+        )}
+      </div>
+      {latestLogs.length === 0 ? (
+        <p className="mt-2 text-xs text-slate-400">
+          今週のログはまだありません
+        </p>
+      ) : (
+        <div className="mt-2 grid gap-1.5">
+          {latestLogs.map((log) => (
+            <article
+              key={log.id}
+              className="rounded-xl bg-slate-50 px-3 py-2"
+            >
+              <div className="flex gap-2">
+                <time
+                  dateTime={log.createdAt}
+                  className="shrink-0 text-xs font-bold tabular-nums text-slate-400"
+                >
+                  {formatLifeLogTime(log.createdAt)}
+                </time>
+                <p className="min-w-0 whitespace-pre-wrap break-words text-xs text-slate-700">
+                  {log.body}
+                </p>
+              </div>
+              <LifeLogEventLink
+                categories={categories}
+                events={events}
+                log={log}
+              />
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
