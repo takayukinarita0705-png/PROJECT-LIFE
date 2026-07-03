@@ -14,6 +14,7 @@ import MobileBottomTabs from "./MobileBottomTabs";
 import type { MobilePage } from "./MobileBottomTabs";
 import MobileSchedule from "./MobileSchedule";
 import MobileLifeLog from "./MobileLifeLog";
+import MobileSettings from "./MobileSettings";
 import MobileWeekReview from "./MobileWeekReview";
 import LifeLogDialog from "./LifeLogDialog";
 import RoutineDetachDialog from "./RoutineDetachDialog";
@@ -647,6 +648,10 @@ export default function WeeklyCalendar() {
             onAdd={openNewLifeLog}
             onDelete={removeLifeLog}
             onEdit={openLifeLogEditor}
+          />
+        ) : mobilePage === "settings" ? (
+          <MobileSettings
+            onOpenWeeklyGoals={() => handleMobilePageChange("week")}
           />
         ) : mobileView === "today" ? (
           <MobileSchedule
