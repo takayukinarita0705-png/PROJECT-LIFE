@@ -588,7 +588,7 @@ export default function WeeklyCalendar() {
 
   return (
     <div className="weekly-calendar">
-      <div className="pb-24 md:hidden">
+      <div className="pb-[calc(6rem+env(safe-area-inset-bottom))] md:hidden">
         {mobilePage === "today" && (
           <div className="mb-4 inline-flex rounded-xl bg-slate-200/70 p-1">
             <button

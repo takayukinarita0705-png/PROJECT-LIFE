@@ -29,13 +29,18 @@ export default function MobileBottomTabs({
               type="button"
               aria-current={isActive ? "page" : undefined}
               onClick={() => onChange(tab.page)}
-              className={`min-h-12 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
+              className={`flex min-h-12 touch-manipulation items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
                 isActive
                   ? "bg-slate-900 text-white shadow-sm"
-                  : "text-slate-500"
+                  : "text-slate-500 active:bg-slate-100"
               }`}
             >
-              <span aria-hidden="true" className="mr-1.5">
+              <span
+                aria-hidden="true"
+                className={`grid h-7 w-7 place-items-center rounded-lg text-base transition-colors ${
+                  isActive ? "bg-white/15" : "bg-transparent"
+                }`}
+              >
                 {tab.icon}
               </span>
               {tab.label}
