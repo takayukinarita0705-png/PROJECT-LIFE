@@ -43,6 +43,12 @@ export type WeeklyMvp = CategoryActual & {
   differenceMinutes: number;
 };
 
+export type HabitWeeklyComparison = {
+  currentMinutes: number;
+  previousMinutes: number;
+  differenceMinutes: number;
+};
+
 export function getTodayProgress(
   events: Array<{ status?: EventStatus }>,
 ) {
@@ -184,6 +190,25 @@ export function getHabitActualRanking(actuals: CategoryActual[]) {
     );
 }
 
+export function getHabitWeeklyComparison(
+  currentSchedule: ScheduleItem[],
+  previousSchedule: ScheduleItem[],
+): HabitWeeklyComparison {
+  const totalHabitMinutes = (schedule: ScheduleItem[]) =>
+    getHabitActualRanking(getActualsByCategory(schedule)).reduce(
+      (total, actual) => total + actual.minutes,
+      0,
+    );
+  const currentMinutes = totalHabitMinutes(currentSchedule);
+  const previousMinutes = totalHabitMinutes(previousSchedule);
+
+  return {
+    currentMinutes,
+    previousMinutes,
+    differenceMinutes: currentMinutes - previousMinutes,
+  };
+}
+
 export function getCompletionStreak(
   events: CalendarEvent[],
   referenceDate = new Date(),
@@ -280,4 +305,10 @@ export function formatActualMinutes(minutes: number) {
   if (hours === 0) return `${remainingMinutes}分`;
   if (remainingMinutes === 0) return `${hours}時間`;
   return `${hours}時間${remainingMinutes}分`;
+}
+
+export function formatSignedActualMinutes(minutes: number) {
+  if (minutes === 0) return "±0分";
+  const sign = minutes > 0 ? "+" : "-";
+  return `${sign}${formatActualMinutes(Math.abs(minutes))}`;
 }

@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { isCurrentMobileEvent } from "@/app/components/MobileSchedule";
 import {
   formatActualMinutes,
+  formatSignedActualMinutes,
   getActualsByCategory,
   getCompletionStreak,
   getHabitHeatmap,
+  getHabitWeeklyComparison,
   getHabitActualRanking,
   getScheduleRecord,
   getTodayProgress,
@@ -475,5 +477,51 @@ describe("今週一番頑張ったこと", () => {
         [],
       ),
     ).toBeNull();
+  });
+});
+
+describe("先週との比較", () => {
+  it("習慣対象のcompleted実績だけを今週と先週で比較する", () => {
+    const workCategory: Category = {
+      ...category,
+      id: "work",
+      name: "仕事",
+      icon: "💼",
+    };
+    const currentSchedule = [
+      createScheduleItem("study", "completed", 540, 660),
+      createScheduleItem("pending", "pending", 660, 780),
+      createScheduleItem(
+        "work",
+        "completed",
+        0,
+        600,
+        workCategory,
+      ),
+    ];
+    const previousSchedule = [
+      createScheduleItem("study-old", "completed", 540, 600),
+      createScheduleItem(
+        "work-old",
+        "completed",
+        0,
+        600,
+        workCategory,
+      ),
+    ];
+
+    expect(
+      getHabitWeeklyComparison(currentSchedule, previousSchedule),
+    ).toEqual({
+      currentMinutes: 120,
+      previousMinutes: 60,
+      differenceMinutes: 60,
+    });
+  });
+
+  it("時間差へ符号を付ける", () => {
+    expect(formatSignedActualMinutes(100)).toBe("+1時間40分");
+    expect(formatSignedActualMinutes(-60)).toBe("-1時間");
+    expect(formatSignedActualMinutes(0)).toBe("±0分");
   });
 });

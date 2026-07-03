@@ -1,11 +1,8 @@
-import { formatActualMinutes } from "@/app/lib/records";
+import {
+  formatActualMinutes,
+  formatSignedActualMinutes,
+} from "@/app/lib/records";
 import type { WeeklyMvp } from "@/app/lib/records";
-
-function formatDifference(minutes: number) {
-  if (minutes === 0) return "±0分";
-  const sign = minutes > 0 ? "+" : "-";
-  return `${sign}${formatActualMinutes(Math.abs(minutes))}`;
-}
 
 export default function WeeklyMvpCard({
   mvp,
@@ -42,7 +39,7 @@ export default function WeeklyMvpCard({
             <p className="mt-2 text-xs font-bold text-slate-500">
               先週より{" "}
               <span className="tabular-nums text-emerald-700">
-                {formatDifference(mvp.differenceMinutes)}
+                {formatSignedActualMinutes(mvp.differenceMinutes)}
               </span>
             </p>
           ) : (

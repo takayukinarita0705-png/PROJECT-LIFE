@@ -1,6 +1,7 @@
 import ActualsList from "./ActualsList";
 import HabitActualRanking from "./HabitActualRanking";
 import HabitHeatmap from "./HabitHeatmap";
+import HabitWeeklyComparison from "./HabitWeeklyComparison";
 import WeeklyMvpCard from "./WeeklyMvpCard";
 import {
   formatActualMinutes,
@@ -8,6 +9,7 @@ import {
 } from "@/app/lib/records";
 import type {
   HabitHeatmapDay,
+  HabitWeeklyComparison as HabitWeeklyComparisonValue,
   ScheduleRecord,
   WeeklyMvp,
 } from "@/app/lib/records";
@@ -17,6 +19,7 @@ type MobileWeekReviewProps = {
   hasCheckedLocalCache: boolean;
   hasLoadedEvents: boolean;
   habitHeatmap: HabitHeatmapDay[];
+  habitWeeklyComparison: HabitWeeklyComparisonValue;
   isReviewDay: boolean;
   record: ScheduleRecord;
   weeklyMvp: WeeklyMvp | null;
@@ -27,6 +30,7 @@ export default function MobileWeekReview({
   hasCheckedLocalCache,
   hasLoadedEvents,
   habitHeatmap,
+  habitWeeklyComparison,
   isReviewDay,
   record,
   weeklyMvp,
@@ -101,6 +105,7 @@ export default function MobileWeekReview({
             <ActualsList actuals={record.actuals} />
           </div>
           <HabitActualRanking actuals={record.actuals} />
+          <HabitWeeklyComparison comparison={habitWeeklyComparison} />
           <HabitHeatmap days={habitHeatmap} />
           <WeeklyMvpCard mvp={weeklyMvp} />
           <div className="mt-4 rounded-2xl bg-violet-50 px-4 py-3">

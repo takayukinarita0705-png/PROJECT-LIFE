@@ -38,6 +38,7 @@ import {
 import {
   getCompletionStreak,
   getHabitHeatmap,
+  getHabitWeeklyComparison,
   getScheduleRecord,
   getWeeklyMvp,
 } from "@/app/lib/records";
@@ -231,6 +232,10 @@ export default function WeeklyCalendar() {
       })
     : [];
   const weeklyMvp = getWeeklyMvp(
+    currentWeekSchedule,
+    previousWeekSchedule,
+  );
+  const habitWeeklyComparison = getHabitWeeklyComparison(
     currentWeekSchedule,
     previousWeekSchedule,
   );
@@ -577,6 +582,7 @@ export default function WeeklyCalendar() {
             hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedEvents={hasLoadedEvents}
             habitHeatmap={habitHeatmap}
+            habitWeeklyComparison={habitWeeklyComparison}
             isReviewDay={
               currentTime !== null && isWeeklyReviewDay(currentTime)
             }
