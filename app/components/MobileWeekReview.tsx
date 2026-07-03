@@ -4,6 +4,7 @@ import HabitHeatmap from "./HabitHeatmap";
 import HabitWeeklyComparison from "./HabitWeeklyComparison";
 import WeeklyMvpCard from "./WeeklyMvpCard";
 import WeeklyLifeLogs from "./WeeklyLifeLogs";
+import WeeklyCategoryGoals from "./WeeklyCategoryGoals";
 import {
   formatActualMinutes,
   getWeeklyReviewMessage,
@@ -31,6 +32,10 @@ type MobileWeekReviewProps = {
   isReviewDay: boolean;
   logs: LifeLog[];
   onViewAllLogs: () => void;
+  onSaveWeeklyGoal: (
+    categoryId: string,
+    goalMinutes?: number,
+  ) => void;
   record: ScheduleRecord;
   weeklyMvp: WeeklyMvp | null;
 };
@@ -46,6 +51,7 @@ export default function MobileWeekReview({
   isReviewDay,
   logs,
   onViewAllLogs,
+  onSaveWeeklyGoal,
   record,
   weeklyMvp,
 }: MobileWeekReviewProps) {
@@ -130,6 +136,11 @@ export default function MobileWeekReview({
           </section>
 
           <HabitWeeklyComparison comparison={habitWeeklyComparison} />
+          <WeeklyCategoryGoals
+            actuals={record.actuals}
+            categories={categories}
+            onSave={onSaveWeeklyGoal}
+          />
           <HabitActualRanking actuals={record.actuals} />
           <HabitHeatmap days={habitHeatmap} />
           <section

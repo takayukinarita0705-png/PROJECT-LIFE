@@ -11,6 +11,7 @@ import {
   getScheduleRecord,
   getTodayProgress,
   getWeeklyMvp,
+  getWeeklyCategoryGoals,
   getWeeklyReviewMessage,
 } from "@/app/lib/records";
 import type {
@@ -523,5 +524,56 @@ describe("先週との比較", () => {
     expect(formatSignedActualMinutes(100)).toBe("+1時間40分");
     expect(formatSignedActualMinutes(-60)).toBe("-1時間");
     expect(formatSignedActualMinutes(0)).toBe("±0分");
+  });
+});
+
+describe("カテゴリ別週間目標", () => {
+  it("目標・現在・残り時間をカテゴリ別に計算する", () => {
+    const goalCategory: Category = {
+      ...category,
+      weeklyGoalMinutes: 15 * 60,
+    };
+    const goals = getWeeklyCategoryGoals(
+      [goalCategory],
+      [
+        {
+          categoryId: goalCategory.id,
+          name: goalCategory.name,
+          icon: goalCategory.icon,
+          color: goalCategory.color,
+          minutes: 12 * 60 + 40,
+        },
+      ],
+    );
+
+    expect(goals[0]).toMatchObject({
+      goalMinutes: 900,
+      currentMinutes: 760,
+      remainingMinutes: 140,
+    });
+  });
+
+  it("指定された生活カテゴリを目標対象から除外する", () => {
+    const categories = [
+      "仕事",
+      "睡眠",
+      "ご飯",
+      "お風呂",
+      "通勤",
+    ].map((name, index) => ({
+      ...category,
+      id: `excluded-${index}`,
+      name,
+    }));
+
+    expect(getWeeklyCategoryGoals(categories, [])).toEqual([]);
+  });
+
+  it("目標未設定カテゴリは現在時間を保ち残りをnullにする", () => {
+    expect(getWeeklyCategoryGoals([category], [])[0]).toMatchObject({
+      goalMinutes: null,
+      currentMinutes: 0,
+      remainingMinutes: null,
+    });
   });
 });

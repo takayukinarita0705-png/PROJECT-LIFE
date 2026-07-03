@@ -31,6 +31,7 @@ export type Category = {
   color: string;
   icon: string;
   group: string;
+  weeklyGoalMinutes?: number;
   createdAt: string;
   updatedAt: string;
 };

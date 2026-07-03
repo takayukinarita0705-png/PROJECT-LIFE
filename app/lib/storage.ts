@@ -83,6 +83,10 @@ export function normalizeCategory(value: unknown): Category | null {
     typeof category.color === "string" &&
     typeof category.icon === "string" &&
     (category.group === undefined || typeof category.group === "string") &&
+    (category.weeklyGoalMinutes === undefined ||
+      (typeof category.weeklyGoalMinutes === "number" &&
+        Number.isFinite(category.weeklyGoalMinutes) &&
+        category.weeklyGoalMinutes > 0)) &&
     (category.createdAt === undefined ||
       typeof category.createdAt === "string") &&
     (category.updatedAt === undefined ||
@@ -99,6 +103,10 @@ export function normalizeCategory(value: unknown): Category | null {
   return {
     ...(value as Pick<Category, "id" | "name" | "color" | "icon">),
     group: typeof category.group === "string" ? category.group : "other",
+    weeklyGoalMinutes:
+      typeof category.weeklyGoalMinutes === "number"
+        ? category.weeklyGoalMinutes
+        : undefined,
     createdAt,
     updatedAt:
       typeof category.updatedAt === "string"

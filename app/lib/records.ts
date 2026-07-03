@@ -19,6 +19,13 @@ export const HABIT_EXCLUDED_CATEGORY_NAMES = new Set([
   "睡眠",
   "通勤",
 ]);
+export const WEEKLY_GOAL_EXCLUDED_CATEGORY_NAMES = new Set([
+  "仕事",
+  "睡眠",
+  "ご飯",
+  "お風呂",
+  "通勤",
+]);
 
 export type HabitHeatmapDay = {
   date: string;
@@ -47,6 +54,13 @@ export type HabitWeeklyComparison = {
   currentMinutes: number;
   previousMinutes: number;
   differenceMinutes: number;
+};
+
+export type WeeklyCategoryGoal = {
+  category: Category;
+  goalMinutes: number | null;
+  currentMinutes: number;
+  remainingMinutes: number | null;
 };
 
 export function getTodayProgress(
@@ -207,6 +221,36 @@ export function getHabitWeeklyComparison(
     previousMinutes,
     differenceMinutes: currentMinutes - previousMinutes,
   };
+}
+
+export function getWeeklyCategoryGoals(
+  categories: Category[],
+  actuals: CategoryActual[],
+): WeeklyCategoryGoal[] {
+  const actualMinutesByCategory = new Map(
+    actuals.map((actual) => [actual.categoryId, actual.minutes]),
+  );
+
+  return categories
+    .filter(
+      (category) =>
+        !WEEKLY_GOAL_EXCLUDED_CATEGORY_NAMES.has(category.name.trim()),
+    )
+    .map((category) => {
+      const goalMinutes = category.weeklyGoalMinutes ?? null;
+      const currentMinutes =
+        actualMinutesByCategory.get(category.id) ?? 0;
+
+      return {
+        category,
+        goalMinutes,
+        currentMinutes,
+        remainingMinutes:
+          goalMinutes === null
+            ? null
+            : Math.max(goalMinutes - currentMinutes, 0),
+      };
+    });
 }
 
 export function getCompletionStreak(

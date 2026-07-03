@@ -108,6 +108,7 @@ export default function WeeklyCalendar() {
     saveCurrentWeekAsTemplate,
     saveEventEdit,
     saveStatus,
+    saveWeeklyCategoryGoal,
     setCategoryDraft,
     setSelectedCategoryId,
     startAddingCategory,
@@ -632,6 +633,7 @@ export default function WeeklyCalendar() {
             }
             logs={currentWeekLogs}
             onViewAllLogs={() => handleMobilePageChange("log")}
+            onSaveWeeklyGoal={saveWeeklyCategoryGoal}
             record={currentWeekRecord}
             weeklyMvp={weeklyMvp}
           />

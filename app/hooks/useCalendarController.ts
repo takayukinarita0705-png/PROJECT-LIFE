@@ -590,6 +590,23 @@ export default function useCalendarController(weekOffset: number) {
     }
   }
 
+  function saveWeeklyCategoryGoal(
+    categoryId: string,
+    weeklyGoalMinutes?: number,
+  ) {
+    setCategories((current) =>
+      current.map((category) =>
+        category.id === categoryId
+          ? {
+              ...category,
+              weeklyGoalMinutes,
+              updatedAt: new Date().toISOString(),
+            }
+          : category,
+      ),
+    );
+  }
+
   function addLifeLog(body: string, eventId?: string) {
     const normalizedBody = normalizeLifeLogBody(body);
     if (normalizedBody === null) return false;
@@ -656,6 +673,7 @@ export default function useCalendarController(weekOffset: number) {
     saveCurrentWeekAsTemplate,
     saveEventEdit,
     saveStatus,
+    saveWeeklyCategoryGoal,
     setCategoryDraft,
     setSelectedCategoryId,
     startAddingCategory,
