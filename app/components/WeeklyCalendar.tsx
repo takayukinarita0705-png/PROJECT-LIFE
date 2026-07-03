@@ -657,7 +657,6 @@ export default function WeeklyCalendar() {
             onToggleCompleted={toggleEventCompleted}
             onToggleSkipped={toggleEventSkip}
             todaySchedule={todaySchedule}
-            weekRecord={currentWeekRecord}
           />
         ) : (
           <section>

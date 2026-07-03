@@ -6,12 +6,10 @@ import {
   isEventOnDate,
 } from "@/app/lib/date";
 import {
-  formatActualMinutes,
   getActualsByCategory,
   getTodayProgress,
 } from "@/app/lib/records";
 import { formatTime } from "@/app/lib/time";
-import type { ScheduleRecord } from "@/app/lib/records";
 import type {
   CalendarEvent,
   LifeLog,
@@ -34,60 +32,12 @@ function ActualsSection({
   return (
     <section
       aria-label={title}
-      className="mb-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+      className="rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
     >
       <p className="text-xs font-bold tracking-wide text-slate-500">
         {title}
       </p>
       <ActualsList actuals={actuals} />
-    </section>
-  );
-}
-
-function WeeklyRecordSection({
-  record,
-}: {
-  record: ScheduleRecord;
-}) {
-  return (
-    <section
-      aria-label="今週の記録"
-      className="mb-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold tracking-wide text-slate-500">
-          今週の記録
-        </p>
-        <p className="text-lg font-bold tabular-nums text-emerald-700">
-          {record.percentage}%
-        </p>
-      </div>
-      <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
-        <div className="rounded-lg bg-emerald-50 px-2 py-1.5">
-          <dt className="text-[10px] font-bold text-emerald-700">完了</dt>
-          <dd className="font-bold tabular-nums text-emerald-800">
-            {record.completed}件
-          </dd>
-        </div>
-        <div className="rounded-lg bg-slate-100 px-2 py-1.5">
-          <dt className="text-[10px] font-bold text-slate-500">
-            スキップ
-          </dt>
-          <dd className="font-bold tabular-nums text-slate-700">
-            {record.skipped}件
-          </dd>
-        </div>
-        <div className="rounded-lg bg-blue-50 px-2 py-1.5">
-          <dt className="text-[10px] font-bold text-blue-600">実績時間</dt>
-          <dd className="font-bold tabular-nums text-blue-700">
-            {formatActualMinutes(record.totalMinutes)}
-          </dd>
-        </div>
-      </dl>
-      <p className="mt-2 text-[10px] font-bold text-slate-400">
-        カテゴリ別実績
-      </p>
-      <ActualsList actuals={record.actuals} />
     </section>
   );
 }
@@ -120,6 +70,128 @@ export function isCurrentMobileEvent(
   return start <= now || now < end;
 }
 
+function MobileEventCard({
+  isCurrent,
+  item: { event, category },
+  logs,
+  onResetStatus,
+  onToggleCompleted,
+  onToggleSkipped,
+}: {
+  isCurrent: boolean;
+  item: ScheduleItem;
+  logs: LifeLog[];
+  onResetStatus: (eventId: string) => void;
+  onToggleCompleted: (eventId: string) => void;
+  onToggleSkipped: (eventId: string) => void;
+}) {
+  const displayTitle = event.title?.trim() || category.name;
+  const isCompleted = event.status === "completed";
+  const isSkipped = event.status === "skipped";
+  const linkedLogs = getLifeLogsForEvent(logs, event.id);
+
+  return (
+    <article
+      aria-current={isCurrent ? "time" : undefined}
+      className={`flex min-h-16 w-full items-center gap-3 rounded-2xl border border-l-4 px-3 py-2 text-left ${
+        isCompleted
+          ? "border-emerald-200 bg-emerald-50"
+          : isSkipped
+            ? "border-dashed border-slate-300 bg-slate-100"
+            : isCurrent
+              ? "border-rose-400 bg-rose-50 shadow-md ring-2 ring-rose-200"
+              : "border-slate-200 bg-white"
+      }`}
+      style={{ borderLeftColor: category.color }}
+    >
+      <div
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-lg text-white"
+        style={{ background: category.color }}
+      >
+        {category.icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <h3
+            className={`truncate font-bold ${
+              isCompleted
+                ? "text-emerald-700 line-through"
+                : isSkipped
+                  ? "text-slate-400 line-through"
+                  : "text-slate-900"
+            }`}
+          >
+            {displayTitle}
+          </h3>
+          {isCurrent && (
+            <span className="shrink-0 rounded-full bg-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+              進行中
+            </span>
+          )}
+          {isSkipped && (
+            <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+              スキップ
+            </span>
+          )}
+        </div>
+        <p
+          className={`text-sm font-medium tabular-nums ${
+            isSkipped ? "text-slate-400" : "text-slate-500"
+          }`}
+        >
+          {formatTime(event.start)}〜{formatTime(event.end)}
+        </p>
+        {linkedLogs.length > 0 && (
+          <div className="mt-1 grid gap-1">
+            {linkedLogs.map((log) => (
+              <p
+                key={log.id}
+                className="whitespace-pre-wrap break-words rounded-lg bg-slate-100/80 px-2 py-1 text-xs text-slate-600"
+              >
+                📝 {log.body}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {isCompleted || isSkipped ? (
+          <button
+            type="button"
+            onClick={() => onResetStatus(event.id)}
+            aria-label={`${displayTitle}を未完了に戻す`}
+            className={`min-h-11 rounded-xl px-3 text-xs font-bold ${
+              isCompleted
+                ? "bg-emerald-100 text-emerald-700"
+                : "bg-slate-700 text-white"
+            }`}
+          >
+            戻す
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => onToggleSkipped(event.id)}
+              className="min-h-11 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-600"
+            >
+              スキップ
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleCompleted(event.id)}
+              aria-label={`${displayTitle}を完了`}
+              className="min-h-11 rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white"
+            >
+              完了
+            </button>
+          </>
+        )}
+      </div>
+    </article>
+  );
+}
+
 type MobileScheduleProps = {
   currentTime: Date | null;
   currentDay: number | null;
@@ -130,7 +202,6 @@ type MobileScheduleProps = {
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
   todaySchedule: ScheduleItem[];
-  weekRecord: ScheduleRecord;
 };
 
 export default function MobileSchedule({
@@ -143,7 +214,6 @@ export default function MobileSchedule({
   onToggleCompleted,
   onToggleSkipped,
   todaySchedule,
-  weekRecord,
 }: MobileScheduleProps) {
   const currentMinutes =
     currentTime === null
@@ -157,6 +227,18 @@ export default function MobileSchedule({
     todaySchedule.map(({ event }) => event),
   );
   const todayActuals = getActualsByCategory(todaySchedule);
+  const currentScheduleItem =
+    todaySchedule.find(
+      ({ event }) =>
+        event.status !== "completed" &&
+        event.status !== "skipped" &&
+        isCurrentMobileEvent(event, currentDate, currentMinutes),
+    ) ?? null;
+  const remainingSchedule = currentScheduleItem
+    ? todaySchedule.filter(
+        ({ event }) => event.id !== currentScheduleItem.event.id,
+      )
+    : todaySchedule;
 
   return (
     <section className="md:hidden">
@@ -176,173 +258,91 @@ export default function MobileSchedule({
         </div>
       </header>
 
-      {hasLoadedEvents && currentDay !== null && (
-        <section
-          aria-label="今日の達成状況"
-          className="mb-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold tracking-wide text-emerald-700">
-                今日の達成状況
-              </p>
-              <p className="mt-0.5 text-sm font-bold text-slate-700">
-                {todayProgress.completed} / {todayProgress.total} 件完了
-              </p>
-            </div>
-            <p className="text-xl font-bold tabular-nums text-emerald-700">
-              {todayProgress.percentage}%
-            </p>
-          </div>
-          <div
-            role="progressbar"
-            aria-label="今日の予定の達成率"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={todayProgress.percentage}
-            className="mt-2 h-1.5 overflow-hidden rounded-full bg-emerald-100"
-          >
-            <div
-              className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
-              style={{ width: `${todayProgress.percentage}%` }}
-            />
-          </div>
-        </section>
-      )}
-
-      {hasLoadedEvents && currentDay !== null && (
-        <ActualsSection title="今日の実績" actuals={todayActuals} />
-      )}
-
-      {hasLoadedEvents && currentDay !== null && (
-        <WeeklyRecordSection record={weekRecord} />
-      )}
-
       {hasCheckedLocalCache && !hasLoadedEvents ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
           予定を読み込んでいます…
         </div>
-      ) : currentDay === null ? null : todaySchedule.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
-          今日の予定はありません
-        </div>
-      ) : (
-        <div className="grid gap-1.5">
-          {todaySchedule.map(({ event, category }) => {
-            const displayTitle = event.title?.trim() || category.name;
-            const isCompleted = event.status === "completed";
-            const isSkipped = event.status === "skipped";
-            const isCurrent =
-              !isCompleted &&
-              !isSkipped &&
-              isCurrentMobileEvent(
-                event,
-                currentDate,
-                currentMinutes,
-              );
-            const linkedLogs = getLifeLogsForEvent(logs, event.id);
+      ) : currentDay === null ? null : (
+        <div className="grid gap-3">
+          <section
+            aria-label="今日の達成状況"
+            className="rounded-3xl border border-emerald-100 bg-emerald-50/70 px-4 py-3"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold tracking-wide text-emerald-700">
+                  今日の達成状況
+                </p>
+                <p className="mt-0.5 text-sm font-bold text-slate-700">
+                  {todayProgress.completed} / {todayProgress.total} 件完了
+                </p>
+              </div>
+              <p className="text-xl font-bold tabular-nums text-emerald-700">
+                {todayProgress.percentage}%
+              </p>
+            </div>
+            <div
+              role="progressbar"
+              aria-label="今日の予定の達成率"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={todayProgress.percentage}
+              className="mt-2 h-1.5 overflow-hidden rounded-full bg-emerald-100"
+            >
+              <div
+                className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
+                style={{ width: `${todayProgress.percentage}%` }}
+              />
+            </div>
+          </section>
 
-            return (
-              <article
-                key={event.id}
-                aria-current={isCurrent ? "time" : undefined}
-                className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border border-l-4 px-3 py-2 text-left shadow-sm ${
-                  isCompleted
-                    ? "border-emerald-200 bg-emerald-50"
-                    : isSkipped
-                      ? "border-dashed border-slate-300 bg-slate-100"
-                      : isCurrent
-                    ? "border-rose-400 bg-rose-50 outline outline-2 outline-rose-300 shadow-md"
-                    : "border-slate-200 bg-white"
-                }`}
-                style={{ borderLeftColor: category.color }}
-              >
-                <div
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-lg text-white"
-                  style={{ background: category.color }}
-                >
-                  {category.icon}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3
-                      className={`truncate font-bold ${
-                        isCompleted
-                          ? "text-emerald-700 line-through"
-                          : isSkipped
-                            ? "text-slate-400 line-through"
-                            : "text-slate-900"
-                      }`}
-                    >
-                      {displayTitle}
-                    </h3>
-                    {isCurrent && (
-                      <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-600">
-                        進行中
-                      </span>
-                    )}
-                    {isSkipped && (
-                      <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                        スキップ
-                      </span>
-                    )}
-                  </div>
-                  <p
-                    className={`text-sm font-medium tabular-nums ${
-                      isSkipped ? "text-slate-400" : "text-slate-500"
-                    }`}
-                  >
-                    {formatTime(event.start)}〜{formatTime(event.end)}
-                  </p>
-                  {linkedLogs.length > 0 && (
-                    <div className="mt-1 grid gap-1">
-                      {linkedLogs.map((log) => (
-                        <p
-                          key={log.id}
-                          className="whitespace-pre-wrap break-words rounded-lg bg-slate-100/80 px-2 py-1 text-xs text-slate-600"
-                        >
-                          📝 {log.body}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {isCompleted || isSkipped ? (
-                    <button
-                      type="button"
-                      onClick={() => onResetStatus(event.id)}
-                      aria-label={`${displayTitle}を未完了に戻す`}
-                      className={`rounded-lg px-2.5 py-1.5 text-xs font-bold ${
-                        isCompleted
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-slate-700 text-white"
-                      }`}
-                    >
-                      戻す
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => onToggleSkipped(event.id)}
-                        className="rounded-lg bg-slate-100 px-2 py-1.5 text-xs font-bold text-slate-500"
-                      >
-                        スキップ
-                      </button>
-                      <input
-                        type="checkbox"
-                        checked={false}
-                        onChange={() => onToggleCompleted(event.id)}
-                        aria-label={`${displayTitle}を完了`}
-                        className="h-6 w-6 cursor-pointer accent-emerald-600"
-                      />
-                    </>
-                  )}
-                </div>
-              </article>
-            );
-          })}
+          {currentScheduleItem && (
+            <section aria-label="現在進行中の予定">
+              <p className="mb-2 text-xs font-bold text-rose-600">
+                現在進行中の予定
+              </p>
+              <MobileEventCard
+                isCurrent
+                item={currentScheduleItem}
+                logs={logs}
+                onResetStatus={onResetStatus}
+                onToggleCompleted={onToggleCompleted}
+                onToggleSkipped={onToggleSkipped}
+              />
+            </section>
+          )}
+
+          <section
+            aria-label="今日の予定一覧"
+            className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <p className="text-xs font-bold text-slate-500">
+              今日の予定一覧
+            </p>
+            {remainingSchedule.length === 0 ? (
+              <p className="mt-2 text-sm text-slate-400">
+                {todaySchedule.length === 0
+                  ? "今日の予定はありません"
+                  : "他の予定はありません"}
+              </p>
+            ) : (
+              <div className="mt-2 grid gap-2">
+                {remainingSchedule.map((item) => (
+                  <MobileEventCard
+                    key={item.event.id}
+                    isCurrent={false}
+                    item={item}
+                    logs={logs}
+                    onResetStatus={onResetStatus}
+                    onToggleCompleted={onToggleCompleted}
+                    onToggleSkipped={onToggleSkipped}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <ActualsSection title="今日の実績" actuals={todayActuals} />
         </div>
       )}
     </section>
