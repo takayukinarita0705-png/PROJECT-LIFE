@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getCurrentWeekLifeLogs,
   getInboxLifeLogs,
+  getLifeLogFocusAreaLabel,
   getLifeLogTimelineGroups,
   getLifeLogsForEvent,
   normalizeLifeLogBody,
@@ -32,6 +33,14 @@ describe("ライフログ", () => {
   it("本文をtrimし、空文字を拒否する", () => {
     expect(normalizeLifeLogBody("  出来事  ")).toBe("出来事");
     expect(normalizeLifeLogBody("   ")).toBeNull();
+  });
+
+  it("Future Engineの分類ラベルを返す", () => {
+    expect(getLifeLogFocusAreaLabel("unset")).toBe("未分類");
+    expect(getLifeLogFocusAreaLabel("now")).toBe("🔴 今すぐやる");
+    expect(getLifeLogFocusAreaLabel("future")).toBe("🟡 未来を作る");
+    expect(getLifeLogFocusAreaLabel("review")).toBe("🔵 見直す");
+    expect(getLifeLogFocusAreaLabel("discard")).toBe("⚪ 手放す");
   });
 
   it("作成日時の新しい順に並べる", () => {

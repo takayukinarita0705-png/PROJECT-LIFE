@@ -1,9 +1,31 @@
-import type { LifeLog } from "@/app/types/calendar";
+import type {
+  LifeLog,
+  LifeLogFocusArea,
+} from "@/app/types/calendar";
 import {
   addDaysToCalendarDate,
   formatCalendarDate,
   getCalendarDateForWeekDay,
 } from "@/app/lib/date";
+
+export const LIFE_LOG_FOCUS_AREA_OPTIONS: ReadonlyArray<{
+  value: LifeLogFocusArea;
+  label: string;
+}> = [
+  { value: "unset", label: "未分類" },
+  { value: "now", label: "🔴 今すぐやる" },
+  { value: "future", label: "🟡 未来を作る" },
+  { value: "review", label: "🔵 見直す" },
+  { value: "discard", label: "⚪ 手放す" },
+];
+
+export function getLifeLogFocusAreaLabel(focusArea: LifeLogFocusArea) {
+  return (
+    LIFE_LOG_FOCUS_AREA_OPTIONS.find(
+      ({ value }) => value === focusArea,
+    )?.label ?? "未分類"
+  );
+}
 
 export function normalizeLifeLogBody(body: string) {
   const normalized = body.trim();

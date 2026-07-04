@@ -60,6 +60,7 @@ import type {
   EventMove,
   EventEditDraft,
   LifeLog,
+  LifeLogFocusArea,
 } from "@/app/types/calendar";
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 768px)";
@@ -583,10 +584,14 @@ export default function WeeklyCalendar() {
     setIsLifeLogDialogOpen(true);
   }
 
-  function saveLifeLog(body: string, eventId?: string) {
+  function saveLifeLog(
+    body: string,
+    eventId: string | undefined,
+    focusArea: LifeLogFocusArea,
+  ) {
     const saved = editingLifeLog
-      ? updateLifeLog(editingLifeLog.id, body, eventId)
-      : addLifeLog(body, eventId);
+      ? updateLifeLog(editingLifeLog.id, body, eventId, focusArea)
+      : addLifeLog(body, eventId, focusArea);
     if (saved) {
       setIsLifeLogDialogOpen(false);
       setEditingLifeLog(null);

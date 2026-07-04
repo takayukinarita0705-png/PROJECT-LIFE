@@ -2,6 +2,7 @@ import LifeLogEventLink from "./LifeLogEventLink";
 import {
   formatLifeLogTime,
   getInboxLifeLogs,
+  getLifeLogFocusAreaLabel,
   getLifeLogTimelineGroups,
 } from "@/app/lib/lifeLogs";
 import type {
@@ -91,6 +92,9 @@ export default function MobileLifeLog({
                         <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">
                           {log.body}
                         </p>
+                        <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">
+                          {getLifeLogFocusAreaLabel(log.focusArea)}
+                        </span>
                         <LifeLogEventLink
                           categories={categories}
                           events={events}

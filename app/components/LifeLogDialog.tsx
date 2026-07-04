@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { LIFE_LOG_FOCUS_AREA_OPTIONS } from "@/app/lib/lifeLogs";
 import { formatTime } from "@/app/lib/time";
 import type {
   LifeLog,
+  LifeLogFocusArea,
   ScheduleItem,
 } from "@/app/types/calendar";
 
@@ -9,7 +11,11 @@ type LifeLogDialogProps = {
   log: LifeLog | null;
   schedule: ScheduleItem[];
   onCancel: () => void;
-  onSave: (body: string, eventId?: string) => boolean;
+  onSave: (
+    body: string,
+    eventId: string | undefined,
+    focusArea: LifeLogFocusArea,
+  ) => boolean;
 };
 
 export default function LifeLogDialog({
@@ -20,13 +26,16 @@ export default function LifeLogDialog({
 }: LifeLogDialogProps) {
   const [body, setBody] = useState(log?.body ?? "");
   const [eventId, setEventId] = useState(log?.eventId ?? "");
+  const [focusArea, setFocusArea] = useState<LifeLogFocusArea>(
+    log?.focusArea ?? "unset",
+  );
   const [error, setError] = useState("");
   const hasSelectedEvent = schedule.some(
     ({ event }) => event.id === eventId,
   );
 
   function save() {
-    if (!onSave(body, eventId || undefined)) {
+    if (!onSave(body, eventId || undefined, focusArea)) {
       setError("本文を入力してください。");
     }
   }
@@ -58,6 +67,22 @@ export default function LifeLogDialog({
             className="mt-2 w-full resize-none rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-500"
             placeholder="思いついたことや出来事を記録"
           />
+        </label>
+        <label className="mt-4 block text-sm font-bold text-slate-600">
+          分類
+          <select
+            value={focusArea}
+            onChange={(event) =>
+              setFocusArea(event.target.value as LifeLogFocusArea)
+            }
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-slate-500"
+          >
+            {LIFE_LOG_FOCUS_AREA_OPTIONS.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="mt-4 block text-sm font-bold text-slate-600">
           予定に紐付ける（任意）

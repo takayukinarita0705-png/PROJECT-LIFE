@@ -53,6 +53,7 @@ import type {
   UndoSnapshot,
   SharedCalendarState,
   LifeLog,
+  LifeLogFocusArea,
 } from "@/app/types/calendar";
 
 function prepareSharedCalendarState(
@@ -607,7 +608,11 @@ export default function useCalendarController(weekOffset: number) {
     );
   }
 
-  function addLifeLog(body: string, eventId?: string) {
+  function addLifeLog(
+    body: string,
+    eventId?: string,
+    focusArea: LifeLogFocusArea = "unset",
+  ) {
     const normalizedBody = normalizeLifeLogBody(body);
     if (normalizedBody === null) return false;
 
@@ -617,7 +622,7 @@ export default function useCalendarController(weekOffset: number) {
         id: crypto.randomUUID(),
         body: normalizedBody,
         status: "inbox",
-        focusArea: "unset",
+        focusArea,
         eventId: eventId || undefined,
         createdAt,
         updatedAt: createdAt,
@@ -627,7 +632,12 @@ export default function useCalendarController(weekOffset: number) {
     return true;
   }
 
-  function updateLifeLog(id: string, body: string, eventId?: string) {
+  function updateLifeLog(
+    id: string,
+    body: string,
+    eventId: string | undefined,
+    focusArea: LifeLogFocusArea,
+  ) {
     const normalizedBody = normalizeLifeLogBody(body);
     if (normalizedBody === null) return false;
 
@@ -637,6 +647,7 @@ export default function useCalendarController(weekOffset: number) {
           ? {
               ...log,
               body: normalizedBody,
+              focusArea,
               eventId: eventId || undefined,
               updatedAt: new Date().toISOString(),
             }
