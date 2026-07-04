@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getCurrentWeekLifeLogs,
+  getInboxLifeLogs,
   getLifeLogTimelineGroups,
   getLifeLogsForEvent,
   normalizeLifeLogBody,
@@ -12,6 +13,7 @@ import type { LifeLog } from "@/app/types/calendar";
 const olderLog: LifeLog = {
   id: "older",
   body: "古いログ",
+  status: "inbox",
   createdAt: "2026-07-01T01:00:00.000Z",
   updatedAt: "2026-07-01T01:00:00.000Z",
 };
@@ -19,6 +21,7 @@ const olderLog: LifeLog = {
 const newerLog: LifeLog = {
   id: "newer",
   body: "新しいログ",
+  status: "inbox",
   createdAt: "2026-07-02T01:00:00.000Z",
   updatedAt: "2026-07-02T01:00:00.000Z",
 };
@@ -48,6 +51,23 @@ describe("ライフログ", () => {
       eventId: "event-1",
     });
     expect(normalizeLifeLog({ ...olderLog, createdAt: "invalid" })).toBeNull();
+  });
+
+  it("既存ログをInboxへ移行し、一覧対象をInboxだけにする", () => {
+    expect(normalizeLifeLog(olderLog)?.status).toBe("inbox");
+    expect(
+      normalizeLifeLog({
+        ...olderLog,
+        status: undefined,
+      })?.status,
+    ).toBe("inbox");
+    expect(
+      getInboxLifeLogs([
+        olderLog,
+        { ...newerLog, status: "scheduled" },
+        { ...newerLog, id: "done", status: "done" },
+      ]).map(({ id }) => id),
+    ).toEqual(["older"]);
   });
 
   it("予定に紐付くログだけを新しい順で取得する", () => {

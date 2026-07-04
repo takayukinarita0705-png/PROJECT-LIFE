@@ -9,7 +9,7 @@ import type { SharedCalendarState } from "@/app/types/calendar";
 
 const state: SharedCalendarState = {
   version: 1,
-  schemaVersion: 2,
+  schemaVersion: 3,
   categories: [],
   events: [],
   templates: [],
@@ -34,7 +34,7 @@ describe("カレンダーのローカルキャッシュ", () => {
     expect(parseCachedCalendarState(null)).toBeNull();
   });
 
-  it("schemaVersionがないV1キャッシュをV2へ移行する", () => {
+  it("schemaVersionがないV1キャッシュを現在Versionへ移行する", () => {
     const cachedV1 = JSON.stringify({
       version: 1,
       categories: [],
@@ -42,7 +42,7 @@ describe("カレンダーのローカルキャッシュ", () => {
       templates: [],
     });
 
-    expect(parseCachedCalendarState(cachedV1)?.schemaVersion).toBe(2);
+    expect(parseCachedCalendarState(cachedV1)?.schemaVersion).toBe(3);
     expect(parseCachedCalendarState(cachedV1)?.logs).toEqual([]);
   });
 

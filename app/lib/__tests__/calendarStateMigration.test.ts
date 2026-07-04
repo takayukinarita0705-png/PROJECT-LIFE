@@ -3,6 +3,7 @@ import {
   CURRENT_SCHEMA_VERSION,
   migrateState,
   migrateStateV1ToV2,
+  migrateStateV2ToV3,
 } from "@/app/lib/migrations/calendarState";
 
 describe("保存StateのSchema Migration", () => {
@@ -51,6 +52,24 @@ describe("保存StateのSchema Migration", () => {
     expect(templates?.[0].events[0]).not.toHaveProperty("date");
   });
 
+  it("V2の既存ログへinboxを補完してV3へ変換する", () => {
+    expect(
+      migrateStateV2ToV3({
+        schemaVersion: 2,
+        logs: [
+          { id: "legacy" },
+          { id: "scheduled", status: "scheduled" },
+        ],
+      }),
+    ).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      logs: [
+        { id: "legacy", status: "inbox" },
+        { id: "scheduled", status: "scheduled" },
+      ],
+    });
+  });
+
   it("V1 Stateを指定した基準週からV2へ変換する", () => {
     const migrated = migrateStateV1ToV2(
       {
@@ -68,7 +87,7 @@ describe("保存StateのSchema Migration", () => {
     );
 
     expect(migrated).toMatchObject({
-      schemaVersion: CURRENT_SCHEMA_VERSION,
+      schemaVersion: 2,
       events: [
         {
           id: "next-week-wednesday",
@@ -118,6 +137,6 @@ describe("保存StateのSchema Migration", () => {
   });
 
   it("未対応のVersionを現在の形式として扱わない", () => {
-    expect(migrateState({ schemaVersion: 3 })).toBeNull();
+    expect(migrateState({ schemaVersion: 4 })).toBeNull();
   });
 });

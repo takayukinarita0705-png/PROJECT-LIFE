@@ -8,6 +8,7 @@ import type {
   EventMode,
   EventStatus,
   LifeLog,
+  LifeLogStatus,
   TemplateEvent,
 } from "@/app/types/calendar";
 
@@ -26,6 +27,10 @@ export function isEventStatus(value: unknown): value is EventStatus {
 
 export function isEventLinkType(value: unknown): value is EventLinkType {
   return value === "after" || value === "before" || value === "none";
+}
+
+export function isLifeLogStatus(value: unknown): value is LifeLogStatus {
+  return value === "inbox" || value === "scheduled" || value === "done";
 }
 
 export function normalizeCalendarEvent(
@@ -135,6 +140,7 @@ export function normalizeLifeLog(value: unknown): LifeLog | null {
   return {
     id: log.id,
     body: log.body.trim(),
+    status: isLifeLogStatus(log.status) ? log.status : "inbox",
     eventId: typeof log.eventId === "string" ? log.eventId : undefined,
     createdAt: log.createdAt,
     updatedAt: log.updatedAt,

@@ -1,6 +1,7 @@
 import LifeLogEventLink from "./LifeLogEventLink";
 import {
   formatLifeLogTime,
+  getInboxLifeLogs,
   getLifeLogTimelineGroups,
 } from "@/app/lib/lifeLogs";
 import type {
@@ -30,7 +31,7 @@ export default function MobileLifeLog({
   onDelete,
   onEdit,
 }: MobileLifeLogProps) {
-  const timelineGroups = getLifeLogTimelineGroups(logs);
+  const timelineGroups = getLifeLogTimelineGroups(getInboxLifeLogs(logs));
 
   return (
     <section className="md:hidden">

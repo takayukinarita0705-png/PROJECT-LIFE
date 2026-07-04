@@ -17,6 +17,10 @@ export function sortLifeLogsNewestFirst(logs: LifeLog[]) {
   );
 }
 
+export function getInboxLifeLogs(logs: LifeLog[]) {
+  return logs.filter((log) => log.status === "inbox");
+}
+
 export function getLifeLogsForEvent(logs: LifeLog[], eventId: string) {
   return sortLifeLogsNewestFirst(
     logs.filter((log) => log.eventId === eventId),

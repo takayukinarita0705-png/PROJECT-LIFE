@@ -1,7 +1,8 @@
 import { getDateFromWeekOffset } from "@/app/lib/date";
 
-export const CURRENT_SCHEMA_VERSION = 2 as const;
+export const CURRENT_SCHEMA_VERSION = 3 as const;
 const LEGACY_SCHEMA_VERSION = 1;
+const DATE_SCHEMA_VERSION = 2;
 
 export type MigratableState = Record<string, unknown> & {
   schemaVersion?: unknown;
@@ -14,7 +15,7 @@ export type MigratedState = Record<string, unknown> & {
 export function migrateStateV1ToV2(
   state: MigratableState,
   anchorWeekStart: Date,
-): MigratedState {
+): MigratableState & { schemaVersion: typeof DATE_SCHEMA_VERSION } {
   const events = Array.isArray(state.events)
     ? state.events.map((value) => {
         if (typeof value !== "object" || value === null) return value;
@@ -44,6 +45,33 @@ export function migrateStateV1ToV2(
   return {
     ...state,
     events,
+    schemaVersion: DATE_SCHEMA_VERSION,
+  };
+}
+
+export function migrateStateV2ToV3(
+  state: MigratableState,
+): MigratedState {
+  const logs = Array.isArray(state.logs)
+    ? state.logs.map((value) => {
+        if (typeof value !== "object" || value === null) return value;
+
+        const log = value as Record<string, unknown>;
+        return {
+          ...log,
+          status:
+            log.status === "inbox" ||
+            log.status === "scheduled" ||
+            log.status === "done"
+              ? log.status
+              : "inbox",
+        };
+      })
+    : state.logs;
+
+  return {
+    ...state,
+    logs,
     schemaVersion: CURRENT_SCHEMA_VERSION,
   };
 }
@@ -70,10 +98,15 @@ export function migrateState(
     state.schemaVersion ?? LEGACY_SCHEMA_VERSION;
 
   if (schemaVersion === LEGACY_SCHEMA_VERSION) {
-    return migrateStateV1ToV2(
-      state,
-      getAnchorWeekStart(referenceDate),
+    return migrateStateV2ToV3(
+      migrateStateV1ToV2(
+        state,
+        getAnchorWeekStart(referenceDate),
+      ),
     );
+  }
+  if (schemaVersion === DATE_SCHEMA_VERSION) {
+    return migrateStateV2ToV3(state);
   }
   if (schemaVersion !== CURRENT_SCHEMA_VERSION) return null;
 
