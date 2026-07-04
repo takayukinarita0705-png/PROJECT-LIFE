@@ -1,8 +1,9 @@
 import { getDateFromWeekOffset } from "@/app/lib/date";
 
-export const CURRENT_SCHEMA_VERSION = 3 as const;
+export const CURRENT_SCHEMA_VERSION = 4 as const;
 const LEGACY_SCHEMA_VERSION = 1;
 const DATE_SCHEMA_VERSION = 2;
+const LIFE_LOG_STATUS_SCHEMA_VERSION = 3;
 
 export type MigratableState = Record<string, unknown> & {
   schemaVersion?: unknown;
@@ -51,7 +52,9 @@ export function migrateStateV1ToV2(
 
 export function migrateStateV2ToV3(
   state: MigratableState,
-): MigratedState {
+): MigratableState & {
+  schemaVersion: typeof LIFE_LOG_STATUS_SCHEMA_VERSION;
+} {
   const logs = Array.isArray(state.logs)
     ? state.logs.map((value) => {
         if (typeof value !== "object" || value === null) return value;
@@ -65,6 +68,29 @@ export function migrateStateV2ToV3(
             log.status === "done"
               ? log.status
               : "inbox",
+        };
+      })
+    : state.logs;
+
+  return {
+    ...state,
+    logs,
+    schemaVersion: LIFE_LOG_STATUS_SCHEMA_VERSION,
+  };
+}
+
+export function migrateStateV3ToV4(
+  state: MigratableState,
+): MigratedState {
+  const logs = Array.isArray(state.logs)
+    ? state.logs.map((value) => {
+        if (typeof value !== "object" || value === null) return value;
+
+        const log = value as Record<string, unknown>;
+        return {
+          ...log,
+          status: "inbox",
+          focusArea: "unset",
         };
       })
     : state.logs;
@@ -98,15 +124,20 @@ export function migrateState(
     state.schemaVersion ?? LEGACY_SCHEMA_VERSION;
 
   if (schemaVersion === LEGACY_SCHEMA_VERSION) {
-    return migrateStateV2ToV3(
-      migrateStateV1ToV2(
-        state,
-        getAnchorWeekStart(referenceDate),
+    return migrateStateV3ToV4(
+      migrateStateV2ToV3(
+        migrateStateV1ToV2(
+          state,
+          getAnchorWeekStart(referenceDate),
+        ),
       ),
     );
   }
   if (schemaVersion === DATE_SCHEMA_VERSION) {
-    return migrateStateV2ToV3(state);
+    return migrateStateV3ToV4(migrateStateV2ToV3(state));
+  }
+  if (schemaVersion === LIFE_LOG_STATUS_SCHEMA_VERSION) {
+    return migrateStateV3ToV4(state);
   }
   if (schemaVersion !== CURRENT_SCHEMA_VERSION) return null;
 

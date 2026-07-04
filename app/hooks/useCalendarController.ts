@@ -617,6 +617,7 @@ export default function useCalendarController(weekOffset: number) {
         id: crypto.randomUUID(),
         body: normalizedBody,
         status: "inbox",
+        focusArea: "unset",
         eventId: eventId || undefined,
         createdAt,
         updatedAt: createdAt,

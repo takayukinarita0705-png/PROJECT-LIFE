@@ -4,6 +4,7 @@ import {
   migrateState,
   migrateStateV1ToV2,
   migrateStateV2ToV3,
+  migrateStateV3ToV4,
 } from "@/app/lib/migrations/calendarState";
 
 describe("保存StateのSchema Migration", () => {
@@ -62,10 +63,40 @@ describe("保存StateのSchema Migration", () => {
         ],
       }),
     ).toMatchObject({
-      schemaVersion: CURRENT_SCHEMA_VERSION,
+      schemaVersion: 3,
       logs: [
         { id: "legacy", status: "inbox" },
         { id: "scheduled", status: "scheduled" },
+      ],
+    });
+  });
+
+  it("V3の既存ログへfocusArea: unsetを補完してV4へ変換する", () => {
+    expect(
+      migrateStateV3ToV4({
+        schemaVersion: 3,
+        logs: [
+          { id: "legacy", status: "inbox" },
+          {
+            id: "future",
+            status: "scheduled",
+            focusArea: "future",
+          },
+        ],
+      }),
+    ).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      logs: [
+        {
+          id: "legacy",
+          status: "inbox",
+          focusArea: "unset",
+        },
+        {
+          id: "future",
+          status: "inbox",
+          focusArea: "unset",
+        },
       ],
     });
   });
@@ -137,6 +168,6 @@ describe("保存StateのSchema Migration", () => {
   });
 
   it("未対応のVersionを現在の形式として扱わない", () => {
-    expect(migrateState({ schemaVersion: 4 })).toBeNull();
+    expect(migrateState({ schemaVersion: 5 })).toBeNull();
   });
 });

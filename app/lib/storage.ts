@@ -8,6 +8,7 @@ import type {
   EventMode,
   EventStatus,
   LifeLog,
+  LifeLogFocusArea,
   LifeLogStatus,
   TemplateEvent,
 } from "@/app/types/calendar";
@@ -31,6 +32,18 @@ export function isEventLinkType(value: unknown): value is EventLinkType {
 
 export function isLifeLogStatus(value: unknown): value is LifeLogStatus {
   return value === "inbox" || value === "scheduled" || value === "done";
+}
+
+export function isLifeLogFocusArea(
+  value: unknown,
+): value is LifeLogFocusArea {
+  return (
+    value === "now" ||
+    value === "future" ||
+    value === "review" ||
+    value === "discard" ||
+    value === "unset"
+  );
 }
 
 export function normalizeCalendarEvent(
@@ -141,6 +154,9 @@ export function normalizeLifeLog(value: unknown): LifeLog | null {
     id: log.id,
     body: log.body.trim(),
     status: isLifeLogStatus(log.status) ? log.status : "inbox",
+    focusArea: isLifeLogFocusArea(log.focusArea)
+      ? log.focusArea
+      : "unset",
     eventId: typeof log.eventId === "string" ? log.eventId : undefined,
     createdAt: log.createdAt,
     updatedAt: log.updatedAt,

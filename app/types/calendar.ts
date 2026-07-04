@@ -67,11 +67,18 @@ export type Template = {
 export type CalendarTemplate = Template;
 
 export type LifeLogStatus = "inbox" | "scheduled" | "done";
+export type LifeLogFocusArea =
+  | "now"
+  | "future"
+  | "review"
+  | "discard"
+  | "unset";
 
 export type LifeLog = {
   id: string;
   body: string;
   status: LifeLogStatus;
+  focusArea: LifeLogFocusArea;
   eventId?: string;
   createdAt: string;
   updatedAt: string;
@@ -79,7 +86,7 @@ export type LifeLog = {
 
 export type SharedCalendarState = {
   version: 1;
-  schemaVersion: 3;
+  schemaVersion: 4;
   categories: Category[];
   events: CalendarEvent[];
   templates: CalendarTemplate[];

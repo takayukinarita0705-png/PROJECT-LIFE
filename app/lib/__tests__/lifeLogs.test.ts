@@ -14,6 +14,7 @@ const olderLog: LifeLog = {
   id: "older",
   body: "古いログ",
   status: "inbox",
+  focusArea: "unset",
   createdAt: "2026-07-01T01:00:00.000Z",
   updatedAt: "2026-07-01T01:00:00.000Z",
 };
@@ -22,6 +23,7 @@ const newerLog: LifeLog = {
   id: "newer",
   body: "新しいログ",
   status: "inbox",
+  focusArea: "unset",
   createdAt: "2026-07-02T01:00:00.000Z",
   updatedAt: "2026-07-02T01:00:00.000Z",
 };
@@ -59,8 +61,16 @@ describe("ライフログ", () => {
       normalizeLifeLog({
         ...olderLog,
         status: undefined,
+        focusArea: undefined,
       })?.status,
     ).toBe("inbox");
+    expect(
+      normalizeLifeLog({
+        ...olderLog,
+        status: undefined,
+        focusArea: undefined,
+      })?.focusArea,
+    ).toBe("unset");
     expect(
       getInboxLifeLogs([
         olderLog,
