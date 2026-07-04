@@ -11,6 +11,8 @@ import {
   getWeekDates,
   ensureFreeCategory,
   mergeUniqueEvents,
+  preserveRemoteEventStatuses,
+  reconcileTemplateEvents,
   normalizeNewEventTitle,
   resetEventStatus,
   toggleEventCompletion,
@@ -65,7 +67,7 @@ function prepareSharedCalendarState(
   return {
     ...state,
     categories: ensureFreeCategory(state.categories),
-    events: attachRoutineRelations(state.events),
+    events: state.events,
   };
 }
 
@@ -90,9 +92,10 @@ export default function useCalendarController(weekOffset: number) {
   );
   const undoTimerRef = useRef<number | null>(null);
   const undoIdRef = useRef(0);
-  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const saveQueueRef = useRef<Promise<unknown>>(Promise.resolve());
   const currentSharedStateRef = useRef<SharedCalendarState | null>(null);
   const lastSyncedStateRef = useRef<string | null>(null);
+  const locallyChangedStatusIdsRef = useRef(new Set<string>());
 
   const weekDates = getWeekDates(weekOffset);
   const weekDateKeys = new Set(
@@ -192,16 +195,40 @@ export default function useCalendarController(weekOffset: number) {
     const persistTimer = window.setTimeout(() => {
       setSaveStatus("saving");
 
+      const persistSharedState = async () => {
+        const remoteState = await loadSharedCalendarState();
+        const stateToSave = {
+          ...sharedState,
+          events: preserveRemoteEventStatuses(
+            sharedState.events,
+            remoteState.events,
+            locallyChangedStatusIdsRef.current,
+          ),
+        };
+        await saveSharedCalendarState(stateToSave);
+        return stateToSave;
+      };
       const saveRequest = saveQueueRef.current.then(
-        () => saveSharedCalendarState(sharedState),
-        () => saveSharedCalendarState(sharedState),
+        persistSharedState,
+        persistSharedState,
       );
       saveQueueRef.current = saveRequest.catch(() => undefined);
 
       void saveRequest
-        .then(() => {
+        .then((savedState) => {
           if (cancelled) return;
-          lastSyncedStateRef.current = serializedState;
+          const savedSerializedState =
+            serializeSharedCalendarState(savedState);
+          lastSyncedStateRef.current = savedSerializedState;
+          currentSharedStateRef.current = savedState;
+          saveCachedCalendarState(savedState);
+          setEvents((current) =>
+            preserveRemoteEventStatuses(
+              current,
+              savedState.events,
+              locallyChangedStatusIdsRef.current,
+            ),
+          );
           setSaveStatus("saved");
           hideTimer = window.setTimeout(() => setSaveStatus(null), 2000);
         })
@@ -326,7 +353,7 @@ export default function useCalendarController(weekOffset: number) {
 
     if (nextEvents.length !== events.length) {
       showUndo(events);
-      setEvents(attachRoutineRelations(nextEvents));
+      setEvents(nextEvents);
       return true;
     }
     return false;
@@ -341,14 +368,17 @@ export default function useCalendarController(weekOffset: number) {
   }
 
   function toggleEventCompleted(id: string) {
+    locallyChangedStatusIdsRef.current.add(id);
     setEvents((current) => toggleEventCompletion(current, id));
   }
 
   function toggleEventSkip(id: string) {
+    locallyChangedStatusIdsRef.current.add(id);
     setEvents((current) => toggleEventSkipped(current, id));
   }
 
   function resetEventToPending(id: string) {
+    locallyChangedStatusIdsRef.current.add(id);
     setEvents((current) => resetEventStatus(current, id));
   }
 
@@ -421,7 +451,7 @@ export default function useCalendarController(weekOffset: number) {
     templateCategories: Category[],
   ) {
     clearUndo();
-    const nextEvents = attachRoutineRelations(
+    const generatedEvents = attachRoutineRelations(
       templateEvents.map<CalendarEvent>((event) =>
         materializeEventDate({
           ...event,
@@ -449,6 +479,15 @@ export default function useCalendarController(weekOffset: number) {
     }
 
     setEvents((previous) => {
+      const existingTemplateEvents = previous.filter(
+        (event) =>
+          weekDateKeys.has(resolveEventDate(event)) &&
+          event.source === "fixed-template",
+      );
+      const nextEvents = reconcileTemplateEvents(
+        existingTemplateEvents,
+        generatedEvents,
+      );
       const withoutCurrentTemplate = previous.filter(
         (event) =>
           !weekDateKeys.has(resolveEventDate(event)) ||
@@ -458,7 +497,7 @@ export default function useCalendarController(weekOffset: number) {
     });
   }
 
-  function applyFixedTemplate(secondDayOff: 1 | 3) {
+  function applyFixedTemplate(secondDayOff: 0 | 2) {
     applyTemplate(createFixedTemplateEvents(secondDayOff), DEFAULT_CATEGORIES);
   }
 

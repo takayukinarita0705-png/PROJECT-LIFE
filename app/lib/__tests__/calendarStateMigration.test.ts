@@ -5,6 +5,7 @@ import {
   migrateStateV1ToV2,
   migrateStateV2ToV3,
   migrateStateV3ToV4,
+  migrateStateV4ToV5,
 } from "@/app/lib/migrations/calendarState";
 
 describe("保存StateのSchema Migration", () => {
@@ -85,7 +86,7 @@ describe("保存StateのSchema Migration", () => {
         ],
       }),
     ).toMatchObject({
-      schemaVersion: CURRENT_SCHEMA_VERSION,
+      schemaVersion: 4,
       logs: [
         {
           id: "legacy",
@@ -96,6 +97,53 @@ describe("保存StateのSchema Migration", () => {
           id: "future",
           status: "inbox",
           focusArea: "unset",
+        },
+      ],
+    });
+  });
+
+  it("V4のEventとTemplateを火曜始まりへ変換する", () => {
+    expect(
+      migrateStateV4ToV5(
+        {
+          schemaVersion: 4,
+          events: [
+            {
+              id: "monday",
+              date: "2026-06-29",
+              day: 0,
+              weekOffset: 0,
+              status: "completed",
+            },
+          ],
+          templates: [
+            {
+              id: "template",
+              events: [
+                { categoryId: "work", day: 0 },
+                { categoryId: "meal", day: 1 },
+              ],
+            },
+          ],
+        },
+        migrationDate,
+      ),
+    ).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      events: [
+        {
+          id: "monday",
+          day: 6,
+          weekOffset: -1,
+          status: "completed",
+        },
+      ],
+      templates: [
+        {
+          events: [
+            { categoryId: "work", day: 6 },
+            { categoryId: "meal", day: 0 },
+          ],
         },
       ],
     });
@@ -168,6 +216,6 @@ describe("保存StateのSchema Migration", () => {
   });
 
   it("未対応のVersionを現在の形式として扱わない", () => {
-    expect(migrateState({ schemaVersion: 5 })).toBeNull();
+    expect(migrateState({ schemaVersion: 6 })).toBeNull();
   });
 });

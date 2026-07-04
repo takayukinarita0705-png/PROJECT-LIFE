@@ -11,11 +11,12 @@ import {
   toMinutes,
 } from "@/app/lib/time";
 import {
+  getWeekStart,
   isCalendarDate,
   resolveEventDate,
 } from "@/app/lib/date";
 
-export const DAYS = ["月", "火", "水", "木", "金", "土", "日"];
+export const DAYS = ["火", "水", "木", "金", "土", "日", "月"];
 
 const BUILT_IN_CATEGORY_TIMESTAMP = "2026-07-01T00:00:00.000Z";
 
@@ -142,20 +143,17 @@ export function normalizeNewEventTitle(
   return normalizedTitle || null;
 }
 
-export function getMonday(offset: number) {
-  const today = new Date();
-  const day = today.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  const monday = new Date(today);
-  monday.setDate(today.getDate() + diff + offset * 7);
-  return monday;
+export function getWeekStartDate(offset: number) {
+  const weekStart = getWeekStart();
+  weekStart.setDate(weekStart.getDate() + offset * 7);
+  return weekStart;
 }
 
 export function getWeekDates(offset: number) {
-  const monday = getMonday(offset);
+  const weekStart = getWeekStartDate(offset);
   return DAYS.map((_, i) => {
-    const date = new Date(monday);
-    date.setDate(monday.getDate() + i);
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate() + i);
     return date;
   });
 }
@@ -165,10 +163,10 @@ export function dateLabel(date: Date) {
 }
 
 export function createFixedTemplateEvents(
-  secondDayOff: 1 | 3,
+  secondDayOff: 0 | 2,
 ): TemplateEvent[] {
   const workDays = DAYS.map((_, day) => day).filter(
-    (day) => day !== 2 && day !== secondDayOff,
+    (day) => day !== 1 && day !== secondDayOff,
   );
   const templateEvents: TemplateEvent[] = [];
 
@@ -329,6 +327,53 @@ export function mergeUniqueEvents(
   });
 
   return [...current, ...uniqueAdditions];
+}
+
+export function reconcileTemplateEvents(
+  existing: CalendarEvent[],
+  generated: CalendarEvent[],
+) {
+  const existingByKey = new Map(
+    existing.map((event) => [eventKey(event), event]),
+  );
+  const replacementIds = new Map<string, string>();
+  generated.forEach((event) => {
+    const existingEvent = existingByKey.get(eventKey(event));
+    if (existingEvent) replacementIds.set(event.id, existingEvent.id);
+  });
+
+  return generated.map((event) => {
+    const existingEvent = existingByKey.get(eventKey(event));
+    if (existingEvent) return existingEvent;
+
+    const linkedToEventId = event.linkedToEventId
+      ? replacementIds.get(event.linkedToEventId)
+      : undefined;
+    return linkedToEventId && linkedToEventId !== event.linkedToEventId
+      ? { ...event, linkedToEventId }
+      : event;
+  });
+}
+
+export function preserveRemoteEventStatuses(
+  localEvents: CalendarEvent[],
+  remoteEvents: CalendarEvent[],
+  locallyChangedStatusIds: ReadonlySet<string>,
+) {
+  const remoteById = new Map(
+    remoteEvents.map((event) => [event.id, event]),
+  );
+  return localEvents.map((event) => {
+    const remoteEvent = remoteById.get(event.id);
+    if (
+      !remoteEvent ||
+      locallyChangedStatusIds.has(event.id) ||
+      remoteEvent.status === event.status
+    ) {
+      return event;
+    }
+    return { ...event, status: remoteEvent.status };
+  });
 }
 
 export function attachRoutineRelations(events: CalendarEvent[]) {

@@ -1,6 +1,7 @@
 import type { CalendarEvent } from "@/app/types/calendar";
 
 const CALENDAR_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+export const WEEK_START_DAY = 2;
 
 export function formatCalendarDate(date: Date) {
   const year = date.getFullYear();
@@ -46,20 +47,47 @@ export function getCalendarDateForWeekDay(
   day: number,
   referenceDate = new Date(),
 ) {
-  const monday = new Date(
+  const weekStart = getWeekStart(referenceDate);
+  weekStart.setDate(
+    weekStart.getDate() + weekOffset * 7 + day,
+  );
+  return formatCalendarDate(weekStart);
+}
+
+export function getWeekStart(referenceDate = new Date()) {
+  const weekStart = new Date(
     referenceDate.getFullYear(),
     referenceDate.getMonth(),
     referenceDate.getDate(),
     12,
   );
-  const currentDay = monday.getDay();
-  monday.setDate(
-    monday.getDate() +
-      (currentDay === 0 ? -6 : 1 - currentDay) +
-      weekOffset * 7 +
-      day,
+  const daysSinceWeekStart =
+    (weekStart.getDay() - WEEK_START_DAY + 7) % 7;
+  weekStart.setDate(
+    weekStart.getDate() - daysSinceWeekStart,
   );
-  return formatCalendarDate(monday);
+  return weekStart;
+}
+
+export function getCalendarDayIndex(date: Date) {
+  return (date.getDay() - WEEK_START_DAY + 7) % 7;
+}
+
+export function getWeekOffsetForDate(
+  date: Date,
+  referenceDate = new Date(),
+) {
+  const weekStart = getWeekStart(referenceDate);
+  const target = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    12,
+  );
+  const daysFromWeekStart = Math.round(
+    (target.getTime() - weekStart.getTime()) / (24 * 60 * 60 * 1000),
+  );
+  return Math.floor(daysFromWeekStart / 7);
 }
 
 export function resolveEventDate(
@@ -90,7 +118,7 @@ export function resolveEventDay(
   referenceDate = new Date(),
 ) {
   const date = parseCalendarDate(resolveEventDate(event, referenceDate));
-  return date === null ? event.day : (date.getDay() + 6) % 7;
+  return date === null ? event.day : getCalendarDayIndex(date);
 }
 
 export function isEventOnDate(

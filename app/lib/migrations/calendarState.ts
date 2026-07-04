@@ -1,9 +1,15 @@
-import { getDateFromWeekOffset } from "@/app/lib/date";
+import {
+  getCalendarDayIndex,
+  getDateFromWeekOffset,
+  getWeekOffsetForDate,
+  parseCalendarDate,
+} from "@/app/lib/date";
 
-export const CURRENT_SCHEMA_VERSION = 4 as const;
+export const CURRENT_SCHEMA_VERSION = 5 as const;
 const LEGACY_SCHEMA_VERSION = 1;
 const DATE_SCHEMA_VERSION = 2;
 const LIFE_LOG_STATUS_SCHEMA_VERSION = 3;
+const LIFE_LOG_FOCUS_SCHEMA_VERSION = 4;
 
 export type MigratableState = Record<string, unknown> & {
   schemaVersion?: unknown;
@@ -81,7 +87,9 @@ export function migrateStateV2ToV3(
 
 export function migrateStateV3ToV4(
   state: MigratableState,
-): MigratedState {
+): MigratableState & {
+  schemaVersion: typeof LIFE_LOG_FOCUS_SCHEMA_VERSION;
+} {
   const logs = Array.isArray(state.logs)
     ? state.logs.map((value) => {
         if (typeof value !== "object" || value === null) return value;
@@ -98,11 +106,65 @@ export function migrateStateV3ToV4(
   return {
     ...state,
     logs,
+    schemaVersion: LIFE_LOG_FOCUS_SCHEMA_VERSION,
+  };
+}
+
+export function migrateStateV4ToV5(
+  state: MigratableState,
+  referenceDate = new Date(),
+): MigratedState {
+  const events = Array.isArray(state.events)
+    ? state.events.map((value) => {
+        if (typeof value !== "object" || value === null) return value;
+        const event = value as Record<string, unknown>;
+        const date =
+          typeof event.date === "string"
+            ? parseCalendarDate(event.date)
+            : null;
+        if (date) {
+          return {
+            ...event,
+            day: getCalendarDayIndex(date),
+            weekOffset: getWeekOffsetForDate(date, referenceDate),
+          };
+        }
+        return typeof event.day === "number"
+          ? { ...event, day: (event.day + 6) % 7 }
+          : event;
+      })
+    : state.events;
+  const templates = Array.isArray(state.templates)
+    ? state.templates.map((value) => {
+        if (typeof value !== "object" || value === null) return value;
+        const template = value as Record<string, unknown>;
+        if (!Array.isArray(template.events)) return template;
+        return {
+          ...template,
+          events: template.events.map((eventValue) => {
+            if (typeof eventValue !== "object" || eventValue === null) {
+              return eventValue;
+            }
+            const event = eventValue as Record<string, unknown>;
+            return typeof event.day === "number"
+              ? { ...event, day: (event.day + 6) % 7 }
+              : event;
+          }),
+        };
+      })
+    : state.templates;
+
+  return {
+    ...state,
+    events,
+    templates,
     schemaVersion: CURRENT_SCHEMA_VERSION,
   };
 }
 
-function getAnchorWeekStart(referenceDate: Date) {
+// V1のdayは月曜始まりで保存されていたため、絶対日付へ直すまでは
+// 旧基準を維持し、その後V4→V5で火曜始まりのdayへ変換する。
+function getLegacyMondayAnchor(referenceDate: Date) {
   const anchorWeekStart = new Date(
     referenceDate.getFullYear(),
     referenceDate.getMonth(),
@@ -124,20 +186,32 @@ export function migrateState(
     state.schemaVersion ?? LEGACY_SCHEMA_VERSION;
 
   if (schemaVersion === LEGACY_SCHEMA_VERSION) {
-    return migrateStateV3ToV4(
-      migrateStateV2ToV3(
-        migrateStateV1ToV2(
-          state,
-          getAnchorWeekStart(referenceDate),
+    return migrateStateV4ToV5(
+      migrateStateV3ToV4(
+        migrateStateV2ToV3(
+          migrateStateV1ToV2(
+            state,
+            getLegacyMondayAnchor(referenceDate),
+          ),
         ),
       ),
+      referenceDate,
     );
   }
   if (schemaVersion === DATE_SCHEMA_VERSION) {
-    return migrateStateV3ToV4(migrateStateV2ToV3(state));
+    return migrateStateV4ToV5(
+      migrateStateV3ToV4(migrateStateV2ToV3(state)),
+      referenceDate,
+    );
   }
   if (schemaVersion === LIFE_LOG_STATUS_SCHEMA_VERSION) {
-    return migrateStateV3ToV4(state);
+    return migrateStateV4ToV5(
+      migrateStateV3ToV4(state),
+      referenceDate,
+    );
+  }
+  if (schemaVersion === LIFE_LOG_FOCUS_SCHEMA_VERSION) {
+    return migrateStateV4ToV5(state, referenceDate);
   }
   if (schemaVersion !== CURRENT_SCHEMA_VERSION) return null;
 

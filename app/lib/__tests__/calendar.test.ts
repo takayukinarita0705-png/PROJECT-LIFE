@@ -11,6 +11,8 @@ import {
   filterEventsByDates,
   mergeUniqueEvents,
   normalizeNewEventTitle,
+  preserveRemoteEventStatuses,
+  reconcileTemplateEvents,
   resetEventStatus,
   toggleEventCompletion,
   toggleEventSkipped,
@@ -71,7 +73,7 @@ describe("テンプレート重複防止", () => {
 });
 
 describe("週間固定テンプレート", () => {
-  const events = createFixedTemplateEvents(1).filter(
+  const events = createFixedTemplateEvents(0).filter(
     (event) => event.day === 0,
   );
 
@@ -106,6 +108,96 @@ describe("週間固定テンプレート", () => {
       start: 22 * 60,
       end: 24 * 60,
     });
+  });
+
+  it("火曜始まりの実曜日で休日を設定する", () => {
+    const tuesdayOff = createFixedTemplateEvents(0);
+    const thursdayOff = createFixedTemplateEvents(2);
+    const workDays = (events: typeof tuesdayOff) =>
+      events
+        .filter((event) => event.categoryId === "work")
+        .map((event) => event.day);
+
+    expect(workDays(tuesdayOff)).not.toContain(0);
+    expect(workDays(tuesdayOff)).not.toContain(1);
+    expect(workDays(thursdayOff)).not.toContain(1);
+    expect(workDays(thursdayOff)).not.toContain(2);
+  });
+});
+
+describe("テンプレート再適用", () => {
+  it("同一予定のstatusと関連情報を維持する", () => {
+    const existing = createEvent({
+      id: "existing",
+      status: "completed",
+      mode: "linked",
+      linkedToEventId: "parent",
+      linkType: "after",
+      offsetMinutes: 30,
+      source: "fixed-template",
+    });
+    const generated = createEvent({
+      id: "generated",
+      status: "pending",
+      source: "fixed-template",
+    });
+
+    expect(reconcileTemplateEvents([existing], [generated])).toEqual([
+      existing,
+    ]);
+  });
+
+  it("新規予定だけをpendingの生成Eventとして追加する", () => {
+    const generated = createEvent({
+      id: "generated",
+      categoryId: "meal",
+      status: "pending",
+      source: "fixed-template",
+    });
+
+    expect(reconcileTemplateEvents([], [generated])).toEqual([generated]);
+  });
+
+  it("既存親Eventを再利用した場合は新規子Eventのリンク先IDを合わせる", () => {
+    const existingParent = createEvent({ id: "existing-parent" });
+    const generatedParent = createEvent({ id: "generated-parent" });
+    const generatedChild = createEvent({
+      id: "generated-child",
+      categoryId: "meal",
+      linkedToEventId: generatedParent.id,
+      linkType: "after",
+    });
+
+    expect(
+      reconcileTemplateEvents(
+        [existingParent],
+        [generatedParent, generatedChild],
+      )[1].linkedToEventId,
+    ).toBe(existingParent.id);
+  });
+});
+
+describe("端末間のEvent status同期", () => {
+  it("PCで未変更のstatusはSupabase最新値を維持する", () => {
+    const local = createEvent({ status: "pending" });
+    const remote = createEvent({ status: "completed" });
+
+    expect(
+      preserveRemoteEventStatuses([local], [remote], new Set()),
+    ).toEqual([{ ...local, status: "completed" }]);
+  });
+
+  it("この端末で明示変更したstatusはローカル値を維持する", () => {
+    const local = createEvent({ status: "pending" });
+    const remote = createEvent({ status: "skipped" });
+
+    expect(
+      preserveRemoteEventStatuses(
+        [local],
+        [remote],
+        new Set([local.id]),
+      ),
+    ).toEqual([local]);
   });
 });
 
@@ -200,7 +292,7 @@ describe("date中心のEvent抽出", () => {
     expect(
       filterEventsByDate(
         [legacyEvent],
-        "2026-07-08",
+        "2026-07-09",
         referenceDate,
       ),
     ).toEqual([legacyEvent]);
@@ -212,7 +304,7 @@ describe("date中心のEvent抽出", () => {
     expect(
       filterEventsByDates(
         events,
-        ["2026-07-06", "2026-07-07", "2026-07-08"],
+        ["2026-07-07", "2026-07-08", "2026-07-09"],
         referenceDate,
       ),
     ).toEqual([legacyEvent]);
@@ -344,7 +436,11 @@ describe("仕事→ご飯→お風呂のRoutine処理", () => {
   });
 
   it("仕事終了時刻に合わせてご飯とお風呂を移動する", () => {
-    const related = attachRoutineRelations([work, meal, bath]);
+    const related = attachRoutineRelations([
+      work,
+      { ...meal, status: "completed" },
+      { ...bath, status: "skipped" },
+    ]);
     const editedWork = {
       ...work,
       date: "2026-07-08",
@@ -358,6 +454,7 @@ describe("仕事→ご飯→お風呂のRoutine処理", () => {
       date: "2026-07-08",
       day: 2,
       weekOffset: 1,
+      status: "completed",
       start: 20 * 60 + 30,
       end: 20 * 60 + 45,
     });
@@ -369,6 +466,7 @@ describe("仕事→ご飯→お風呂のRoutine処理", () => {
       date: "2026-07-08",
       day: 2,
       weekOffset: 1,
+      status: "skipped",
       start: 20 * 60 + 45,
       end: 21 * 60 + 10,
     });

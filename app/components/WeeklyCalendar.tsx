@@ -33,7 +33,9 @@ import {
 import {
   compareEventDates,
   formatCalendarDate,
+  getCalendarDayIndex,
   getCalendarDateForWeekDay,
+  getWeekOffsetForDate,
   parseCalendarDate,
 } from "@/app/lib/date";
 import {
@@ -187,7 +189,7 @@ export default function WeeklyCalendar() {
       ) ?? null
     : null;
   const currentDay =
-    currentTime === null ? null : (currentTime.getDay() + 6) % DAYS.length;
+    currentTime === null ? null : getCalendarDayIndex(currentTime);
   const currentDate =
     currentTime === null ? null : formatCalendarDate(currentTime);
   const mobileDayColumns = Array.from({ length: 3 }, (_, columnIndex) => {
@@ -502,20 +504,12 @@ export default function WeeklyCalendar() {
       const end = parseTime(details.end);
       if (!date || start === null || end === null || end <= start) return;
 
-      const monday = parseCalendarDate(
-        getCalendarDateForWeekDay(0, 0),
-      );
-      if (!monday) return;
-      const day = (date.getDay() + 6) % 7;
-      const daysFromMonday = Math.round(
-        (date.getTime() - monday.getTime()) / (24 * 60 * 60 * 1000),
-      );
       const scheduled = addCalendarEvent(
         {
           ...draft,
           date: details.date,
-          day,
-          weekOffset: Math.floor(daysFromMonday / 7),
+          day: getCalendarDayIndex(date),
+          weekOffset: getWeekOffsetForDate(date),
           start,
           end,
         },

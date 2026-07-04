@@ -21,24 +21,24 @@ describe("Calendar date", () => {
     expect(isCalendarDate("2028-02-29")).toBe(true);
   });
 
-  it("基準週の月曜日からweekOffsetと曜日を日付へ変換する", () => {
-    expect(getDateFromWeekOffset("2026-06-29", 0, 0)).toBe(
+  it("基準週の火曜日からweekOffsetと曜日を日付へ変換する", () => {
+    expect(getDateFromWeekOffset("2026-06-30", 0, 0)).toBe(
+      "2026-06-30",
+    );
+    expect(getDateFromWeekOffset("2026-06-30", 1, 2)).toBe(
+      "2026-07-09",
+    );
+    expect(getDateFromWeekOffset("2026-06-30", -1, 6)).toBe(
       "2026-06-29",
-    );
-    expect(getDateFromWeekOffset("2026-06-29", 1, 2)).toBe(
-      "2026-07-08",
-    );
-    expect(getDateFromWeekOffset("2026-06-29", -1, 6)).toBe(
-      "2026-06-28",
     );
     expect(getCalendarDateForWeekDay(0, 0, referenceDate)).toBe(
-      "2026-06-29",
+      "2026-06-30",
     );
     expect(getCalendarDateForWeekDay(1, 2, referenceDate)).toBe(
-      "2026-07-08",
+      "2026-07-09",
     );
     expect(getCalendarDateForWeekDay(-1, 6, referenceDate)).toBe(
-      "2026-06-28",
+      "2026-06-29",
     );
   });
 
@@ -63,8 +63,8 @@ describe("Calendar date", () => {
       day: 2,
     };
 
-    expect(resolveEventDate(event, referenceDate)).toBe("2026-07-08");
-    expect(isEventOnDate(event, "2026-07-08", referenceDate)).toBe(true);
+    expect(resolveEventDate(event, referenceDate)).toBe("2026-07-09");
+    expect(isEventOnDate(event, "2026-07-09", referenceDate)).toBe(true);
   });
 
   it("Eventを解決後の日付で比較する", () => {
@@ -104,7 +104,7 @@ describe("Calendar date", () => {
     };
 
     expect(materializeEventDate(legacyEvent, referenceDate).date).toBe(
-      "2026-07-08",
+      "2026-07-09",
     );
     expect(materializeEventDate(datedEvent, referenceDate)).toBe(datedEvent);
   });
@@ -119,7 +119,7 @@ describe("Calendar date", () => {
         },
         referenceDate,
       ),
-    ).toBe(6);
+    ).toBe(5);
     expect(
       resolveEventDay(
         {

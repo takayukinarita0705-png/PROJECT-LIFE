@@ -149,8 +149,8 @@ describe("ライフログ", () => {
       },
       {
         ...olderLog,
-        id: "monday",
-        createdAt: new Date(2026, 5, 29, 9).toISOString(),
+        id: "tuesday",
+        createdAt: new Date(2026, 5, 30, 9).toISOString(),
       },
       {
         ...newerLog,
@@ -161,6 +161,6 @@ describe("ライフログ", () => {
 
     expect(
       getCurrentWeekLifeLogs(logs, referenceDate).map(({ id }) => id),
-    ).toEqual(["friday", "monday"]);
+    ).toEqual(["friday", "tuesday"]);
   });
 });

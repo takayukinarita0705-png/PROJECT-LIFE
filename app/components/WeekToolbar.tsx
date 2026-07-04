@@ -11,7 +11,7 @@ type WeekToolbarProps = {
   onNextWeek: () => void;
   onOpenCategoryManager: () => void;
   onCreateNextWeek: () => void;
-  onApplyFixedTemplate: (secondDayOff: 1 | 3) => void;
+  onApplyFixedTemplate: (secondDayOff: 0 | 2) => void;
   onSaveCurrentWeekTemplate: () => void;
   onApplyTemplate: (template: CalendarTemplate) => void;
   onDeleteTemplate: (template: CalendarTemplate) => void;
@@ -74,14 +74,14 @@ export default function WeekToolbar({
             来週を作成
           </button>
           <button
-            onClick={() => onApplyFixedTemplate(1)}
+            onClick={() => onApplyFixedTemplate(0)}
             disabled={!hasLoadedEvents}
             className="rounded-xl bg-amber-500 px-4 py-2 font-bold text-white disabled:opacity-50"
           >
             火曜休みテンプレート
           </button>
           <button
-            onClick={() => onApplyFixedTemplate(3)}
+            onClick={() => onApplyFixedTemplate(2)}
             disabled={!hasLoadedEvents}
             className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white disabled:opacity-50"
           >
