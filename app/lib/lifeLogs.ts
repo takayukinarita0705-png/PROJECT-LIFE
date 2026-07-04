@@ -27,6 +27,17 @@ export function getLifeLogFocusAreaLabel(focusArea: LifeLogFocusArea) {
   );
 }
 
+export function markLifeLogAsScheduled(
+  log: LifeLog,
+  updatedAt: string,
+): LifeLog {
+  return {
+    ...log,
+    status: "scheduled",
+    updatedAt,
+  };
+}
+
 export function normalizeLifeLogBody(body: string) {
   const normalized = body.trim();
   return normalized || null;
@@ -40,7 +51,9 @@ export function sortLifeLogsNewestFirst(logs: LifeLog[]) {
 }
 
 export function getInboxLifeLogs(logs: LifeLog[]) {
-  return logs.filter((log) => log.status === "inbox");
+  return logs.filter(
+    (log) => log.status === "inbox" || log.status === "scheduled",
+  );
 }
 
 export function getLifeLogsForEvent(logs: LifeLog[], eventId: string) {

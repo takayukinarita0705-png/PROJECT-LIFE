@@ -9,7 +9,10 @@ import {
 import type { PointerEvent as ReactPointerEvent } from "react";
 import CalendarGrid from "./CalendarGrid";
 import CategoryDialog from "./CategoryDialog";
-import EventDialog, { MobileWeekEventDialog } from "./EventDialog";
+import EventDialog, {
+  MobileWeekEventDialog,
+  type EventDialogScheduleDetails,
+} from "./EventDialog";
 import MobileBottomTabs from "./MobileBottomTabs";
 import type { MobilePage } from "./MobileBottomTabs";
 import MobileSchedule from "./MobileSchedule";
@@ -31,12 +34,14 @@ import {
   compareEventDates,
   formatCalendarDate,
   getCalendarDateForWeekDay,
+  parseCalendarDate,
 } from "@/app/lib/date";
 import {
   MINUTES_PER_ROW,
   displayRowToTimeRow,
   formatTime,
   minutesFromDisplayStart,
+  parseTime,
 } from "@/app/lib/time";
 import {
   getCompletionStreak,
@@ -105,6 +110,7 @@ export default function WeeklyCalendar() {
     hasLoadedTemplates,
     isSyncingSharedState,
     logs,
+    markLifeLogScheduled,
     moveEvent: moveCalendarEvent,
     resetEventToPending,
     saveCategory,
@@ -159,6 +165,9 @@ export default function WeeklyCalendar() {
   const [editingLifeLog, setEditingLifeLog] = useState<LifeLog | null>(
     null,
   );
+  const [schedulingLifeLog, setSchedulingLifeLog] =
+    useState<LifeLog | null>(null);
+  const [schedulingCategoryId, setSchedulingCategoryId] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const dragGhostRef = useRef<HTMLDivElement>(null);
@@ -484,9 +493,42 @@ export default function WeeklyCalendar() {
     eventMoveDidMoveRef.current = false;
   }
 
-  function addEvent() {
+  function addEvent(details?: EventDialogScheduleDetails) {
     if (!draft) return;
-    addCalendarEvent(draft);
+    if (schedulingLifeLog) {
+      if (!details) return;
+      const date = parseCalendarDate(details.date);
+      const start = parseTime(details.start);
+      const end = parseTime(details.end);
+      if (!date || start === null || end === null || end <= start) return;
+
+      const monday = parseCalendarDate(
+        getCalendarDateForWeekDay(0, 0),
+      );
+      if (!monday) return;
+      const day = (date.getDay() + 6) % 7;
+      const daysFromMonday = Math.round(
+        (date.getTime() - monday.getTime()) / (24 * 60 * 60 * 1000),
+      );
+      const scheduled = addCalendarEvent(
+        {
+          ...draft,
+          date: details.date,
+          day,
+          weekOffset: Math.floor(daysFromMonday / 7),
+          start,
+          end,
+        },
+        schedulingCategoryId,
+        true,
+      );
+      if (!scheduled) return;
+      markLifeLogScheduled(schedulingLifeLog.id);
+      setSchedulingLifeLog(null);
+      setSchedulingCategoryId("");
+    } else {
+      addCalendarEvent(draft);
+    }
     setDraft(null);
   }
 
@@ -584,6 +626,25 @@ export default function WeeklyCalendar() {
     setIsLifeLogDialogOpen(true);
   }
 
+  function openLifeLogScheduler(log: LifeLog) {
+    setSchedulingLifeLog(log);
+    setSchedulingCategoryId("");
+    setDraft({
+      date: "",
+      day: 0,
+      weekOffset: 0,
+      start: 0,
+      end: 0,
+      title: log.body,
+    });
+  }
+
+  function closeEventDialog() {
+    setDraft(null);
+    setSchedulingLifeLog(null);
+    setSchedulingCategoryId("");
+  }
+
   function saveLifeLog(
     body: string,
     eventId: string | undefined,
@@ -664,6 +725,7 @@ export default function WeeklyCalendar() {
             onAdd={openNewLifeLog}
             onDelete={removeLifeLog}
             onEdit={openLifeLogEditor}
+            onSchedule={openLifeLogScheduler}
           />
         ) : mobilePage === "settings" ? (
           <MobileSettings />
@@ -928,14 +990,21 @@ export default function WeeklyCalendar() {
         <EventDialog
           draft={draft}
           categories={categories}
-          activeCategoryId={activeCategoryId}
-          onCategoryChange={setSelectedCategoryId}
+          activeCategoryId={
+            schedulingLifeLog ? schedulingCategoryId : activeCategoryId
+          }
+          requiresScheduleDetails={schedulingLifeLog !== null}
+          onCategoryChange={
+            schedulingLifeLog
+              ? setSchedulingCategoryId
+              : setSelectedCategoryId
+          }
           onTitleChange={(title) =>
             setDraft((current) =>
               current ? { ...current, title } : current,
             )
           }
-          onCancel={() => setDraft(null)}
+          onCancel={closeEventDialog}
           onAdd={addEvent}
         />
       )}

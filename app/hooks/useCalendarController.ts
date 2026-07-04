@@ -40,7 +40,10 @@ import {
   saveSharedCalendarState,
 } from "@/app/lib/supabaseStorage";
 import { parseTime } from "@/app/lib/time";
-import { normalizeLifeLogBody } from "@/app/lib/lifeLogs";
+import {
+  markLifeLogAsScheduled,
+  normalizeLifeLogBody,
+} from "@/app/lib/lifeLogs";
 import type {
   CalendarEvent,
   CalendarTemplate,
@@ -289,19 +292,26 @@ export default function useCalendarController(weekOffset: number) {
     setEvents(runRoutineEngine(events, datedMovedEvent));
   }
 
-  function addEvent(draft: Draft) {
-    if (!activeCategoryId) return;
+  function addEvent(
+    draft: Draft,
+    categoryId = activeCategoryId,
+    preserveTitle = false,
+  ) {
+    if (!categoryId) return false;
     const title = normalizeNewEventTitle(
-      activeCategoryId,
+      categoryId,
       draft.title,
     );
-    if (title === null) return;
+    const eventTitle = preserveTitle
+      ? draft.title?.trim() || undefined
+      : title ?? undefined;
+    if (title === null || (preserveTitle && !eventTitle)) return false;
 
     const nextEvents = mergeUniqueEvents(events, [
       materializeEventDate({
         id: crypto.randomUUID(),
-        title,
-        categoryId: activeCategoryId,
+        title: eventTitle,
+        categoryId,
         mode: "fixed",
         status: "pending",
         linkType: "none",
@@ -317,7 +327,9 @@ export default function useCalendarController(weekOffset: number) {
     if (nextEvents.length !== events.length) {
       showUndo(events);
       setEvents(attachRoutineRelations(nextEvents));
+      return true;
     }
+    return false;
   }
 
   function deleteEvent(id: string) {
@@ -661,6 +673,15 @@ export default function useCalendarController(weekOffset: number) {
     setLogs((current) => current.filter((log) => log.id !== id));
   }
 
+  function markLifeLogScheduled(id: string) {
+    const updatedAt = new Date().toISOString();
+    setLogs((current) =>
+      current.map((log) =>
+        log.id === id ? markLifeLogAsScheduled(log, updatedAt) : log,
+      ),
+    );
+  }
+
   return {
     activeCategoryId,
     addLifeLog,
@@ -680,6 +701,7 @@ export default function useCalendarController(weekOffset: number) {
     hasLoadedTemplates,
     isSyncingSharedState,
     logs,
+    markLifeLogScheduled,
     moveEvent,
     resetEventToPending,
     saveCategory,

@@ -20,6 +20,7 @@ type MobileLifeLogProps = {
   onAdd: () => void;
   onDelete: (log: LifeLog) => void;
   onEdit: (log: LifeLog) => void;
+  onSchedule: (log: LifeLog) => void;
 };
 
 export default function MobileLifeLog({
@@ -31,6 +32,7 @@ export default function MobileLifeLog({
   onAdd,
   onDelete,
   onEdit,
+  onSchedule,
 }: MobileLifeLogProps) {
   const timelineGroups = getLifeLogTimelineGroups(getInboxLifeLogs(logs));
 
@@ -95,12 +97,27 @@ export default function MobileLifeLog({
                         <span className="mt-2 inline-flex rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">
                           {getLifeLogFocusAreaLabel(log.focusArea)}
                         </span>
+                        {log.status === "scheduled" && (
+                          <span className="ml-2 mt-2 inline-flex rounded-full bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700">
+                            📅 予定化済み
+                          </span>
+                        )}
                         <LifeLogEventLink
                           categories={categories}
                           events={events}
                           log={log}
                         />
                         <div className="mt-2 flex justify-end gap-2">
+                          {log.focusArea === "future" &&
+                            log.status === "inbox" && (
+                              <button
+                                type="button"
+                                onClick={() => onSchedule(log)}
+                                className="min-h-9 rounded-lg bg-amber-50 px-3 text-xs font-bold text-amber-700"
+                              >
+                                予定にする
+                              </button>
+                            )}
                           <button
                             type="button"
                             onClick={() => onEdit(log)}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { DAYS, FREE_CATEGORY_ID } from "@/app/lib/calendar";
 import { formatTime } from "@/app/lib/time";
 import type {
@@ -6,33 +7,82 @@ import type {
   EventEditDraft,
 } from "@/app/types/calendar";
 
+export type EventDialogScheduleDetails = {
+  date: string;
+  start: string;
+  end: string;
+};
+
 type EventDialogProps = {
   draft: Draft;
   categories: Category[];
   activeCategoryId: string;
+  requiresScheduleDetails?: boolean;
   onCategoryChange: (categoryId: string) => void;
   onTitleChange: (title: string) => void;
   onCancel: () => void;
-  onAdd: () => void;
+  onAdd: (details?: EventDialogScheduleDetails) => void;
 };
 
 export default function EventDialog({
   draft,
   categories,
   activeCategoryId,
+  requiresScheduleDetails = false,
   onCategoryChange,
   onTitleChange,
   onCancel,
   onAdd,
 }: EventDialogProps) {
+  const [date, setDate] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const hasValidScheduleDetails =
+    !requiresScheduleDetails ||
+    Boolean(date && start && end && end > start);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
         <h3 className="text-xl font-bold text-slate-900">予定を追加</h3>
-        <p className="mt-1 text-sm text-slate-500">
-          {DAYS[draft.day]}曜日 {formatTime(draft.start)}〜
-          {formatTime(draft.end)}
-        </p>
+        {requiresScheduleDetails ? (
+          <div className="mt-4 grid gap-3">
+            <label className="block text-sm font-bold text-slate-700">
+              日付
+              <input
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-sm font-bold text-slate-700">
+                開始時間
+                <input
+                  type="time"
+                  value={start}
+                  onChange={(event) => setStart(event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
+                />
+              </label>
+              <label className="block text-sm font-bold text-slate-700">
+                終了時間
+                <input
+                  type="time"
+                  value={end}
+                  onChange={(event) => setEnd(event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
+                />
+              </label>
+            </div>
+          </div>
+        ) : (
+          <p className="mt-1 text-sm text-slate-500">
+            {DAYS[draft.day]}曜日 {formatTime(draft.start)}〜
+            {formatTime(draft.end)}
+          </p>
+        )}
 
         <label className="mt-4 block text-sm font-bold text-slate-700">
           予定
@@ -49,7 +99,8 @@ export default function EventDialog({
           ))}
         </select>
 
-        {activeCategoryId === FREE_CATEGORY_ID && (
+        {(requiresScheduleDetails ||
+          activeCategoryId === FREE_CATEGORY_ID) && (
           <>
             <label className="mt-4 block text-sm font-bold text-slate-700">
               予定名
@@ -78,10 +129,19 @@ export default function EventDialog({
             キャンセル
           </button>
           <button
-            onClick={onAdd}
+            onClick={() =>
+              onAdd(
+                requiresScheduleDetails
+                  ? { date, start, end }
+                  : undefined,
+              )
+            }
             disabled={
               categories.length === 0 ||
-              (activeCategoryId === FREE_CATEGORY_ID &&
+              !activeCategoryId ||
+              !hasValidScheduleDetails ||
+              ((requiresScheduleDetails ||
+                activeCategoryId === FREE_CATEGORY_ID) &&
                 !draft.title?.trim())
             }
             className="flex-1 rounded-xl bg-blue-600 py-3 font-bold text-white disabled:opacity-40"

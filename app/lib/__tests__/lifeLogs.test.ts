@@ -5,6 +5,7 @@ import {
   getLifeLogFocusAreaLabel,
   getLifeLogTimelineGroups,
   getLifeLogsForEvent,
+  markLifeLogAsScheduled,
   normalizeLifeLogBody,
   sortLifeLogsNewestFirst,
 } from "@/app/lib/lifeLogs";
@@ -64,7 +65,7 @@ describe("ライフログ", () => {
     expect(normalizeLifeLog({ ...olderLog, createdAt: "invalid" })).toBeNull();
   });
 
-  it("既存ログをInboxへ移行し、一覧対象をInboxだけにする", () => {
+  it("Inboxと予定化済みログを一覧対象にする", () => {
     expect(normalizeLifeLog(olderLog)?.status).toBe("inbox");
     expect(
       normalizeLifeLog({
@@ -86,7 +87,21 @@ describe("ライフログ", () => {
         { ...newerLog, status: "scheduled" },
         { ...newerLog, id: "done", status: "done" },
       ]).map(({ id }) => id),
-    ).toEqual(["older"]);
+    ).toEqual(["older", "newer"]);
+  });
+
+  it("予定化後も本文を維持してstatusだけをscheduledへ更新する", () => {
+    expect(
+      markLifeLogAsScheduled(
+        { ...olderLog, focusArea: "future" },
+        "2026-07-03T01:00:00.000Z",
+      ),
+    ).toEqual({
+      ...olderLog,
+      focusArea: "future",
+      status: "scheduled",
+      updatedAt: "2026-07-03T01:00:00.000Z",
+    });
   });
 
   it("予定に紐付くログだけを新しい順で取得する", () => {
