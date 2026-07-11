@@ -8,6 +8,7 @@ import {
   getFutureLifeLogs,
   getInboxLifeLogs,
   getLifeLogFocusAreaLabel,
+  getLifeLogStatusLabel,
   getLifeLogTimelineGroups,
 } from "@/app/lib/lifeLogs";
 import type {
@@ -77,7 +78,7 @@ export default function MobileLifeLog({
               : "text-slate-500"
           }`}
         >
-          Inbox
+          📥 Inbox
         </button>
         <button
           type="button"
@@ -89,7 +90,7 @@ export default function MobileLifeLog({
               : "text-slate-500"
           }`}
         >
-          未来
+          🟡 未来を作る
         </button>
       </div>
 
@@ -117,6 +118,9 @@ export default function MobileLifeLog({
                     {formatLifeLogDate(log.createdAt)}
                   </time>
                   <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-500">
+                      {getLifeLogStatusLabel(log.status)}
+                    </span>
                     {log.status === "scheduled" && (
                       <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700">
                         📅 予定化済み

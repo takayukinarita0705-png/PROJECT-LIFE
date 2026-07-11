@@ -51,9 +51,18 @@ export function sortLifeLogsNewestFirst(logs: LifeLog[]) {
 }
 
 export function getInboxLifeLogs(logs: LifeLog[]) {
-  return logs.filter(
-    (log) => log.status === "inbox" || log.status === "scheduled",
-  );
+  return sortLifeLogsNewestFirst(logs);
+}
+
+export function getLifeLogStatusLabel(status: LifeLog["status"]) {
+  switch (status) {
+    case "scheduled":
+      return "scheduled";
+    case "done":
+      return "done";
+    case "inbox":
+      return "inbox";
+  }
 }
 
 export function getFutureLifeLogs(logs: LifeLog[]) {

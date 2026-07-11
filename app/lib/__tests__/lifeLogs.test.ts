@@ -4,6 +4,7 @@ import {
   getCurrentWeekLifeLogs,
   getInboxLifeLogs,
   getLifeLogFocusAreaLabel,
+  getLifeLogStatusLabel,
   getLifeLogTimelineGroups,
   getLifeLogsForEvent,
   markLifeLogAsScheduled,
@@ -66,7 +67,7 @@ describe("ライフログ", () => {
     expect(normalizeLifeLog({ ...olderLog, createdAt: "invalid" })).toBeNull();
   });
 
-  it("Inboxと予定化済みログを一覧対象にする", () => {
+  it("Inboxでは全ログを新しい順で一覧対象にする", () => {
     expect(normalizeLifeLog(olderLog)?.status).toBe("inbox");
     expect(
       normalizeLifeLog({
@@ -88,7 +89,10 @@ describe("ライフログ", () => {
         { ...newerLog, status: "scheduled" },
         { ...newerLog, id: "done", status: "done" },
       ]).map(({ id }) => id),
-    ).toEqual(["older", "newer"]);
+    ).toEqual(["newer", "done", "older"]);
+    expect(getLifeLogStatusLabel("inbox")).toBe("inbox");
+    expect(getLifeLogStatusLabel("scheduled")).toBe("scheduled");
+    expect(getLifeLogStatusLabel("done")).toBe("done");
   });
 
   it("未来を作るログだけを新しい順で取得する", () => {
