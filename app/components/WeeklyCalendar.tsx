@@ -670,6 +670,10 @@ export default function WeeklyCalendar() {
     return saved;
   }
 
+  function classifyLifeLog(log: LifeLog, focusArea: LifeLogFocusArea) {
+    updateLifeLog(log.id, log.body, log.eventId, focusArea);
+  }
+
   function removeLifeLog(log: LifeLog) {
     if (!window.confirm("このログを削除しますか？")) return;
     deleteLifeLog(log.id);
@@ -734,6 +738,7 @@ export default function WeeklyCalendar() {
             hasLoadedState={hasLoadedEvents}
             logs={logs}
             onAdd={openNewLifeLog}
+            onClassify={classifyLifeLog}
             onDelete={removeLifeLog}
             onEdit={openLifeLogEditor}
             onOpenEvent={openLifeLogEvent}

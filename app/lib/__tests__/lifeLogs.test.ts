@@ -9,6 +9,7 @@ import {
   getLifeLogStatusForEventStatus,
   getLifeLogTimelineGroups,
   getLifeLogsForEvent,
+  getLifeLogsByFocusFilter,
   markLifeLogAsInbox,
   markLifeLogAsScheduled,
   normalizeLifeLogBody,
@@ -110,6 +111,33 @@ describe("ライフログ", () => {
         newerLog,
       ]).map(({ id }) => id),
     ).toEqual(["newer", "done", "older"]);
+  });
+
+  it("分類フィルターで該当するログだけを新しい順で取得する", () => {
+    const logs = [
+      { ...olderLog, id: "unset", focusArea: "unset" as const },
+      { ...newerLog, id: "now", focusArea: "now" as const },
+      { ...newerLog, id: "future", focusArea: "future" as const },
+      { ...newerLog, id: "review", focusArea: "review" as const },
+      { ...newerLog, id: "discard", focusArea: "discard" as const },
+    ];
+
+    expect(getLifeLogsByFocusFilter(logs, "all").map(({ id }) => id)).toEqual([
+      "now",
+      "future",
+      "review",
+      "discard",
+      "unset",
+    ]);
+    expect(getLifeLogsByFocusFilter(logs, "unset").map(({ id }) => id)).toEqual([
+      "unset",
+    ]);
+    expect(getLifeLogsByFocusFilter(logs, "future").map(({ id }) => id)).toEqual([
+      "future",
+    ]);
+    expect(getLifeLogsByFocusFilter(logs, "discard").map(({ id }) => id)).toEqual([
+      "discard",
+    ]);
   });
 
   it("予定化後も本文を維持してstatusだけをscheduledへ更新する", () => {

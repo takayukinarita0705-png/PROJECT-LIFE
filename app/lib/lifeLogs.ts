@@ -15,6 +15,8 @@ export type FutureLifeLogWeeklyRecord = {
   done: number;
 };
 
+export type LifeLogFocusFilter = LifeLogFocusArea | "all";
+
 export const LIFE_LOG_FOCUS_AREA_OPTIONS: ReadonlyArray<{
   value: LifeLogFocusArea;
   label: string;
@@ -24,6 +26,14 @@ export const LIFE_LOG_FOCUS_AREA_OPTIONS: ReadonlyArray<{
   { value: "future", label: "🟡 未来を作る" },
   { value: "review", label: "🔵 見直す" },
   { value: "discard", label: "⚪ 手放す" },
+];
+
+export const LIFE_LOG_FOCUS_FILTER_OPTIONS: ReadonlyArray<{
+  value: LifeLogFocusFilter;
+  label: string;
+}> = [
+  { value: "all", label: "すべて" },
+  ...LIFE_LOG_FOCUS_AREA_OPTIONS,
 ];
 
 export function getLifeLogFocusAreaLabel(focusArea: LifeLogFocusArea) {
@@ -93,6 +103,17 @@ export function getFutureLifeLogs(logs: LifeLog[]) {
   return sortLifeLogsNewestFirst(
     logs.filter((log) => log.focusArea === "future"),
   );
+}
+
+export function getLifeLogsByFocusFilter(
+  logs: LifeLog[],
+  filter: LifeLogFocusFilter,
+) {
+  const filteredLogs =
+    filter === "all"
+      ? logs
+      : logs.filter((log) => log.focusArea === filter);
+  return sortLifeLogsNewestFirst(filteredLogs);
 }
 
 export function getLifeLogsForEvent(logs: LifeLog[], eventId: string) {

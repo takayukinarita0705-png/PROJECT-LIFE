@@ -68,22 +68,24 @@ export default function LifeLogDialog({
             placeholder="思いついたことや出来事を記録"
           />
         </label>
-        <label className="mt-4 block text-sm font-bold text-slate-600">
-          分類
-          <select
-            value={focusArea}
-            onChange={(event) =>
-              setFocusArea(event.target.value as LifeLogFocusArea)
-            }
-            className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-slate-500"
-          >
-            {LIFE_LOG_FOCUS_AREA_OPTIONS.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {log && (
+          <label className="mt-4 block text-sm font-bold text-slate-600">
+            分類
+            <select
+              value={focusArea}
+              onChange={(event) =>
+                setFocusArea(event.target.value as LifeLogFocusArea)
+              }
+              className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-800 outline-none focus:border-slate-500"
+            >
+              {LIFE_LOG_FOCUS_AREA_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="mt-4 block text-sm font-bold text-slate-600">
           予定に紐付ける（任意）
           <select
