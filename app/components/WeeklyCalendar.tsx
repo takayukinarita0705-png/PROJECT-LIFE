@@ -54,7 +54,10 @@ import {
   isPerformanceTrackedCategory,
 } from "@/app/lib/records";
 import { isRoutineLinkedEvent } from "@/app/lib/engine/routineEngine";
-import { getCurrentWeekLifeLogs } from "@/app/lib/lifeLogs";
+import {
+  getCurrentWeekLifeLogs,
+  getFutureLifeLogWeeklyRecord,
+} from "@/app/lib/lifeLogs";
 import {
   getInitialMobilePage,
   isWeeklyReviewDay,
@@ -289,6 +292,10 @@ export default function WeeklyCalendar() {
     currentTime === null || !hasLoadedEvents
       ? []
       : getCurrentWeekLifeLogs(logs, currentTime);
+  const futureLifeLogRecord =
+    currentTime === null || !hasLoadedEvents
+      ? { total: 0, future: 0, scheduled: 0, done: 0 }
+      : getFutureLifeLogWeeklyRecord(logs, currentTime);
   useEffect(() => {
     let cancelled = false;
     const updateCurrentTime = () => {
@@ -709,6 +716,7 @@ export default function WeeklyCalendar() {
             hasLoadedEvents={hasLoadedEvents}
             habitHeatmap={habitHeatmap}
             habitWeeklyComparison={habitWeeklyComparison}
+            futureLifeLogRecord={futureLifeLogRecord}
             isReviewDay={
               currentTime !== null && isWeeklyReviewDay(currentTime)
             }

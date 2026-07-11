@@ -2,6 +2,7 @@ import ActualsList from "./ActualsList";
 import HabitActualRanking from "./HabitActualRanking";
 import HabitHeatmap from "./HabitHeatmap";
 import HabitWeeklyComparison from "./HabitWeeklyComparison";
+import FutureLifeLogProgress from "./FutureLifeLogProgress";
 import WeeklyMvpCard from "./WeeklyMvpCard";
 import WeeklyLifeLogs from "./WeeklyLifeLogs";
 import WeeklyCategoryGoals from "./WeeklyCategoryGoals";
@@ -16,6 +17,9 @@ import type {
   WeeklyMvp,
 } from "@/app/lib/records";
 import type {
+  FutureLifeLogWeeklyRecord,
+} from "@/app/lib/lifeLogs";
+import type {
   CalendarEvent,
   Category,
   LifeLog,
@@ -29,6 +33,7 @@ type MobileWeekReviewProps = {
   hasLoadedEvents: boolean;
   habitHeatmap: HabitHeatmapDay[];
   habitWeeklyComparison: HabitWeeklyComparisonValue;
+  futureLifeLogRecord: FutureLifeLogWeeklyRecord;
   isReviewDay: boolean;
   logs: LifeLog[];
   onViewAllLogs: () => void;
@@ -48,6 +53,7 @@ export default function MobileWeekReview({
   hasLoadedEvents,
   habitHeatmap,
   habitWeeklyComparison,
+  futureLifeLogRecord,
   isReviewDay,
   logs,
   onViewAllLogs,
@@ -83,6 +89,7 @@ export default function MobileWeekReview({
               </p>
             )}
             <WeeklyMvpCard mvp={weeklyMvp} />
+            <FutureLifeLogProgress record={futureLifeLogRecord} />
             <div className="mt-3 rounded-2xl bg-violet-50 px-4 py-3">
               <p className="text-xs font-bold text-violet-500">今週の一言</p>
               <p className="mt-1 text-sm font-bold text-violet-800">

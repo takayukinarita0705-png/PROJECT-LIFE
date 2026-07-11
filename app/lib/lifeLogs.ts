@@ -8,6 +8,13 @@ import {
   getCalendarDateForWeekDay,
 } from "@/app/lib/date";
 
+export type FutureLifeLogWeeklyRecord = {
+  total: number;
+  future: number;
+  scheduled: number;
+  done: number;
+};
+
 export const LIFE_LOG_FOCUS_AREA_OPTIONS: ReadonlyArray<{
   value: LifeLogFocusArea;
   label: string;
@@ -139,6 +146,22 @@ export function getCurrentWeekLifeLogs(
     const date = formatCalendarDate(new Date(log.createdAt));
     return date >= weekStart && date <= weekEnd;
   });
+}
+
+export function getFutureLifeLogWeeklyRecord(
+  logs: LifeLog[],
+  referenceDate = new Date(),
+): FutureLifeLogWeeklyRecord {
+  const weekLogs = getCurrentWeekLifeLogs(logs, referenceDate);
+
+  return {
+    total: weekLogs.length,
+    future: weekLogs.filter((log) => log.focusArea === "future").length,
+    scheduled: weekLogs.filter(
+      (log) => log.status === "scheduled" || log.status === "done",
+    ).length,
+    done: weekLogs.filter((log) => log.status === "done").length,
+  };
 }
 
 export function formatLifeLogTime(value: string) {

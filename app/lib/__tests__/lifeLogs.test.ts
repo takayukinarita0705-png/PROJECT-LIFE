@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   getFutureLifeLogs,
+  getFutureLifeLogWeeklyRecord,
   getCurrentWeekLifeLogs,
   getInboxLifeLogs,
   getLifeLogFocusAreaLabel,
@@ -206,5 +207,53 @@ describe("ライフログ", () => {
     expect(
       getCurrentWeekLifeLogs(logs, referenceDate).map(({ id }) => id),
     ).toEqual(["friday", "tuesday"]);
+  });
+
+  it("火曜日始まりの今週でFuture Engineの流れを集計する", () => {
+    const referenceDate = new Date(2026, 6, 1, 12);
+    const logs: LifeLog[] = [
+      {
+        ...olderLog,
+        id: "previous-monday",
+        focusArea: "future",
+        status: "done",
+        createdAt: new Date(2026, 5, 29, 12).toISOString(),
+      },
+      {
+        ...olderLog,
+        id: "idea",
+        focusArea: "unset",
+        status: "inbox",
+        createdAt: new Date(2026, 5, 30, 8).toISOString(),
+      },
+      {
+        ...olderLog,
+        id: "future",
+        focusArea: "future",
+        status: "inbox",
+        createdAt: new Date(2026, 6, 1, 9).toISOString(),
+      },
+      {
+        ...olderLog,
+        id: "scheduled",
+        focusArea: "future",
+        status: "scheduled",
+        createdAt: new Date(2026, 6, 2, 10).toISOString(),
+      },
+      {
+        ...olderLog,
+        id: "done",
+        focusArea: "future",
+        status: "done",
+        createdAt: new Date(2026, 6, 6, 22).toISOString(),
+      },
+    ];
+
+    expect(getFutureLifeLogWeeklyRecord(logs, referenceDate)).toEqual({
+      total: 4,
+      future: 3,
+      scheduled: 2,
+      done: 1,
+    });
   });
 });
