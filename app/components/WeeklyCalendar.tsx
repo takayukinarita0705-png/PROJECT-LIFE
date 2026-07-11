@@ -114,6 +114,7 @@ export default function WeeklyCalendar() {
     logs,
     markLifeLogScheduled,
     moveEvent: moveCalendarEvent,
+    moveEventToTomorrow,
     resetEventToPending,
     saveCategory,
     saveCurrentWeekAsTemplate,
@@ -630,6 +631,7 @@ export default function WeeklyCalendar() {
       start: 0,
       end: 0,
       title: log.body,
+      lifeLogId: log.id,
     });
   }
 
@@ -731,6 +733,7 @@ export default function WeeklyCalendar() {
             hasLoadedEvents={hasLoadedEvents}
             logs={logs}
             onResetStatus={resetEventToPending}
+            onMoveToTomorrow={moveEventToTomorrow}
             onToggleCompleted={toggleEventCompleted}
             onToggleSkipped={toggleEventSkip}
             todaySchedule={todaySchedule}

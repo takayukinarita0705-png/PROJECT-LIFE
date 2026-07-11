@@ -9,7 +9,9 @@ import {
   ensureFreeCategory,
   filterEventsByDate,
   filterEventsByDates,
+  isCarryoverEligibleEvent,
   mergeUniqueEvents,
+  moveEventToNextDay,
   normalizeNewEventTitle,
   preserveRemoteEventStatuses,
   reconcileTemplateEvents,
@@ -352,6 +354,76 @@ describe("Event完了状態", () => {
     expect(resetEventStatus([completed, skipped], "skipped")).toEqual([
       completed,
       { ...skipped, status: "pending" },
+    ]);
+  });
+
+  it("フリー予定は翌日の同じ時間へpendingで繰り越す", () => {
+    const skippedFree = createEvent({
+      id: "free",
+      categoryId: FREE_CATEGORY_ID,
+      status: "skipped",
+      date: "2026-07-01",
+      day: 1,
+      weekOffset: 0,
+      start: 10 * 60,
+      end: 11 * 60,
+    });
+
+    expect(isCarryoverEligibleEvent(skippedFree)).toBe(true);
+    expect(
+      moveEventToNextDay(
+        [skippedFree],
+        skippedFree.id,
+        new Date(2026, 6, 1, 12),
+      ),
+    ).toEqual([
+      {
+        ...skippedFree,
+        date: "2026-07-02",
+        day: 2,
+        weekOffset: 0,
+        status: "pending",
+      },
+    ]);
+  });
+
+  it("Future Engineから予定化した予定はlifeLogIdで繰り越し対象にする", () => {
+    const scheduledFromLog = createEvent({
+      id: "future-event",
+      categoryId: "reading",
+      lifeLogId: "log-1",
+      status: "skipped",
+      date: "2026-07-06",
+      day: 6,
+      weekOffset: -1,
+    });
+
+    expect(isCarryoverEligibleEvent(scheduledFromLog)).toBe(true);
+    expect(
+      moveEventToNextDay(
+        [scheduledFromLog],
+        scheduledFromLog.id,
+        new Date(2026, 6, 1, 12),
+      )[0],
+    ).toMatchObject({
+      date: "2026-07-07",
+      day: 0,
+      weekOffset: 1,
+      status: "pending",
+      lifeLogId: "log-1",
+    });
+  });
+
+  it("仕事など対象外の予定は繰り越さない", () => {
+    const skippedWork = createEvent({
+      id: "work",
+      status: "skipped",
+      date: "2026-07-01",
+    });
+
+    expect(isCarryoverEligibleEvent(skippedWork)).toBe(false);
+    expect(moveEventToNextDay([skippedWork], skippedWork.id)).toEqual([
+      skippedWork,
     ]);
   });
 });

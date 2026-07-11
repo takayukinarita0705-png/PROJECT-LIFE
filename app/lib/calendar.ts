@@ -11,8 +11,12 @@ import {
   toMinutes,
 } from "@/app/lib/time";
 import {
+  addDaysToCalendarDate,
+  getCalendarDayIndex,
+  getWeekOffsetForDate,
   getWeekStart,
   isCalendarDate,
+  parseCalendarDate,
   resolveEventDate,
 } from "@/app/lib/date";
 
@@ -312,6 +316,37 @@ export function resetEventStatus(
       ? { ...event, status: "pending" as const }
       : event,
   );
+}
+
+export function isCarryoverEligibleEvent(event: CalendarEvent) {
+  return event.categoryId === FREE_CATEGORY_ID || event.lifeLogId !== undefined;
+}
+
+export function moveEventToNextDay(
+  events: CalendarEvent[],
+  eventId: string,
+  referenceDate = new Date(),
+) {
+  return events.map((event) => {
+    if (event.id !== eventId || !isCarryoverEligibleEvent(event)) {
+      return event;
+    }
+
+    const nextDate = addDaysToCalendarDate(
+      resolveEventDate(event, referenceDate),
+      1,
+    );
+    const parsedNextDate = parseCalendarDate(nextDate);
+    if (parsedNextDate === null) return event;
+
+    return {
+      ...event,
+      date: nextDate,
+      day: getCalendarDayIndex(parsedNextDate),
+      weekOffset: getWeekOffsetForDate(parsedNextDate, referenceDate),
+      status: "pending" as const,
+    };
+  });
 }
 
 export function mergeUniqueEvents(

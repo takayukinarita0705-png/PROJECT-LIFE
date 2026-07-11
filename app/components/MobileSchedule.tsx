@@ -1,4 +1,8 @@
-import { DAYS, dateLabel } from "@/app/lib/calendar";
+import {
+  DAYS,
+  dateLabel,
+  isCarryoverEligibleEvent,
+} from "@/app/lib/calendar";
 import ActualsList from "./ActualsList";
 import { getLifeLogsForEvent } from "@/app/lib/lifeLogs";
 import {
@@ -75,6 +79,7 @@ function MobileEventCard({
   isCurrent,
   item: { event, category },
   logs,
+  onMoveToTomorrow,
   onResetStatus,
   onToggleCompleted,
   onToggleSkipped,
@@ -82,6 +87,7 @@ function MobileEventCard({
   isCurrent: boolean;
   item: ScheduleItem;
   logs: LifeLog[];
+  onMoveToTomorrow: (eventId: string) => void;
   onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
@@ -90,6 +96,7 @@ function MobileEventCard({
   const isCompleted = event.status === "completed";
   const isSkipped = event.status === "skipped";
   const isCheckable = isPerformanceTrackedCategory(category);
+  const canMoveToTomorrow = isSkipped && isCarryoverEligibleEvent(event);
   const linkedLogs = getLifeLogsForEvent(logs, event.id);
 
   return (
@@ -158,18 +165,30 @@ function MobileEventCard({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {!isCheckable ? null : isCompleted || isSkipped ? (
-          <button
-            type="button"
-            onClick={() => onResetStatus(event.id)}
-            aria-label={`${displayTitle}を未完了に戻す`}
-            className={`min-h-11 rounded-xl px-3 text-xs font-bold ${
-              isCompleted
-                ? "bg-emerald-100 text-emerald-700"
-                : "bg-slate-700 text-white"
-            }`}
-          >
-            戻す
-          </button>
+          <>
+            {canMoveToTomorrow && (
+              <button
+                type="button"
+                onClick={() => onMoveToTomorrow(event.id)}
+                aria-label={`${displayTitle}を明日に移動`}
+                className="min-h-11 rounded-xl bg-amber-100 px-3 text-xs font-bold text-amber-700"
+              >
+                明日に移動
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onResetStatus(event.id)}
+              aria-label={`${displayTitle}を未完了に戻す`}
+              className={`min-h-11 rounded-xl px-3 text-xs font-bold ${
+                isCompleted
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-slate-700 text-white"
+              }`}
+            >
+              戻す
+            </button>
+          </>
         ) : (
           <>
             <button
@@ -200,6 +219,7 @@ type MobileScheduleProps = {
   hasCheckedLocalCache: boolean;
   hasLoadedEvents: boolean;
   logs: LifeLog[];
+  onMoveToTomorrow: (eventId: string) => void;
   onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
@@ -212,6 +232,7 @@ export default function MobileSchedule({
   hasCheckedLocalCache,
   hasLoadedEvents,
   logs,
+  onMoveToTomorrow,
   onResetStatus,
   onToggleCompleted,
   onToggleSkipped,
@@ -309,6 +330,7 @@ export default function MobileSchedule({
                 isCurrent
                 item={currentScheduleItem}
                 logs={logs}
+                onMoveToTomorrow={onMoveToTomorrow}
                 onResetStatus={onResetStatus}
                 onToggleCompleted={onToggleCompleted}
                 onToggleSkipped={onToggleSkipped}
@@ -337,6 +359,7 @@ export default function MobileSchedule({
                     isCurrent={false}
                     item={item}
                     logs={logs}
+                    onMoveToTomorrow={onMoveToTomorrow}
                     onResetStatus={onResetStatus}
                     onToggleCompleted={onToggleCompleted}
                     onToggleSkipped={onToggleSkipped}

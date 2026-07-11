@@ -11,6 +11,7 @@ import {
   getWeekDates,
   ensureFreeCategory,
   mergeUniqueEvents,
+  moveEventToNextDay,
   preserveRemoteEventStatuses,
   reconcileTemplateEvents,
   normalizeNewEventTitle,
@@ -348,6 +349,7 @@ export default function useCalendarController(weekOffset: number) {
         start: draft.start,
         end: draft.end,
         weekOffset: draft.weekOffset,
+        lifeLogId: draft.lifeLogId,
       }),
     ]);
 
@@ -380,6 +382,12 @@ export default function useCalendarController(weekOffset: number) {
   function resetEventToPending(id: string) {
     locallyChangedStatusIdsRef.current.add(id);
     setEvents((current) => resetEventStatus(current, id));
+  }
+
+  function moveEventToTomorrow(id: string) {
+    locallyChangedStatusIdsRef.current.add(id);
+    showUndo(events);
+    setEvents((current) => moveEventToNextDay(current, id));
   }
 
   function saveEventEdit(
@@ -742,6 +750,7 @@ export default function useCalendarController(weekOffset: number) {
     logs,
     markLifeLogScheduled,
     moveEvent,
+    moveEventToTomorrow,
     resetEventToPending,
     saveCategory,
     saveCurrentWeekAsTemplate,

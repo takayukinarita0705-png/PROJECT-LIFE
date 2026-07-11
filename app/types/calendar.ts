@@ -21,6 +21,7 @@ export type CalendarEvent = {
   end: number;
   weekOffset: number;
   source?: "fixed-template";
+  lifeLogId?: string;
   routineRelation?: RoutineRelation;
   routineDetached?: boolean;
 };
@@ -106,6 +107,7 @@ export type Draft = {
   start: number;
   end: number;
   title?: string;
+  lifeLogId?: string;
 };
 
 export type EventEditDraft = {

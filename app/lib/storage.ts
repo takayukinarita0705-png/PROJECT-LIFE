@@ -70,6 +70,7 @@ export function normalizeCalendarEvent(
     typeof event.end === "number" &&
     typeof event.weekOffset === "number" &&
     (event.source === undefined || event.source === "fixed-template") &&
+    (event.lifeLogId === undefined || typeof event.lifeLogId === "string") &&
     (event.routineRelation === undefined ||
       event.routineRelation === "after-work-meal" ||
       event.routineRelation === "after-work-bath") &&
