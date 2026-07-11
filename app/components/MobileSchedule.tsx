@@ -80,6 +80,7 @@ function MobileEventCard({
   item: { event, category },
   logs,
   onMoveToTomorrow,
+  onOpenLifeLog,
   onResetStatus,
   onToggleCompleted,
   onToggleSkipped,
@@ -88,6 +89,7 @@ function MobileEventCard({
   item: ScheduleItem;
   logs: LifeLog[];
   onMoveToTomorrow: (eventId: string) => void;
+  onOpenLifeLog: (log: LifeLog) => void;
   onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
@@ -153,12 +155,14 @@ function MobileEventCard({
         {linkedLogs.length > 0 && (
           <div className="mt-1 grid gap-1">
             {linkedLogs.map((log) => (
-              <p
+              <button
                 key={log.id}
-                className="whitespace-pre-wrap break-words rounded-lg bg-slate-100/80 px-2 py-1 text-xs text-slate-600"
+                type="button"
+                onClick={() => onOpenLifeLog(log)}
+                className="whitespace-pre-wrap break-words rounded-lg bg-slate-100/80 px-2 py-1 text-left text-xs text-slate-600"
               >
                 📝 {log.body}
-              </p>
+              </button>
             ))}
           </div>
         )}
@@ -220,6 +224,7 @@ type MobileScheduleProps = {
   hasLoadedEvents: boolean;
   logs: LifeLog[];
   onMoveToTomorrow: (eventId: string) => void;
+  onOpenLifeLog: (log: LifeLog) => void;
   onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
@@ -233,6 +238,7 @@ export default function MobileSchedule({
   hasLoadedEvents,
   logs,
   onMoveToTomorrow,
+  onOpenLifeLog,
   onResetStatus,
   onToggleCompleted,
   onToggleSkipped,
@@ -331,6 +337,7 @@ export default function MobileSchedule({
                 item={currentScheduleItem}
                 logs={logs}
                 onMoveToTomorrow={onMoveToTomorrow}
+                onOpenLifeLog={onOpenLifeLog}
                 onResetStatus={onResetStatus}
                 onToggleCompleted={onToggleCompleted}
                 onToggleSkipped={onToggleSkipped}
@@ -360,6 +367,7 @@ export default function MobileSchedule({
                     item={item}
                     logs={logs}
                     onMoveToTomorrow={onMoveToTomorrow}
+                    onOpenLifeLog={onOpenLifeLog}
                     onResetStatus={onResetStatus}
                     onToggleCompleted={onToggleCompleted}
                     onToggleSkipped={onToggleSkipped}

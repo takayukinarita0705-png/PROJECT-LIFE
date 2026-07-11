@@ -5,8 +5,10 @@ import {
   getInboxLifeLogs,
   getLifeLogFocusAreaLabel,
   getLifeLogStatusLabel,
+  getLifeLogStatusForEventStatus,
   getLifeLogTimelineGroups,
   getLifeLogsForEvent,
+  markLifeLogAsInbox,
   markLifeLogAsScheduled,
   normalizeLifeLogBody,
   sortLifeLogsNewestFirst,
@@ -114,11 +116,34 @@ describe("ライフログ", () => {
       markLifeLogAsScheduled(
         { ...olderLog, focusArea: "future" },
         "2026-07-03T01:00:00.000Z",
+        "event-1",
       ),
     ).toEqual({
       ...olderLog,
       focusArea: "future",
       status: "scheduled",
+      eventId: "event-1",
+      updatedAt: "2026-07-03T01:00:00.000Z",
+    });
+  });
+
+  it("紐付いた予定の状態からLifeLog statusを決める", () => {
+    expect(getLifeLogStatusForEventStatus("completed")).toBe("done");
+    expect(getLifeLogStatusForEventStatus("pending")).toBe("scheduled");
+    expect(getLifeLogStatusForEventStatus("skipped")).toBe("scheduled");
+    expect(getLifeLogStatusForEventStatus("active")).toBe("scheduled");
+  });
+
+  it("紐付いた予定が削除されたログはInboxへ戻す", () => {
+    expect(
+      markLifeLogAsInbox(
+        { ...olderLog, status: "scheduled", eventId: "event-1" },
+        "2026-07-03T01:00:00.000Z",
+      ),
+    ).toEqual({
+      ...olderLog,
+      status: "inbox",
+      eventId: undefined,
       updatedAt: "2026-07-03T01:00:00.000Z",
     });
   });

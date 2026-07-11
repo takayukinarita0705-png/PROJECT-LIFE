@@ -87,7 +87,7 @@ export type LifeLog = {
 
 export type SharedCalendarState = {
   version: 1;
-  schemaVersion: 5;
+  schemaVersion: 6;
   categories: Category[];
   events: CalendarEvent[];
   templates: CalendarTemplate[];

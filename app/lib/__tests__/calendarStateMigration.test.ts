@@ -6,6 +6,7 @@ import {
   migrateStateV2ToV3,
   migrateStateV3ToV4,
   migrateStateV4ToV5,
+  migrateStateV5ToV6,
 } from "@/app/lib/migrations/calendarState";
 
 describe("保存StateのSchema Migration", () => {
@@ -129,7 +130,7 @@ describe("保存StateのSchema Migration", () => {
         migrationDate,
       ),
     ).toMatchObject({
-      schemaVersion: CURRENT_SCHEMA_VERSION,
+      schemaVersion: 5,
       events: [
         {
           id: "monday",
@@ -144,6 +145,72 @@ describe("保存StateのSchema Migration", () => {
             { categoryId: "work", day: 6 },
             { categoryId: "meal", day: 0 },
           ],
+        },
+      ],
+    });
+  });
+
+  it("V5のLifeLogとEventを相互参照へ変換する", () => {
+    expect(
+      migrateStateV5ToV6({
+        schemaVersion: 5,
+        events: [
+          {
+            id: "scheduled-event",
+            lifeLogId: "scheduled-log",
+            status: "pending",
+          },
+          {
+            id: "completed-event",
+            status: "completed",
+          },
+        ],
+        logs: [
+          {
+            id: "scheduled-log",
+            status: "inbox",
+            focusArea: "future",
+          },
+          {
+            id: "completed-log",
+            eventId: "completed-event",
+            status: "scheduled",
+            focusArea: "future",
+          },
+          {
+            id: "missing-event-log",
+            eventId: "missing",
+            status: "scheduled",
+            focusArea: "future",
+          },
+        ],
+      }),
+    ).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      events: [
+        {
+          id: "scheduled-event",
+          lifeLogId: "scheduled-log",
+        },
+        {
+          id: "completed-event",
+          lifeLogId: "completed-log",
+        },
+      ],
+      logs: [
+        {
+          id: "scheduled-log",
+          eventId: "scheduled-event",
+          status: "scheduled",
+        },
+        {
+          id: "completed-log",
+          eventId: "completed-event",
+          status: "done",
+        },
+        {
+          id: "missing-event-log",
+          status: "inbox",
         },
       ],
     });
@@ -216,6 +283,6 @@ describe("保存StateのSchema Migration", () => {
   });
 
   it("未対応のVersionを現在の形式として扱わない", () => {
-    expect(migrateState({ schemaVersion: 6 })).toBeNull();
+    expect(migrateState({ schemaVersion: 7 })).toBeNull();
   });
 });

@@ -26,6 +26,7 @@ type MobileLifeLogProps = {
   onAdd: () => void;
   onDelete: (log: LifeLog) => void;
   onEdit: (log: LifeLog) => void;
+  onOpenEvent: (log: LifeLog) => void;
   onSchedule: (log: LifeLog) => void;
 };
 
@@ -38,6 +39,7 @@ export default function MobileLifeLog({
   onAdd,
   onDelete,
   onEdit,
+  onOpenEvent,
   onSchedule,
 }: MobileLifeLogProps) {
   const [activeLogView, setActiveLogView] = useState<"inbox" | "future">(
@@ -146,9 +148,15 @@ export default function MobileLifeLog({
                       予定にする
                     </button>
                   ) : (
-                    <span className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-400">
-                      予定にする
-                    </span>
+                    log.eventId && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenEvent(log)}
+                        className="min-h-10 rounded-lg bg-blue-50 px-3 text-xs font-bold text-blue-700"
+                      >
+                        予定を開く
+                      </button>
+                    )
                   )}
                 </div>
               </article>
@@ -201,6 +209,7 @@ export default function MobileLifeLog({
                           categories={categories}
                           events={events}
                           log={log}
+                          onOpenEvent={onOpenEvent}
                         />
                         <div className="mt-2 flex justify-end gap-2">
                           {log.focusArea === "future" &&

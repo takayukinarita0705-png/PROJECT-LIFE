@@ -44,6 +44,8 @@ import {
 } from "@/app/lib/supabaseStorage";
 import { parseTime } from "@/app/lib/time";
 import {
+  getLifeLogStatusForEventStatus,
+  markLifeLogAsInbox,
   markLifeLogAsScheduled,
   normalizeLifeLogBody,
 } from "@/app/lib/lifeLogs";
@@ -294,6 +296,46 @@ export default function useCalendarController(weekOffset: number) {
     setEvents(previousEvents);
   }
 
+  function syncLinkedLifeLogStatus(
+    event: CalendarEvent,
+    status: CalendarEvent["status"],
+  ) {
+    const updatedAt = new Date().toISOString();
+    const nextStatus = getLifeLogStatusForEventStatus(status);
+    setLogs((current) =>
+      current.map((log) =>
+        log.id === event.lifeLogId || log.eventId === event.id
+          ? {
+              ...log,
+              status: nextStatus,
+              eventId: event.id,
+              updatedAt,
+            }
+          : log,
+      ),
+    );
+  }
+
+  function unlinkLifeLogsFromEvents(deletedEvents: CalendarEvent[]) {
+    if (deletedEvents.length === 0) return;
+
+    const deletedEventIds = new Set(deletedEvents.map((event) => event.id));
+    const deletedLifeLogIds = new Set(
+      deletedEvents
+        .map((event) => event.lifeLogId)
+        .filter((id): id is string => typeof id === "string"),
+    );
+    const updatedAt = new Date().toISOString();
+    setLogs((current) =>
+      current.map((log) =>
+        deletedLifeLogIds.has(log.id) ||
+        (log.eventId !== undefined && deletedEventIds.has(log.eventId))
+          ? markLifeLogAsInbox(log, updatedAt)
+          : log,
+      ),
+    );
+  }
+
   function moveEvent(
     event: CalendarEvent,
     movedEvent: CalendarEvent,
@@ -325,7 +367,7 @@ export default function useCalendarController(weekOffset: number) {
     categoryId = activeCategoryId,
     preserveTitle = false,
   ) {
-    if (!categoryId) return false;
+    if (!categoryId) return null;
     const title = normalizeNewEventTitle(
       categoryId,
       draft.title,
@@ -333,59 +375,78 @@ export default function useCalendarController(weekOffset: number) {
     const eventTitle = preserveTitle
       ? draft.title?.trim() || undefined
       : title ?? undefined;
-    if (title === null || (preserveTitle && !eventTitle)) return false;
+    if (title === null || (preserveTitle && !eventTitle)) return null;
 
-    const nextEvents = mergeUniqueEvents(events, [
-      materializeEventDate({
-        id: crypto.randomUUID(),
-        title: eventTitle,
-        categoryId,
-        mode: "fixed",
-        status: "pending",
-        linkType: "none",
-        offsetMinutes: 0,
-        date: draft.date,
-        day: draft.day,
-        start: draft.start,
-        end: draft.end,
-        weekOffset: draft.weekOffset,
-        lifeLogId: draft.lifeLogId,
-      }),
-    ]);
+    const newEvent = materializeEventDate({
+      id: crypto.randomUUID(),
+      title: eventTitle,
+      categoryId,
+      mode: "fixed",
+      status: "pending",
+      linkType: "none",
+      offsetMinutes: 0,
+      date: draft.date,
+      day: draft.day,
+      start: draft.start,
+      end: draft.end,
+      weekOffset: draft.weekOffset,
+      lifeLogId: draft.lifeLogId,
+    });
+    const nextEvents = mergeUniqueEvents(events, [newEvent]);
 
     if (nextEvents.length !== events.length) {
       showUndo(events);
       setEvents(nextEvents);
-      return true;
+      return newEvent;
     }
-    return false;
+    return null;
   }
 
   function deleteEvent(id: string) {
+    const deletedEvents = events.filter((event) => event.id === id);
     const nextEvents = events.filter((event) => event.id !== id);
     if (nextEvents.length !== events.length) {
       showUndo(events);
       setEvents(nextEvents);
+      unlinkLifeLogsFromEvents(deletedEvents);
     }
   }
 
   function toggleEventCompleted(id: string) {
     locallyChangedStatusIdsRef.current.add(id);
+    const event = events.find((item) => item.id === id);
+    if (event) {
+      syncLinkedLifeLogStatus(
+        event,
+        event.status === "completed" ? "pending" : "completed",
+      );
+    }
     setEvents((current) => toggleEventCompletion(current, id));
   }
 
   function toggleEventSkip(id: string) {
     locallyChangedStatusIdsRef.current.add(id);
+    const event = events.find((item) => item.id === id);
+    if (event) {
+      syncLinkedLifeLogStatus(
+        event,
+        event.status === "skipped" ? "pending" : "skipped",
+      );
+    }
     setEvents((current) => toggleEventSkipped(current, id));
   }
 
   function resetEventToPending(id: string) {
     locallyChangedStatusIdsRef.current.add(id);
+    const event = events.find((item) => item.id === id);
+    if (event) syncLinkedLifeLogStatus(event, "pending");
     setEvents((current) => resetEventStatus(current, id));
   }
 
   function moveEventToTomorrow(id: string) {
     locallyChangedStatusIdsRef.current.add(id);
+    const event = events.find((item) => item.id === id);
+    if (event) syncLinkedLifeLogStatus(event, "pending");
     showUndo(events);
     setEvents((current) => moveEventToNextDay(current, id));
   }
@@ -447,6 +508,7 @@ export default function useCalendarController(weekOffset: number) {
         linkedToEventId: undefined,
         linkType: "none",
         offsetMinutes: 0,
+        lifeLogId: undefined,
         routineDetached: undefined,
       })),
     );
@@ -641,6 +703,9 @@ export default function useCalendarController(weekOffset: number) {
     setEvents((current) =>
       current.filter((event) => event.categoryId !== category.id),
     );
+    unlinkLifeLogsFromEvents(
+      events.filter((event) => event.categoryId === category.id),
+    );
     if (activeCategoryId === category.id) {
       const nextCategory = categories.find((item) => item.id !== category.id);
       setSelectedCategoryId(nextCategory?.id ?? "");
@@ -676,9 +741,10 @@ export default function useCalendarController(weekOffset: number) {
     if (normalizedBody === null) return false;
 
     const createdAt = new Date().toISOString();
+    const logId = crypto.randomUUID();
     setLogs((current) => [
       {
-        id: crypto.randomUUID(),
+        id: logId,
         body: normalizedBody,
         status: "inbox",
         focusArea,
@@ -700,6 +766,25 @@ export default function useCalendarController(weekOffset: number) {
     const normalizedBody = normalizeLifeLogBody(body);
     if (normalizedBody === null) return false;
 
+    const previousLog = logs.find((log) => log.id === id);
+    if (
+      previousLog?.status === "scheduled" ||
+      previousLog?.status === "done"
+    ) {
+      setEvents((current) =>
+        current.map((event) => {
+          if (previousLog.eventId === event.id && eventId !== event.id) {
+            return event.lifeLogId === id
+              ? { ...event, lifeLogId: undefined }
+              : event;
+          }
+          if (eventId === event.id) {
+            return { ...event, lifeLogId: id };
+          }
+          return event;
+        }),
+      );
+    }
     setLogs((current) =>
       current.map((log) =>
         log.id === id
@@ -717,14 +802,19 @@ export default function useCalendarController(weekOffset: number) {
   }
 
   function deleteLifeLog(id: string) {
+    setEvents((current) =>
+      current.map((event) =>
+        event.lifeLogId === id ? { ...event, lifeLogId: undefined } : event,
+      ),
+    );
     setLogs((current) => current.filter((log) => log.id !== id));
   }
 
-  function markLifeLogScheduled(id: string) {
+  function markLifeLogScheduled(id: string, eventId: string) {
     const updatedAt = new Date().toISOString();
     setLogs((current) =>
       current.map((log) =>
-        log.id === id ? markLifeLogAsScheduled(log, updatedAt) : log,
+        log.id === id ? markLifeLogAsScheduled(log, updatedAt, eventId) : log,
       ),
     );
   }

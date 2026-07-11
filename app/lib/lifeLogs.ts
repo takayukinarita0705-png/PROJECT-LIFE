@@ -30,12 +30,29 @@ export function getLifeLogFocusAreaLabel(focusArea: LifeLogFocusArea) {
 export function markLifeLogAsScheduled(
   log: LifeLog,
   updatedAt: string,
+  eventId?: string,
 ): LifeLog {
   return {
     ...log,
     status: "scheduled",
+    eventId: eventId ?? log.eventId,
     updatedAt,
   };
+}
+
+export function markLifeLogAsInbox(log: LifeLog, updatedAt: string): LifeLog {
+  return {
+    ...log,
+    status: "inbox",
+    eventId: undefined,
+    updatedAt,
+  };
+}
+
+export function getLifeLogStatusForEventStatus(
+  eventStatus: "pending" | "active" | "completed" | "skipped",
+): LifeLog["status"] {
+  return eventStatus === "completed" ? "done" : "scheduled";
 }
 
 export function normalizeLifeLogBody(body: string) {

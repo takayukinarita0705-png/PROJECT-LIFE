@@ -505,7 +505,7 @@ export default function WeeklyCalendar() {
       const end = parseTime(details.end);
       if (!date || start === null || end === null || end <= start) return;
 
-      const scheduled = addCalendarEvent(
+      const scheduledEvent = addCalendarEvent(
         {
           ...draft,
           date: details.date,
@@ -517,8 +517,8 @@ export default function WeeklyCalendar() {
         schedulingCategoryId,
         true,
       );
-      if (!scheduled) return;
-      markLifeLogScheduled(schedulingLifeLog.id);
+      if (!scheduledEvent) return;
+      markLifeLogScheduled(schedulingLifeLog.id, scheduledEvent.id);
       setSchedulingLifeLog(null);
       setSchedulingCategoryId("");
     } else {
@@ -635,6 +635,13 @@ export default function WeeklyCalendar() {
     });
   }
 
+  function openLifeLogEvent(log: LifeLog) {
+    if (!log.eventId) return;
+    const event = events.find((item) => item.id === log.eventId);
+    if (!event) return;
+    openMobileWeekEditor(event);
+  }
+
   function closeEventDialog() {
     setDraft(null);
     setSchedulingLifeLog(null);
@@ -721,6 +728,7 @@ export default function WeeklyCalendar() {
             onAdd={openNewLifeLog}
             onDelete={removeLifeLog}
             onEdit={openLifeLogEditor}
+            onOpenEvent={openLifeLogEvent}
             onSchedule={openLifeLogScheduler}
           />
         ) : mobilePage === "settings" ? (
@@ -732,6 +740,7 @@ export default function WeeklyCalendar() {
             hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedEvents={hasLoadedEvents}
             logs={logs}
+            onOpenLifeLog={openLifeLogEditor}
             onResetStatus={resetEventToPending}
             onMoveToTomorrow={moveEventToTomorrow}
             onToggleCompleted={toggleEventCompleted}

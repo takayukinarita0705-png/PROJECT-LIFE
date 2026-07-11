@@ -5,11 +5,12 @@ import {
   parseCalendarDate,
 } from "@/app/lib/date";
 
-export const CURRENT_SCHEMA_VERSION = 5 as const;
+export const CURRENT_SCHEMA_VERSION = 6 as const;
 const LEGACY_SCHEMA_VERSION = 1;
 const DATE_SCHEMA_VERSION = 2;
 const LIFE_LOG_STATUS_SCHEMA_VERSION = 3;
 const LIFE_LOG_FOCUS_SCHEMA_VERSION = 4;
+const TUESDAY_WEEK_SCHEMA_VERSION = 5;
 
 export type MigratableState = Record<string, unknown> & {
   schemaVersion?: unknown;
@@ -113,7 +114,9 @@ export function migrateStateV3ToV4(
 export function migrateStateV4ToV5(
   state: MigratableState,
   referenceDate = new Date(),
-): MigratedState {
+): MigratableState & {
+  schemaVersion: typeof TUESDAY_WEEK_SCHEMA_VERSION;
+} {
   const events = Array.isArray(state.events)
     ? state.events.map((value) => {
         if (typeof value !== "object" || value === null) return value;
@@ -158,6 +161,77 @@ export function migrateStateV4ToV5(
     ...state,
     events,
     templates,
+    schemaVersion: TUESDAY_WEEK_SCHEMA_VERSION,
+  };
+}
+
+export function migrateStateV5ToV6(
+  state: MigratableState,
+): MigratedState {
+  const events = Array.isArray(state.events)
+    ? state.events.map((value) =>
+        typeof value === "object" && value !== null
+          ? { ...(value as Record<string, unknown>) }
+          : value,
+      )
+    : state.events;
+  const logs = Array.isArray(state.logs)
+    ? state.logs.map((value) =>
+        typeof value === "object" && value !== null
+          ? { ...(value as Record<string, unknown>) }
+          : value,
+      )
+    : state.logs;
+
+  if (!Array.isArray(events) || !Array.isArray(logs)) {
+    return {
+      ...state,
+      events,
+      logs,
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+    };
+  }
+
+  const eventById = new Map<string, Record<string, unknown>>();
+  const eventByLifeLogId = new Map<string, Record<string, unknown>>();
+  events.forEach((value) => {
+    if (typeof value !== "object" || value === null) return;
+    const event = value as Record<string, unknown>;
+    if (typeof event.id === "string") eventById.set(event.id, event);
+    if (typeof event.lifeLogId === "string") {
+      eventByLifeLogId.set(event.lifeLogId, event);
+    }
+  });
+
+  const linkedLogs = logs.map((value) => {
+    if (typeof value !== "object" || value === null) return value;
+    const log = value as Record<string, unknown>;
+    if (typeof log.id !== "string") return log;
+
+    const linkedEvent =
+      (typeof log.eventId === "string"
+        ? eventById.get(log.eventId)
+        : undefined) ?? eventByLifeLogId.get(log.id);
+
+    if (!linkedEvent || typeof linkedEvent.id !== "string") {
+      return log.status === "scheduled" || log.status === "done"
+        ? { ...log, status: "inbox", eventId: undefined }
+        : log;
+    }
+
+    linkedEvent.lifeLogId = log.id;
+    const eventStatus = linkedEvent.status;
+    return {
+      ...log,
+      eventId: linkedEvent.id,
+      status: eventStatus === "completed" ? "done" : "scheduled",
+    };
+  });
+
+  return {
+    ...state,
+    events,
+    logs: linkedLogs,
     schemaVersion: CURRENT_SCHEMA_VERSION,
   };
 }
@@ -186,32 +260,43 @@ export function migrateState(
     state.schemaVersion ?? LEGACY_SCHEMA_VERSION;
 
   if (schemaVersion === LEGACY_SCHEMA_VERSION) {
-    return migrateStateV4ToV5(
-      migrateStateV3ToV4(
-        migrateStateV2ToV3(
-          migrateStateV1ToV2(
-            state,
-            getLegacyMondayAnchor(referenceDate),
+    return migrateStateV5ToV6(
+      migrateStateV4ToV5(
+        migrateStateV3ToV4(
+          migrateStateV2ToV3(
+            migrateStateV1ToV2(
+              state,
+              getLegacyMondayAnchor(referenceDate),
+            ),
           ),
         ),
+        referenceDate,
       ),
-      referenceDate,
     );
   }
   if (schemaVersion === DATE_SCHEMA_VERSION) {
-    return migrateStateV4ToV5(
-      migrateStateV3ToV4(migrateStateV2ToV3(state)),
-      referenceDate,
+    return migrateStateV5ToV6(
+      migrateStateV4ToV5(
+        migrateStateV3ToV4(migrateStateV2ToV3(state)),
+        referenceDate,
+      ),
     );
   }
   if (schemaVersion === LIFE_LOG_STATUS_SCHEMA_VERSION) {
-    return migrateStateV4ToV5(
-      migrateStateV3ToV4(state),
-      referenceDate,
+    return migrateStateV5ToV6(
+      migrateStateV4ToV5(
+        migrateStateV3ToV4(state),
+        referenceDate,
+      ),
     );
   }
   if (schemaVersion === LIFE_LOG_FOCUS_SCHEMA_VERSION) {
-    return migrateStateV4ToV5(state, referenceDate);
+    return migrateStateV5ToV6(
+      migrateStateV4ToV5(state, referenceDate),
+    );
+  }
+  if (schemaVersion === TUESDAY_WEEK_SCHEMA_VERSION) {
+    return migrateStateV5ToV6(state);
   }
   if (schemaVersion !== CURRENT_SCHEMA_VERSION) return null;
 
