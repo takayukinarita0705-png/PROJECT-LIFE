@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyLifeLog,
   getFutureLifeLogs,
   getFutureLifeLogWeeklyRecord,
   getCurrentWeekLifeLogs,
   getInboxLifeLogs,
+  getInboxReviewState,
   getLifeLogFocusAreaLabel,
   getLifeLogStatusLabel,
   getLifeLogStatusForEventStatus,
   getLifeLogTimelineGroups,
   getLifeLogsForEvent,
   getLifeLogsByFocusFilter,
+  getUnclassifiedLifeLogs,
   markLifeLogAsInbox,
   markLifeLogAsScheduled,
   normalizeLifeLogBody,
+  restoreLifeLogFocusArea,
   sortLifeLogsNewestFirst,
 } from "@/app/lib/lifeLogs";
 import { normalizeLifeLog } from "@/app/lib/storage";
@@ -138,6 +142,62 @@ describe("ライフログ", () => {
     expect(getLifeLogsByFocusFilter(logs, "discard").map(({ id }) => id)).toEqual([
       "discard",
     ]);
+  });
+
+  it("Inbox整理対象として未分類ログだけを作成日時の新しい順で取得する", () => {
+    expect(
+      getUnclassifiedLifeLogs([
+        { ...olderLog, id: "old-unset", focusArea: "unset" },
+        { ...newerLog, id: "future", focusArea: "future" },
+        { ...newerLog, id: "new-unset", focusArea: "unset" },
+      ]).map(({ id }) => id),
+    ).toEqual(["new-unset", "old-unset"]);
+  });
+
+  it("分類後は次の未分類ログへ進む", () => {
+    const logs = [
+      { ...olderLog, id: "old-unset", focusArea: "unset" as const },
+      { ...newerLog, id: "new-unset", focusArea: "unset" as const },
+    ];
+    const classified = classifyLifeLog(
+      logs,
+      "new-unset",
+      "future",
+      "2026-07-03T00:00:00.000Z",
+    );
+
+    expect(getInboxReviewState(classified)).toMatchObject({
+      currentLog: { id: "old-unset" },
+      remainingCount: 1,
+      isComplete: false,
+    });
+  });
+
+  it("元に戻すと直前の分類状態へ戻る", () => {
+    const previousLog = { ...newerLog, id: "target", focusArea: "unset" as const };
+    const classified = classifyLifeLog(
+      [previousLog],
+      "target",
+      "review",
+      "2026-07-03T00:00:00.000Z",
+    );
+
+    expect(restoreLifeLogFocusArea(classified, previousLog)).toEqual([
+      previousLog,
+    ]);
+  });
+
+  it("未分類が0件ならInbox整理を完了状態にする", () => {
+    expect(
+      getInboxReviewState([
+        { ...olderLog, focusArea: "now" },
+        { ...newerLog, focusArea: "discard" },
+      ]),
+    ).toEqual({
+      currentLog: null,
+      remainingCount: 0,
+      isComplete: true,
+    });
   });
 
   it("予定化後も本文を維持してstatusだけをscheduledへ更新する", () => {

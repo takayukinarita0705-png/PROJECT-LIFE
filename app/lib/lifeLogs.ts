@@ -17,6 +17,12 @@ export type FutureLifeLogWeeklyRecord = {
 
 export type LifeLogFocusFilter = LifeLogFocusArea | "all";
 
+export type InboxReviewState = {
+  currentLog: LifeLog | null;
+  remainingCount: number;
+  isComplete: boolean;
+};
+
 export const LIFE_LOG_FOCUS_AREA_OPTIONS: ReadonlyArray<{
   value: LifeLogFocusArea;
   label: string;
@@ -114,6 +120,54 @@ export function getLifeLogsByFocusFilter(
       ? logs
       : logs.filter((log) => log.focusArea === filter);
   return sortLifeLogsNewestFirst(filteredLogs);
+}
+
+export function getUnclassifiedLifeLogs(logs: LifeLog[]) {
+  return sortLifeLogsNewestFirst(
+    logs.filter((log) => log.focusArea === "unset"),
+  );
+}
+
+export function getInboxReviewState(logs: LifeLog[]): InboxReviewState {
+  const unclassifiedLogs = getUnclassifiedLifeLogs(logs);
+
+  return {
+    currentLog: unclassifiedLogs[0] ?? null,
+    remainingCount: unclassifiedLogs.length,
+    isComplete: unclassifiedLogs.length === 0,
+  };
+}
+
+export function classifyLifeLog(
+  logs: LifeLog[],
+  logId: string,
+  focusArea: Exclude<LifeLogFocusArea, "unset">,
+  updatedAt: string,
+) {
+  return logs.map((log) =>
+    log.id === logId
+      ? {
+          ...log,
+          focusArea,
+          updatedAt,
+        }
+      : log,
+  );
+}
+
+export function restoreLifeLogFocusArea(
+  logs: LifeLog[],
+  previousLog: LifeLog,
+) {
+  return logs.map((log) =>
+    log.id === previousLog.id
+      ? {
+          ...log,
+          focusArea: previousLog.focusArea,
+          updatedAt: previousLog.updatedAt,
+        }
+      : log,
+  );
 }
 
 export function getLifeLogsForEvent(logs: LifeLog[], eventId: string) {
