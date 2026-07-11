@@ -56,6 +56,12 @@ export function getInboxLifeLogs(logs: LifeLog[]) {
   );
 }
 
+export function getFutureLifeLogs(logs: LifeLog[]) {
+  return sortLifeLogsNewestFirst(
+    logs.filter((log) => log.focusArea === "future"),
+  );
+}
+
 export function getLifeLogsForEvent(logs: LifeLog[], eventId: string) {
   return sortLifeLogsNewestFirst(
     logs.filter((log) => log.eventId === eventId),
@@ -111,6 +117,16 @@ export function getCurrentWeekLifeLogs(
 
 export function formatLifeLogTime(value: string) {
   return new Intl.DateTimeFormat("ja-JP", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+export function formatLifeLogDate(value: string) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));

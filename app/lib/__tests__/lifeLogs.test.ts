@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getFutureLifeLogs,
   getCurrentWeekLifeLogs,
   getInboxLifeLogs,
   getLifeLogFocusAreaLabel,
@@ -88,6 +89,20 @@ describe("ライフログ", () => {
         { ...newerLog, id: "done", status: "done" },
       ]).map(({ id }) => id),
     ).toEqual(["older", "newer"]);
+  });
+
+  it("未来を作るログだけを新しい順で取得する", () => {
+    expect(
+      getFutureLifeLogs([
+        { ...olderLog, focusArea: "future" },
+        { ...newerLog, focusArea: "future", status: "scheduled" },
+        { ...newerLog, id: "done", focusArea: "future", status: "done" },
+        { ...newerLog, id: "now", focusArea: "now" },
+        { ...newerLog, id: "review", focusArea: "review" },
+        { ...newerLog, id: "discard", focusArea: "discard" },
+        newerLog,
+      ]).map(({ id }) => id),
+    ).toEqual(["newer", "done", "older"]);
   });
 
   it("予定化後も本文を維持してstatusだけをscheduledへ更新する", () => {
