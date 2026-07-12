@@ -33,6 +33,7 @@ describe("旧データ補完処理", () => {
       status: "pending",
       linkType: "none",
       offsetMinutes: 0,
+      notificationMinutes: null,
     });
   });
 

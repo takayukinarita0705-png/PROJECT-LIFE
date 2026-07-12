@@ -7,6 +7,7 @@ import {
   migrateStateV3ToV4,
   migrateStateV4ToV5,
   migrateStateV5ToV6,
+  migrateStateV6ToV7,
 } from "@/app/lib/migrations/calendarState";
 
 describe("保存StateのSchema Migration", () => {
@@ -186,7 +187,7 @@ describe("保存StateのSchema Migration", () => {
         ],
       }),
     ).toMatchObject({
-      schemaVersion: CURRENT_SCHEMA_VERSION,
+      schemaVersion: 6,
       events: [
         {
           id: "scheduled-event",
@@ -212,6 +213,26 @@ describe("保存StateのSchema Migration", () => {
           id: "missing-event-log",
           status: "inbox",
         },
+      ],
+    });
+  });
+
+  it("V6の既存Eventへ通知なしを補完してV7へ変換する", () => {
+    expect(
+      migrateStateV6ToV7({
+        schemaVersion: 6,
+        events: [
+          { id: "legacy-event" },
+          { id: "notify-event", notificationMinutes: 10 },
+          { id: "invalid-event", notificationMinutes: 5 },
+        ],
+      }),
+    ).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      events: [
+        { id: "legacy-event", notificationMinutes: null },
+        { id: "notify-event", notificationMinutes: 10 },
+        { id: "invalid-event", notificationMinutes: null },
       ],
     });
   });
@@ -283,6 +304,6 @@ describe("保存StateのSchema Migration", () => {
   });
 
   it("未対応のVersionを現在の形式として扱わない", () => {
-    expect(migrateState({ schemaVersion: 7 })).toBeNull();
+    expect(migrateState({ schemaVersion: 8 })).toBeNull();
   });
 });

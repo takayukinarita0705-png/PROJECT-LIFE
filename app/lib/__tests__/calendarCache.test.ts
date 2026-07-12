@@ -9,7 +9,7 @@ import type { SharedCalendarState } from "@/app/types/calendar";
 
 const state: SharedCalendarState = {
   version: 1,
-  schemaVersion: 6,
+  schemaVersion: 7,
   categories: [],
   events: [],
   templates: [],
@@ -42,7 +42,7 @@ describe("カレンダーのローカルキャッシュ", () => {
       templates: [],
     });
 
-    expect(parseCachedCalendarState(cachedV1)?.schemaVersion).toBe(6);
+    expect(parseCachedCalendarState(cachedV1)?.schemaVersion).toBe(7);
     expect(parseCachedCalendarState(cachedV1)?.logs).toEqual([]);
   });
 
@@ -59,6 +59,7 @@ describe("カレンダーのローカルキャッシュ", () => {
             status: "pending",
             linkType: "none",
             offsetMinutes: 0,
+            notificationMinutes: null,
             date: "2026-07-03",
             day: 3,
             start: 540,

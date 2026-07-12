@@ -5,12 +5,13 @@ import {
   parseCalendarDate,
 } from "@/app/lib/date";
 
-export const CURRENT_SCHEMA_VERSION = 6 as const;
+export const CURRENT_SCHEMA_VERSION = 7 as const;
 const LEGACY_SCHEMA_VERSION = 1;
 const DATE_SCHEMA_VERSION = 2;
 const LIFE_LOG_STATUS_SCHEMA_VERSION = 3;
 const LIFE_LOG_FOCUS_SCHEMA_VERSION = 4;
 const TUESDAY_WEEK_SCHEMA_VERSION = 5;
+const LIFE_LOG_LINK_SCHEMA_VERSION = 6;
 
 export type MigratableState = Record<string, unknown> & {
   schemaVersion?: unknown;
@@ -167,7 +168,9 @@ export function migrateStateV4ToV5(
 
 export function migrateStateV5ToV6(
   state: MigratableState,
-): MigratedState {
+): MigratableState & {
+  schemaVersion: typeof LIFE_LOG_LINK_SCHEMA_VERSION;
+} {
   const events = Array.isArray(state.events)
     ? state.events.map((value) =>
         typeof value === "object" && value !== null
@@ -188,7 +191,7 @@ export function migrateStateV5ToV6(
       ...state,
       events,
       logs,
-      schemaVersion: CURRENT_SCHEMA_VERSION,
+      schemaVersion: LIFE_LOG_LINK_SCHEMA_VERSION,
     };
   }
 
@@ -232,6 +235,34 @@ export function migrateStateV5ToV6(
     ...state,
     events,
     logs: linkedLogs,
+    schemaVersion: LIFE_LOG_LINK_SCHEMA_VERSION,
+  };
+}
+
+export function migrateStateV6ToV7(
+  state: MigratableState,
+): MigratedState {
+  const events = Array.isArray(state.events)
+    ? state.events.map((value) => {
+        if (typeof value !== "object" || value === null) return value;
+
+        const event = value as Record<string, unknown>;
+        return {
+          ...event,
+          notificationMinutes:
+            event.notificationMinutes === 0 ||
+            event.notificationMinutes === 10 ||
+            event.notificationMinutes === 30 ||
+            event.notificationMinutes === 60
+              ? event.notificationMinutes
+              : null,
+        };
+      })
+    : state.events;
+
+  return {
+    ...state,
+    events,
     schemaVersion: CURRENT_SCHEMA_VERSION,
   };
 }
@@ -260,43 +291,54 @@ export function migrateState(
     state.schemaVersion ?? LEGACY_SCHEMA_VERSION;
 
   if (schemaVersion === LEGACY_SCHEMA_VERSION) {
-    return migrateStateV5ToV6(
-      migrateStateV4ToV5(
-        migrateStateV3ToV4(
-          migrateStateV2ToV3(
-            migrateStateV1ToV2(
-              state,
-              getLegacyMondayAnchor(referenceDate),
+    return migrateStateV6ToV7(
+      migrateStateV5ToV6(
+        migrateStateV4ToV5(
+          migrateStateV3ToV4(
+            migrateStateV2ToV3(
+              migrateStateV1ToV2(
+                state,
+                getLegacyMondayAnchor(referenceDate),
+              ),
             ),
           ),
+          referenceDate,
         ),
-        referenceDate,
       ),
     );
   }
   if (schemaVersion === DATE_SCHEMA_VERSION) {
-    return migrateStateV5ToV6(
-      migrateStateV4ToV5(
-        migrateStateV3ToV4(migrateStateV2ToV3(state)),
-        referenceDate,
+    return migrateStateV6ToV7(
+      migrateStateV5ToV6(
+        migrateStateV4ToV5(
+          migrateStateV3ToV4(migrateStateV2ToV3(state)),
+          referenceDate,
+        ),
       ),
     );
   }
   if (schemaVersion === LIFE_LOG_STATUS_SCHEMA_VERSION) {
-    return migrateStateV5ToV6(
-      migrateStateV4ToV5(
-        migrateStateV3ToV4(state),
-        referenceDate,
+    return migrateStateV6ToV7(
+      migrateStateV5ToV6(
+        migrateStateV4ToV5(
+          migrateStateV3ToV4(state),
+          referenceDate,
+        ),
       ),
     );
   }
   if (schemaVersion === LIFE_LOG_FOCUS_SCHEMA_VERSION) {
-    return migrateStateV5ToV6(
-      migrateStateV4ToV5(state, referenceDate),
+    return migrateStateV6ToV7(
+      migrateStateV5ToV6(
+        migrateStateV4ToV5(state, referenceDate),
+      ),
     );
   }
   if (schemaVersion === TUESDAY_WEEK_SCHEMA_VERSION) {
-    return migrateStateV5ToV6(state);
+    return migrateStateV6ToV7(migrateStateV5ToV6(state));
+  }
+  if (schemaVersion === LIFE_LOG_LINK_SCHEMA_VERSION) {
+    return migrateStateV6ToV7(state);
   }
   if (schemaVersion !== CURRENT_SCHEMA_VERSION) return null;
 

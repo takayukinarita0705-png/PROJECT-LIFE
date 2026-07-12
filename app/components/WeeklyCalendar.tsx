@@ -529,6 +529,7 @@ export default function WeeklyCalendar() {
           weekOffset: getWeekOffsetForDate(date),
           start,
           end,
+          notificationMinutes: details.notificationMinutes,
         },
         schedulingCategoryId,
         true,
@@ -672,6 +673,7 @@ export default function WeeklyCalendar() {
       end: 0,
       title: log.body,
       lifeLogId: log.id,
+      notificationMinutes: null,
     });
   }
 
@@ -1060,6 +1062,7 @@ export default function WeeklyCalendar() {
             schedulingLifeLog ? schedulingCategoryId : activeCategoryId
           }
           requiresScheduleDetails={schedulingLifeLog !== null}
+          showsNotificationSetting={schedulingLifeLog !== null}
           onCategoryChange={
             schedulingLifeLog
               ? setSchedulingCategoryId

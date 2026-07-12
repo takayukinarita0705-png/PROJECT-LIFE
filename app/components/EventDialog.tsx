@@ -11,6 +11,7 @@ export type EventDialogScheduleDetails = {
   date: string;
   start: string;
   end: string;
+  notificationMinutes: number | null;
 };
 
 type EventDialogProps = {
@@ -18,6 +19,7 @@ type EventDialogProps = {
   categories: Category[];
   activeCategoryId: string;
   requiresScheduleDetails?: boolean;
+  showsNotificationSetting?: boolean;
   onCategoryChange: (categoryId: string) => void;
   onTitleChange: (title: string) => void;
   onCancel: () => void;
@@ -29,6 +31,7 @@ export default function EventDialog({
   categories,
   activeCategoryId,
   requiresScheduleDetails = false,
+  showsNotificationSetting = false,
   onCategoryChange,
   onTitleChange,
   onCancel,
@@ -37,6 +40,9 @@ export default function EventDialog({
   const [date, setDate] = useState("");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
+  const [notificationMinutes, setNotificationMinutes] = useState<
+    number | null
+  >(null);
   const hasValidScheduleDetails =
     !requiresScheduleDetails ||
     Boolean(date && start && end && end > start);
@@ -76,6 +82,27 @@ export default function EventDialog({
                 />
               </label>
             </div>
+            {showsNotificationSetting && (
+              <label className="block text-sm font-bold text-slate-700">
+                通知
+                <select
+                  value={notificationMinutes ?? "none"}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setNotificationMinutes(
+                      value === "none" ? null : Number(value),
+                    );
+                  }}
+                  className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
+                >
+                  <option value="none">通知なし</option>
+                  <option value="0">開始時刻</option>
+                  <option value="10">10分前</option>
+                  <option value="30">30分前</option>
+                  <option value="60">1時間前</option>
+                </select>
+              </label>
+            )}
           </div>
         ) : (
           <p className="mt-1 text-sm text-slate-500">
@@ -132,7 +159,7 @@ export default function EventDialog({
             onClick={() =>
               onAdd(
                 requiresScheduleDetails
-                  ? { date, start, end }
+                  ? { date, start, end, notificationMinutes }
                   : undefined,
               )
             }

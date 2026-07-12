@@ -30,6 +30,18 @@ export function isEventLinkType(value: unknown): value is EventLinkType {
   return value === "after" || value === "before" || value === "none";
 }
 
+export function isNotificationMinutes(
+  value: unknown,
+): value is CalendarEvent["notificationMinutes"] {
+  return (
+    value === null ||
+    value === 0 ||
+    value === 10 ||
+    value === 30 ||
+    value === 60
+  );
+}
+
 export function isLifeLogStatus(value: unknown): value is LifeLogStatus {
   return value === "inbox" || value === "scheduled" || value === "done";
 }
@@ -71,6 +83,11 @@ export function normalizeCalendarEvent(
     typeof event.weekOffset === "number" &&
     (event.source === undefined || event.source === "fixed-template") &&
     (event.lifeLogId === undefined || typeof event.lifeLogId === "string") &&
+    (event.notificationMinutes === undefined ||
+      isNotificationMinutes(event.notificationMinutes)) &&
+    (event.notificationSentAt === undefined ||
+      (typeof event.notificationSentAt === "string" &&
+        !Number.isNaN(Date.parse(event.notificationSentAt)))) &&
     (event.routineRelation === undefined ||
       event.routineRelation === "after-work-meal" ||
       event.routineRelation === "after-work-bath") &&
@@ -82,13 +99,20 @@ export function normalizeCalendarEvent(
   return {
     ...(value as Omit<
       CalendarEvent,
-      "mode" | "status" | "linkType" | "offsetMinutes"
+      | "mode"
+      | "status"
+      | "linkType"
+      | "offsetMinutes"
+      | "notificationMinutes"
     >),
     mode: isEventMode(event.mode) ? event.mode : "fixed",
     status: isEventStatus(event.status) ? event.status : "pending",
     linkType: isEventLinkType(event.linkType) ? event.linkType : "none",
     offsetMinutes:
       typeof event.offsetMinutes === "number" ? event.offsetMinutes : 0,
+    notificationMinutes: isNotificationMinutes(event.notificationMinutes)
+      ? event.notificationMinutes
+      : null,
   };
 }
 

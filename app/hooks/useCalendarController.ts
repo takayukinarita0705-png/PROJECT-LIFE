@@ -391,6 +391,7 @@ export default function useCalendarController(weekOffset: number) {
       end: draft.end,
       weekOffset: draft.weekOffset,
       lifeLogId: draft.lifeLogId,
+      notificationMinutes: draft.notificationMinutes ?? null,
     });
     const nextEvents = mergeUniqueEvents(events, [newEvent]);
 
@@ -509,6 +510,8 @@ export default function useCalendarController(weekOffset: number) {
         linkType: "none",
         offsetMinutes: 0,
         lifeLogId: undefined,
+        notificationMinutes: null,
+        notificationSentAt: undefined,
         routineDetached: undefined,
       })),
     );
@@ -531,6 +534,7 @@ export default function useCalendarController(weekOffset: number) {
           status: "pending",
           linkType: "none",
           offsetMinutes: 0,
+          notificationMinutes: null,
           source: "fixed-template",
         }),
       ),

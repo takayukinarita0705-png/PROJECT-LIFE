@@ -91,6 +91,7 @@ describe("Calendar date", () => {
       status: "pending" as const,
       linkType: "none" as const,
       offsetMinutes: 0,
+      notificationMinutes: null,
       day: 2,
       weekOffset: 1,
       start: 540,

@@ -36,6 +36,7 @@ function createEvent(
     status: "pending",
     linkType: "none",
     offsetMinutes: 0,
+    notificationMinutes: null,
     date: "2026-06-29",
     day: 0,
     start: 9 * 60,

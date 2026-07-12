@@ -28,6 +28,7 @@ const overnightSleep: CalendarEvent = {
   status: "pending",
   linkType: "none",
   offsetMinutes: 0,
+  notificationMinutes: null,
   date: "2026-07-01",
   day: 0,
   start: 22 * 60,

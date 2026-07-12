@@ -23,6 +23,7 @@ function createEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
     status: "pending",
     linkType: "none",
     offsetMinutes: 0,
+    notificationMinutes: null,
     date: "2026-07-12",
     day: 5,
     start: 300,

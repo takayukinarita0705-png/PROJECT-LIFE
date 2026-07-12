@@ -22,6 +22,8 @@ export type CalendarEvent = {
   weekOffset: number;
   source?: "fixed-template";
   lifeLogId?: string;
+  notificationMinutes: number | null;
+  notificationSentAt?: string;
   routineRelation?: RoutineRelation;
   routineDetached?: boolean;
 };
@@ -87,7 +89,7 @@ export type LifeLog = {
 
 export type SharedCalendarState = {
   version: 1;
-  schemaVersion: 6;
+  schemaVersion: 7;
   categories: Category[];
   events: CalendarEvent[];
   templates: CalendarTemplate[];
@@ -108,6 +110,7 @@ export type Draft = {
   end: number;
   title?: string;
   lifeLogId?: string;
+  notificationMinutes?: number | null;
 };
 
 export type EventEditDraft = {
