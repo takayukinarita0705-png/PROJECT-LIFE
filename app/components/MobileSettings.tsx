@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import {
   disablePushNotifications,
   enablePushNotifications,
+  getPushNotificationDiagnostics,
   getPushNotificationState,
   getPushNotificationViewState,
   sendTestPushNotification,
+  type PushNotificationDiagnostics,
   type PushNotificationState,
   type PushNotificationSetupResult,
 } from "@/app/lib/pushNotifications";
@@ -49,13 +51,82 @@ function getPushMessage(
       return "VAPID公開鍵が未設定です";
     case "unsupported":
       return "この環境では通知を利用できません";
+    case "service-worker-registration-failed":
+      return "Service Worker登録に失敗しました";
+    case "push-subscription-failed":
+      return "Push購読に失敗しました";
+    case "supabase-save-failed":
+      return "Supabaseへの購読保存に失敗しました";
   }
+}
+
+function getPushErrorMessage(result: PushNotificationSetupResult | null) {
+  if (!result) return "";
+  switch (result.status) {
+    case "unsupported":
+      switch (result.reason) {
+        case "notification-api-unavailable":
+          return "Notification APIが利用できません。";
+        case "service-worker-unavailable":
+          return "Service Workerが利用できません。";
+        case "push-manager-unavailable":
+          return "PushManagerが利用できません。";
+      }
+    case "denied":
+      return "通知許可が拒否済みです。端末設定から変更してください。";
+    case "missing-vapid-key":
+      return "NEXT_PUBLIC_VAPID_PUBLIC_KEY が未設定です。";
+    case "service-worker-registration-failed":
+      return `Service Worker登録失敗: ${result.message}`;
+    case "push-subscription-failed":
+      return `Push購読失敗: ${result.message}`;
+    case "supabase-save-failed":
+      return `Supabase保存失敗: ${result.message}`;
+    case "subscribed":
+      return "";
+  }
+}
+
+function getBooleanLabel(value: boolean) {
+  return value ? "あり" : "なし";
+}
+
+function DiagnosticsRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex justify-between gap-3 border-b border-slate-100 py-1.5 last:border-b-0">
+      <dt className="text-slate-400">{label}</dt>
+      <dd className="max-w-[60%] break-words text-right font-bold text-slate-600">
+        {value}
+      </dd>
+    </div>
+  );
 }
 
 const initialPushState: PushNotificationState = {
   hasSubscription: false,
   isInstalledPwa: false,
   permission: "default",
+};
+
+const initialDiagnostics: PushNotificationDiagnostics = {
+  hasNotificationApi: false,
+  hasPushManager: false,
+  hasServiceWorker: false,
+  hasSubscription: false,
+  hasVapidPublicKey: false,
+  isNavigatorStandalone: false,
+  isStandaloneDisplayMode: false,
+  notificationPermission: "default",
+  serviceWorkerReady: false,
+  serviceWorkerScope: null,
+  serviceWorkerScriptURL: null,
+  serviceWorkerError: null,
 };
 
 export default function MobileSettings() {
@@ -66,11 +137,19 @@ export default function MobileSettings() {
   const [isEnablingPush, setIsEnablingPush] = useState(false);
   const [isDisablingPush, setIsDisablingPush] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
+  const [lastActionMessage, setLastActionMessage] = useState("");
+  const [pushDiagnostics, setPushDiagnostics] =
+    useState<PushNotificationDiagnostics>(initialDiagnostics);
   const [testMessage, setTestMessage] = useState("");
 
   async function refreshPushState() {
     try {
-      setPushState(await getPushNotificationState());
+      const [nextState, nextDiagnostics] = await Promise.all([
+        getPushNotificationState(),
+        getPushNotificationDiagnostics(),
+      ]);
+      setPushState(nextState);
+      setPushDiagnostics(nextDiagnostics);
     } catch (error) {
       console.error("通知状態の確認に失敗しました。", error);
       setPushState((current) => ({
@@ -88,12 +167,23 @@ export default function MobileSettings() {
 
   async function enablePush() {
     setIsEnablingPush(true);
+    setLastActionMessage("通知を有効にするを押しました");
     try {
-      setPushResult(await enablePushNotifications());
+      const result = await enablePushNotifications();
+      setPushResult(result);
+      setLastActionMessage(
+        result.status === "subscribed"
+          ? "通知を有効にしました"
+          : getPushErrorMessage(result),
+      );
       await refreshPushState();
     } catch (error) {
       console.error("通知の有効化に失敗しました。", error);
-      setPushResult({ status: "unsupported" });
+      setPushResult({
+        status: "unsupported",
+        reason: "notification-api-unavailable",
+      });
+      setLastActionMessage("通知の有効化で予期しないエラーが発生しました。");
     } finally {
       setIsEnablingPush(false);
     }
@@ -102,12 +192,15 @@ export default function MobileSettings() {
   async function disablePush() {
     setIsDisablingPush(true);
     setTestMessage("");
+    setLastActionMessage("通知を無効にするを押しました");
     try {
       await disablePushNotifications();
       setPushResult(null);
+      setLastActionMessage("通知を無効にしました");
       await refreshPushState();
     } catch (error) {
       console.error("通知の無効化に失敗しました。", error);
+      setLastActionMessage("通知の無効化に失敗しました。");
     } finally {
       setIsDisablingPush(false);
     }
@@ -173,6 +266,16 @@ export default function MobileSettings() {
             <p className="mt-2 text-xs font-bold text-slate-500">
               現在の通知権限: {getPermissionLabel(pushState.permission)}
             </p>
+            {lastActionMessage && (
+              <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-bold leading-relaxed text-slate-600">
+                {lastActionMessage}
+              </p>
+            )}
+            {getPushErrorMessage(pushResult) && (
+              <p className="mt-2 rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold leading-relaxed text-rose-700">
+                {getPushErrorMessage(pushResult)}
+              </p>
+            )}
             {pushViewState.shouldShowPwaGuide && (
               <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-bold leading-relaxed text-amber-700">
                 iPhoneで通知を利用するには、SafariからProject LIFEをホーム画面へ追加して、ホーム画面のアイコンから起動してください。
@@ -216,6 +319,69 @@ export default function MobileSettings() {
                 {testMessage}
               </p>
             )}
+            <div className="mt-3 rounded-2xl bg-slate-50 px-3 py-2">
+              <p className="text-[11px] font-bold text-slate-400">
+                通知診断情報
+              </p>
+              <dl className="mt-1 text-[11px]">
+                <DiagnosticsRow
+                  label="Notification API"
+                  value={getBooleanLabel(pushDiagnostics.hasNotificationApi)}
+                />
+                <DiagnosticsRow
+                  label="Service Worker"
+                  value={getBooleanLabel(pushDiagnostics.hasServiceWorker)}
+                />
+                <DiagnosticsRow
+                  label="PushManager"
+                  value={getBooleanLabel(pushDiagnostics.hasPushManager)}
+                />
+                <DiagnosticsRow
+                  label="standalone"
+                  value={getBooleanLabel(
+                    pushDiagnostics.isStandaloneDisplayMode,
+                  )}
+                />
+                <DiagnosticsRow
+                  label="navigator.standalone"
+                  value={getBooleanLabel(
+                    pushDiagnostics.isNavigatorStandalone,
+                  )}
+                />
+                <DiagnosticsRow
+                  label="permission"
+                  value={getPermissionLabel(
+                    pushDiagnostics.notificationPermission,
+                  )}
+                />
+                <DiagnosticsRow
+                  label="VAPID公開鍵"
+                  value={getBooleanLabel(pushDiagnostics.hasVapidPublicKey)}
+                />
+                <DiagnosticsRow
+                  label="SW ready"
+                  value={getBooleanLabel(pushDiagnostics.serviceWorkerReady)}
+                />
+                <DiagnosticsRow
+                  label="SW scope"
+                  value={pushDiagnostics.serviceWorkerScope ?? "未登録"}
+                />
+                <DiagnosticsRow
+                  label="SW script"
+                  value={pushDiagnostics.serviceWorkerScriptURL ?? "未登録"}
+                />
+                <DiagnosticsRow
+                  label="購読"
+                  value={getBooleanLabel(pushDiagnostics.hasSubscription)}
+                />
+                {pushDiagnostics.serviceWorkerError && (
+                  <DiagnosticsRow
+                    label="SW error"
+                    value={pushDiagnostics.serviceWorkerError}
+                  />
+                )}
+              </dl>
+            </div>
           </div>
           </div>
         </div>

@@ -3,6 +3,7 @@ import {
   TEST_NOTIFICATION_PAYLOAD,
   disablePushNotifications,
   enablePushNotifications,
+  getPushNotificationDiagnostics,
   getPushNotificationViewState,
   sendTestPushNotification,
 } from "@/app/lib/pushNotifications";
@@ -46,12 +47,19 @@ function createPushSubscription() {
 
 function installPushBrowserStubs({
   permission = "granted",
+  requestPermissionResult = permission,
   subscription = createPushSubscription(),
+  events = [],
 }: {
+  events?: string[];
   permission?: NotificationPermission;
+  requestPermissionResult?: NotificationPermission;
   subscription?: PushSubscription | null;
 } = {}) {
-  const requestPermission = vi.fn().mockResolvedValue(permission);
+  const requestPermission = vi.fn().mockImplementation(() => {
+    events.push("requestPermission");
+    return Promise.resolve(requestPermissionResult);
+  });
   const showNotification = vi.fn().mockResolvedValue(undefined);
   const subscribe = vi.fn().mockResolvedValue(subscription);
   const getSubscription = vi.fn().mockResolvedValue(subscription);
@@ -70,7 +78,11 @@ function installPushBrowserStubs({
   vi.stubGlobal("navigator", {
     serviceWorker: {
       getRegistration: vi.fn().mockResolvedValue(registration),
-      register: vi.fn().mockResolvedValue(registration),
+      ready: Promise.resolve(registration),
+      register: vi.fn().mockImplementation(() => {
+        events.push("registerServiceWorker");
+        return Promise.resolve(registration);
+      }),
     },
   });
   vi.stubGlobal("window", {
@@ -134,6 +146,20 @@ describe("Push通知設定", () => {
     );
   });
 
+  it("ボタン押下処理では許可要求をService Worker登録より前に行う", async () => {
+    const events: string[] = [];
+    installPushBrowserStubs({
+      events,
+      permission: "default",
+      requestPermissionResult: "granted",
+    });
+
+    await expect(enablePushNotifications()).resolves.toEqual({
+      status: "subscribed",
+    });
+    expect(events).toEqual(["requestPermission", "registerServiceWorker"]);
+  });
+
   it("無効化時に購読解除できる", async () => {
     const subscription = createPushSubscription();
     installPushBrowserStubs({ permission: "granted", subscription });
@@ -158,6 +184,31 @@ describe("Push通知設定", () => {
       status: "denied",
     });
     expect(requestPermission).not.toHaveBeenCalled();
+  });
+
+  it("VAPID公開鍵未設定でも許可要求後にエラーを返す", async () => {
+    delete process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    const { requestPermission } = installPushBrowserStubs({
+      permission: "default",
+      requestPermissionResult: "granted",
+    });
+
+    await expect(enablePushNotifications()).resolves.toEqual({
+      status: "missing-vapid-key",
+    });
+    expect(requestPermission).toHaveBeenCalledOnce();
+  });
+
+  it("Supabase保存失敗を画面へ返せる結果にする", async () => {
+    supabaseMocks.upsert.mockResolvedValueOnce({
+      error: { message: "insert failed" },
+    });
+    installPushBrowserStubs({ permission: "granted" });
+
+    await expect(enablePushNotifications()).resolves.toEqual({
+      status: "supabase-save-failed",
+      message: "通知購読を保存できませんでした。insert failed",
+    });
   });
 
   it("PWA以外では案内が表示される", () => {
@@ -187,5 +238,21 @@ describe("Push通知設定", () => {
         tag: TEST_NOTIFICATION_PAYLOAD.tag,
       }),
     );
+  });
+
+  it("通知診断情報で実行環境を確認できる", async () => {
+    installPushBrowserStubs({ permission: "granted" });
+
+    await expect(getPushNotificationDiagnostics()).resolves.toMatchObject({
+      hasNotificationApi: true,
+      hasPushManager: true,
+      hasServiceWorker: true,
+      hasSubscription: true,
+      hasVapidPublicKey: true,
+      isStandaloneDisplayMode: true,
+      notificationPermission: "granted",
+      serviceWorkerReady: true,
+      serviceWorkerScope: null,
+    });
   });
 });

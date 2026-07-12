@@ -2,9 +2,18 @@ import { getSupabaseClient } from "@/app/lib/supabase";
 
 export type PushNotificationSetupResult =
   | { status: "subscribed" }
-  | { status: "unsupported" }
+  | {
+      status: "unsupported";
+      reason:
+        | "notification-api-unavailable"
+        | "service-worker-unavailable"
+        | "push-manager-unavailable";
+    }
   | { status: "denied" }
-  | { status: "missing-vapid-key" };
+  | { status: "missing-vapid-key" }
+  | { status: "service-worker-registration-failed"; message: string }
+  | { status: "push-subscription-failed"; message: string }
+  | { status: "supabase-save-failed"; message: string };
 
 export type PushNotificationDisableResult =
   | { status: "disabled" }
@@ -20,6 +29,21 @@ export type PushNotificationState = {
   hasSubscription: boolean;
   isInstalledPwa: boolean;
   permission: PushNotificationPermissionState;
+};
+
+export type PushNotificationDiagnostics = {
+  hasNotificationApi: boolean;
+  hasPushManager: boolean;
+  hasServiceWorker: boolean;
+  hasSubscription: boolean;
+  hasVapidPublicKey: boolean;
+  isNavigatorStandalone: boolean;
+  isStandaloneDisplayMode: boolean;
+  notificationPermission: PushNotificationPermissionState;
+  serviceWorkerReady: boolean;
+  serviceWorkerScope: string | null;
+  serviceWorkerScriptURL: string | null;
+  serviceWorkerError: string | null;
 };
 
 export const TEST_NOTIFICATION_PAYLOAD = {
@@ -64,6 +88,17 @@ export function isRunningAsInstalledPwa() {
   );
 }
 
+function getNavigatorStandalone() {
+  const navigatorWithStandalone = navigator as Navigator & {
+    standalone?: boolean;
+  };
+  return navigatorWithStandalone.standalone === true;
+}
+
+function getStandaloneDisplayMode() {
+  return window.matchMedia("(display-mode: standalone)").matches;
+}
+
 function urlBase64ToUint8Array(value: string) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
   const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
@@ -81,10 +116,18 @@ function isPushSupported() {
 }
 
 async function getServiceWorkerRegistration() {
-  const registration =
-    (await navigator.serviceWorker.getRegistration("/")) ??
-    (await navigator.serviceWorker.register("/sw.js"));
+  let registration = await navigator.serviceWorker.getRegistration("/");
+  if (!registration || !registration.active) {
+    registration = await navigator.serviceWorker.register("/sw.js", {
+      scope: "/",
+    });
+  }
+  await navigator.serviceWorker.ready;
   return registration;
+}
+
+function toErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "不明なエラー";
 }
 
 export async function savePushSubscription(subscription: PushSubscription) {
@@ -142,14 +185,64 @@ export async function getPushNotificationState(): Promise<PushNotificationState>
   };
 }
 
-export async function enablePushNotifications(): Promise<PushNotificationSetupResult> {
-  if (!isPushSupported()) {
-    return { status: "unsupported" };
+export async function getPushNotificationDiagnostics(): Promise<PushNotificationDiagnostics> {
+  const hasNotificationApi =
+    typeof window !== "undefined" && "Notification" in window;
+  const hasServiceWorker =
+    typeof window !== "undefined" && "serviceWorker" in navigator;
+  const hasPushManager =
+    typeof window !== "undefined" && "PushManager" in window;
+  const diagnostics: PushNotificationDiagnostics = {
+    hasNotificationApi,
+    hasPushManager,
+    hasServiceWorker,
+    hasSubscription: false,
+    hasVapidPublicKey: Boolean(getVapidPublicKey()),
+    isNavigatorStandalone:
+      typeof window !== "undefined" ? getNavigatorStandalone() : false,
+    isStandaloneDisplayMode:
+      typeof window !== "undefined" ? getStandaloneDisplayMode() : false,
+    notificationPermission: getPushPermissionState(),
+    serviceWorkerReady: false,
+    serviceWorkerScope: null,
+    serviceWorkerScriptURL: null,
+    serviceWorkerError: null,
+  };
+
+  if (!hasServiceWorker) return diagnostics;
+
+  try {
+    const registration = await navigator.serviceWorker.getRegistration("/");
+    const subscription =
+      (await registration?.pushManager.getSubscription()) ?? null;
+    diagnostics.hasSubscription = subscription !== null;
+    diagnostics.serviceWorkerScope = registration?.scope ?? null;
+    diagnostics.serviceWorkerScriptURL =
+      registration?.active?.scriptURL ??
+      registration?.installing?.scriptURL ??
+      registration?.waiting?.scriptURL ??
+      null;
+    const readyRegistration = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) =>
+        window.setTimeout(() => resolve(null), 1500),
+      ),
+    ]);
+    diagnostics.serviceWorkerReady = readyRegistration !== null;
+  } catch (error) {
+    diagnostics.serviceWorkerError = toErrorMessage(error);
   }
 
-  const vapidPublicKey = getVapidPublicKey();
-  if (!vapidPublicKey) return { status: "missing-vapid-key" };
+  return diagnostics;
+}
 
+export async function enablePushNotifications(): Promise<PushNotificationSetupResult> {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return {
+      status: "unsupported",
+      reason: "notification-api-unavailable",
+    };
+  }
   const currentPermission = getPushPermissionState();
   if (currentPermission === "denied") return { status: "denied" };
 
@@ -159,17 +252,57 @@ export async function enablePushNotifications(): Promise<PushNotificationSetupRe
       : await Notification.requestPermission();
   if (permission !== "granted") return { status: "denied" };
 
-  const registration = await getServiceWorkerRegistration();
+  if (!("serviceWorker" in navigator)) {
+    return {
+      status: "unsupported",
+      reason: "service-worker-unavailable",
+    };
+  }
+  if (!("PushManager" in window)) {
+    return {
+      status: "unsupported",
+      reason: "push-manager-unavailable",
+    };
+  }
+
+  const vapidPublicKey = getVapidPublicKey();
+  if (!vapidPublicKey) return { status: "missing-vapid-key" };
+
+  let registration: ServiceWorkerRegistration;
+  try {
+    registration = await getServiceWorkerRegistration();
+  } catch (error) {
+    return {
+      status: "service-worker-registration-failed",
+      message: toErrorMessage(error),
+    };
+  }
+
   const currentSubscription =
     await registration.pushManager.getSubscription();
-  const subscription =
-    currentSubscription ??
-    (await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
-    }));
+  let subscription = currentSubscription;
+  if (!subscription) {
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+    } catch (error) {
+      return {
+        status: "push-subscription-failed",
+        message: toErrorMessage(error),
+      };
+    }
+  }
 
-  await savePushSubscription(subscription);
+  try {
+    await savePushSubscription(subscription);
+  } catch (error) {
+    return {
+      status: "supabase-save-failed",
+      message: toErrorMessage(error),
+    };
+  }
   return { status: "subscribed" };
 }
 
