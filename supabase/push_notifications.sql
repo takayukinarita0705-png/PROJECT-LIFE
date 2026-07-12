@@ -11,7 +11,7 @@ create table if not exists public.push_subscriptions (
 alter table public.push_subscriptions enable row level security;
 
 revoke all on table public.push_subscriptions from anon, authenticated;
-grant select, insert, update on table public.push_subscriptions
+grant select, insert, update, delete on table public.push_subscriptions
   to anon, authenticated;
 
 drop policy if exists "Push subscriptions can be saved"
@@ -36,6 +36,14 @@ drop policy if exists "Push subscriptions can be read by app"
 create policy "Push subscriptions can be read by app"
   on public.push_subscriptions
   for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "Push subscriptions can be deleted"
+  on public.push_subscriptions;
+create policy "Push subscriptions can be deleted"
+  on public.push_subscriptions
+  for delete
   to anon, authenticated
   using (true);
 
