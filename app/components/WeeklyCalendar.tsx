@@ -57,7 +57,14 @@ import { isRoutineLinkedEvent } from "@/app/lib/engine/routineEngine";
 import {
   getCurrentWeekLifeLogs,
   getFutureLifeLogWeeklyRecord,
+  type LifeLogFocusFilter,
 } from "@/app/lib/lifeLogs";
+import {
+  getMorningSummaryDestination,
+  scrollToMobileTarget,
+  type MobileScrollTargetId,
+  type MorningSummaryAction,
+} from "@/app/lib/mobileNavigation";
 import {
   getInitialMobilePage,
   isWeeklyReviewDay,
@@ -137,6 +144,8 @@ export default function WeeklyCalendar() {
   } = useCalendarController(weekOffset);
   const [mobilePage, setMobilePage] = useState<MobilePage>("today");
   const [mobileView, setMobileView] = useState<"today" | "week">("today");
+  const [lifeLogInitialFilter, setLifeLogInitialFilter] =
+    useState<LifeLogFocusFilter>("all");
   const [mobileDayOffset, setMobileDayOffset] = useState(0);
   const [dragStart, setDragStart] = useState<{
     date: string;
@@ -614,8 +623,32 @@ export default function WeeklyCalendar() {
   }
 
   function handleMobilePageChange(page: MobilePage) {
+    if (page === "log") setLifeLogInitialFilter("all");
     setMobilePage(page);
     if (page === "today") setMobileView("today");
+  }
+
+  function scrollToMobileTargetSoon(targetId: MobileScrollTargetId) {
+    window.requestAnimationFrame(() => {
+      const didScroll = scrollToMobileTarget(targetId);
+      if (!didScroll) {
+        window.requestAnimationFrame(() => scrollToMobileTarget(targetId));
+      }
+    });
+  }
+
+  function handleMorningSummaryAction(action: MorningSummaryAction) {
+    const destination = getMorningSummaryDestination(action);
+    if (destination.lifeLogFilter) {
+      setLifeLogInitialFilter(destination.lifeLogFilter);
+    }
+    if (destination.page) {
+      setMobilePage(destination.page);
+      if (destination.page === "today") setMobileView("today");
+    }
+    if (destination.scrollTarget) {
+      scrollToMobileTargetSoon(destination.scrollTarget);
+    }
   }
 
   function openNewLifeLog() {
@@ -736,6 +769,7 @@ export default function WeeklyCalendar() {
             events={events}
             hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedState={hasLoadedEvents}
+            initialFilter={lifeLogInitialFilter}
             logs={logs}
             onAdd={openNewLifeLog}
             onClassify={classifyLifeLog}
@@ -748,12 +782,25 @@ export default function WeeklyCalendar() {
           <MobileSettings />
         ) : mobileView === "today" ? (
           <MobileSchedule
+            completionStreak={completionStreak}
             currentTime={currentTime}
             currentDay={currentDay}
             hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedEvents={hasLoadedEvents}
             logs={logs}
+            onOpenActualsSummary={() =>
+              handleMorningSummaryAction("todayActuals")
+            }
+            onOpenFutureLogsSummary={() =>
+              handleMorningSummaryAction("futureLogs")
+            }
             onOpenLifeLog={openLifeLogEditor}
+            onOpenScheduleSummary={() =>
+              handleMorningSummaryAction("todaySchedule")
+            }
+            onOpenStreakSummary={() =>
+              handleMorningSummaryAction("completionStreak")
+            }
             onResetStatus={resetEventToPending}
             onMoveToTomorrow={moveEventToTomorrow}
             onToggleCompleted={toggleEventCompleted}

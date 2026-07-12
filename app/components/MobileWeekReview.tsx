@@ -6,6 +6,7 @@ import FutureLifeLogProgress from "./FutureLifeLogProgress";
 import WeeklyMvpCard from "./WeeklyMvpCard";
 import WeeklyLifeLogs from "./WeeklyLifeLogs";
 import WeeklyCategoryGoals from "./WeeklyCategoryGoals";
+import { MOBILE_SCROLL_TARGETS } from "@/app/lib/mobileNavigation";
 import {
   formatActualMinutes,
   getWeeklyReviewMessage,
@@ -151,8 +152,9 @@ export default function MobileWeekReview({
           <HabitActualRanking actuals={record.actuals} />
           <HabitHeatmap days={habitHeatmap} />
           <section
+            id={MOBILE_SCROLL_TARGETS.weekCompletionStreak}
             aria-label="連続達成"
-            className="rounded-3xl border border-amber-100 bg-white p-4 shadow-sm"
+            className="scroll-mb-28 scroll-mt-3 rounded-3xl border border-amber-100 bg-white p-4 shadow-sm"
           >
             <p className="text-xs font-bold text-amber-600">連続達成</p>
             <p className="mt-2 text-sm font-bold text-amber-800">

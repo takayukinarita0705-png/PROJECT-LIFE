@@ -4,7 +4,9 @@ import {
   isCarryoverEligibleEvent,
 } from "@/app/lib/calendar";
 import ActualsList from "./ActualsList";
+import MorningSummaryCard from "./MorningSummaryCard";
 import { getLifeLogsForEvent } from "@/app/lib/lifeLogs";
+import { MOBILE_SCROLL_TARGETS } from "@/app/lib/mobileNavigation";
 import {
   formatCalendarDate,
   isEventOnDate,
@@ -28,16 +30,19 @@ function normalizeDayMinutes(minutes: number) {
 }
 
 function ActualsSection({
+  id,
   title,
   actuals,
 }: {
+  id?: string;
   title: string;
   actuals: ReturnType<typeof getActualsByCategory>;
 }) {
   return (
     <section
+      id={id}
       aria-label={title}
-      className="rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
+      className="scroll-mb-28 scroll-mt-3 rounded-3xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
     >
       <p className="text-xs font-bold tracking-wide text-slate-500">
         {title}
@@ -218,13 +223,18 @@ function MobileEventCard({
 }
 
 type MobileScheduleProps = {
+  completionStreak: number;
   currentTime: Date | null;
   currentDay: number | null;
   hasCheckedLocalCache: boolean;
   hasLoadedEvents: boolean;
   logs: LifeLog[];
+  onOpenActualsSummary: () => void;
+  onOpenFutureLogsSummary: () => void;
   onMoveToTomorrow: (eventId: string) => void;
   onOpenLifeLog: (log: LifeLog) => void;
+  onOpenScheduleSummary: () => void;
+  onOpenStreakSummary: () => void;
   onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
@@ -232,13 +242,18 @@ type MobileScheduleProps = {
 };
 
 export default function MobileSchedule({
+  completionStreak,
   currentTime,
   currentDay,
   hasCheckedLocalCache,
   hasLoadedEvents,
   logs,
+  onOpenActualsSummary,
+  onOpenFutureLogsSummary,
   onMoveToTomorrow,
   onOpenLifeLog,
+  onOpenScheduleSummary,
+  onOpenStreakSummary,
   onResetStatus,
   onToggleCompleted,
   onToggleSkipped,
@@ -295,6 +310,18 @@ export default function MobileSchedule({
         </div>
       ) : currentDay === null ? null : (
         <div className="grid gap-3">
+          <MorningSummaryCard
+            completionStreak={completionStreak}
+            currentDay={currentDay}
+            currentTime={currentTime}
+            logs={logs}
+            onOpenActuals={onOpenActualsSummary}
+            onOpenFutureLogs={onOpenFutureLogsSummary}
+            onOpenSchedule={onOpenScheduleSummary}
+            onOpenStreak={onOpenStreakSummary}
+            todaySchedule={todaySchedule}
+          />
+
           <section
             aria-label="今日の達成状況"
             className="rounded-3xl border border-emerald-100 bg-emerald-50/70 px-4 py-3"
@@ -346,8 +373,9 @@ export default function MobileSchedule({
           )}
 
           <section
+            id={MOBILE_SCROLL_TARGETS.todaySchedule}
             aria-label="今日の予定一覧"
-            className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
+            className="scroll-mb-28 scroll-mt-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
           >
             <p className="text-xs font-bold text-slate-500">
               今日の予定一覧
@@ -377,7 +405,11 @@ export default function MobileSchedule({
             )}
           </section>
 
-          <ActualsSection title="今日の実績" actuals={todayActuals} />
+          <ActualsSection
+            id={MOBILE_SCROLL_TARGETS.todayActuals}
+            title="今日の実績"
+            actuals={todayActuals}
+          />
         </div>
       )}
     </section>

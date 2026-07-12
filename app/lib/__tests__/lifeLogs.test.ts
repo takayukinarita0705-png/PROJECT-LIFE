@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyLifeLog,
   getFutureLifeLogs,
+  getFutureInboxLifeLogCount,
   getFutureLifeLogWeeklyRecord,
   getCurrentWeekLifeLogs,
   getInboxLifeLogs,
@@ -115,6 +116,17 @@ describe("ライフログ", () => {
         newerLog,
       ]).map(({ id }) => id),
     ).toEqual(["newer", "done", "older"]);
+  });
+
+  it("未来を作るかつInboxのログ件数だけを数える", () => {
+    expect(
+      getFutureInboxLifeLogCount([
+        { ...olderLog, focusArea: "future", status: "inbox" },
+        { ...newerLog, focusArea: "future", status: "scheduled" },
+        { ...newerLog, id: "done", focusArea: "future", status: "done" },
+        { ...newerLog, id: "unset", focusArea: "unset", status: "inbox" },
+      ]),
+    ).toBe(1);
   });
 
   it("分類フィルターで該当するログだけを新しい順で取得する", () => {

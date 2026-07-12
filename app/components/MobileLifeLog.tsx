@@ -31,6 +31,7 @@ type MobileLifeLogProps = {
   hasCheckedLocalCache: boolean;
   hasLoadedState: boolean;
   logs: LifeLog[];
+  initialFilter?: LifeLogFocusFilter;
   onAdd: () => void;
   onClassify: (log: LifeLog, focusArea: LifeLogFocusArea) => void;
   onDelete: (log: LifeLog) => void;
@@ -44,6 +45,7 @@ export default function MobileLifeLog({
   events,
   hasCheckedLocalCache,
   hasLoadedState,
+  initialFilter = "all",
   logs,
   onAdd,
   onClassify,
@@ -53,7 +55,7 @@ export default function MobileLifeLog({
   onSchedule,
 }: MobileLifeLogProps) {
   const [activeFilter, setActiveFilter] =
-    useState<LifeLogFocusFilter>("all");
+    useState<LifeLogFocusFilter>(initialFilter);
   const [isReviewingInbox, setIsReviewingInbox] = useState(false);
   const [undoLog, setUndoLog] = useState<LifeLog | null>(null);
   const filteredLogs = getLifeLogsByFocusFilter(logs, activeFilter);

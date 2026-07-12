@@ -111,6 +111,12 @@ export function getFutureLifeLogs(logs: LifeLog[]) {
   );
 }
 
+export function getFutureInboxLifeLogCount(logs: LifeLog[]) {
+  return logs.filter(
+    (log) => log.focusArea === "future" && log.status === "inbox",
+  ).length;
+}
+
 export function getLifeLogsByFocusFilter(
   logs: LifeLog[],
   filter: LifeLogFocusFilter,
