@@ -47,16 +47,21 @@ create policy "Push subscriptions can be deleted"
   to anon, authenticated
   using (true);
 
--- Supabase Dashboardで pg_cron と pg_net を有効化後に設定する例:
+-- Supabase Dashboardでpg_cron・pg_netを有効化し、VaultにFunction呼出用の
+-- secret keyを「project_life_edge_function_key」という名前で保存してから設定する例:
 -- select cron.schedule(
 --   'project-life-future-reminders',
---   '*/5 * * * *',
+--   '* * * * *',
 --   $$
 --   select net.http_post(
---     url := 'https://<project-ref>.functions.supabase.co/send-future-reminders',
+--     url := 'https://<project-ref>.supabase.co/functions/v1/send-future-reminders',
 --     headers := jsonb_build_object(
---       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true),
---       'Content-Type', 'application/json'
+--       'Content-Type', 'application/json',
+--       'apikey', (
+--         select decrypted_secret
+--         from vault.decrypted_secrets
+--         where name = 'project_life_edge_function_key'
+--       )
 --     ),
 --     body := '{}'::jsonb
 --   );
