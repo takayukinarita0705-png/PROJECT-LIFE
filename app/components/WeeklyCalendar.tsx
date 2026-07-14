@@ -814,6 +814,7 @@ export default function WeeklyCalendar() {
             hasLoadedState={hasLoadedEvents}
             initialFilter={lifeLogInitialFilter}
             logs={logs}
+            events={events}
             scheduleError={lifeLogScheduleError}
             onAdd={openNewLifeLog}
             onClassify={classifyLifeLog}

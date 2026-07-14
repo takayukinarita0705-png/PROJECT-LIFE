@@ -7,14 +7,14 @@ import {
   LIFE_LOG_FOCUS_FILTER_OPTIONS,
   formatLifeLogDate,
   formatLifeLogTime,
+  getLifeLogDisplayGroups,
   getInboxReviewState,
   getLifeLogFocusAreaLabel,
   getLifeLogStatusLabel,
-  getLifeLogTimelineGroups,
-  getLifeLogsByFocusFilter,
   type LifeLogFocusFilter,
 } from "@/app/lib/lifeLogs";
 import type {
+  CalendarEvent,
   LifeLog,
   LifeLogFocusArea,
 } from "@/app/types/calendar";
@@ -27,6 +27,7 @@ type MobileLifeLogProps = {
   hasCheckedLocalCache: boolean;
   hasLoadedState: boolean;
   logs: LifeLog[];
+  events?: CalendarEvent[];
   scheduleError?: string;
   initialFilter?: LifeLogFocusFilter;
   onAdd: () => void;
@@ -42,6 +43,7 @@ export default function MobileLifeLog({
   hasLoadedState,
   initialFilter = "all",
   logs,
+  events = [],
   scheduleError = "",
   onAdd,
   onClassify,
@@ -54,8 +56,11 @@ export default function MobileLifeLog({
     useState<LifeLogFocusFilter>(initialFilter);
   const [isReviewingInbox, setIsReviewingInbox] = useState(false);
   const [undoLog, setUndoLog] = useState<LifeLog | null>(null);
-  const filteredLogs = getLifeLogsByFocusFilter(logs, activeFilter);
-  const timelineGroups = getLifeLogTimelineGroups(filteredLogs);
+  const displayGroups = getLifeLogDisplayGroups(
+    logs,
+    activeFilter,
+    events,
+  );
   const inboxReview = getInboxReviewState(logs);
   const emptyMessage =
     activeFilter === "all"
@@ -235,16 +240,16 @@ export default function MobileLifeLog({
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
           ログを読み込んでいます…
         </div>
-      ) : timelineGroups.length === 0 ? (
+      ) : displayGroups.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
           {emptyMessage}
         </div>
       ) : (
         <div className="grid gap-5">
-          {timelineGroups.map((group) => (
-            <section key={group.date} aria-labelledby={`log-date-${group.date}`}>
+          {displayGroups.map((group) => (
+            <section key={group.key} aria-labelledby={`log-group-${group.key}`}>
               <h3
-                id={`log-date-${group.date}`}
+                id={`log-group-${group.key}`}
                 className="mb-2 text-sm font-bold text-slate-600"
               >
                 {group.label}
@@ -265,6 +270,7 @@ export default function MobileLifeLog({
                           dateTime={log.createdAt}
                           className="text-xs font-bold tabular-nums text-slate-400"
                         >
+                          {formatLifeLogDate(log.createdAt)}{" "}
                           {formatLifeLogTime(log.createdAt)}
                         </time>
                         <div className="flex shrink-0 flex-wrap justify-end gap-1">

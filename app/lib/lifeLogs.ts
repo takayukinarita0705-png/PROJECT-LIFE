@@ -110,6 +110,12 @@ export type FutureLifeLogWeeklyRecord = {
 
 export type LifeLogFocusFilter = LifeLogFocusArea | "all";
 
+export type LifeLogDisplayGroup = {
+  key: LifeLogFocusArea | "scheduled" | "done";
+  label: string;
+  logs: LifeLog[];
+};
+
 export type InboxReviewState = {
   currentLog: LifeLog | null;
   remainingCount: number;
@@ -245,6 +251,111 @@ export function sortLifeLogsNewestFirst(logs: LifeLog[]) {
   );
 }
 
+const LIFE_LOG_DISPLAY_GROUPS: ReadonlyArray<{
+  key: LifeLogDisplayGroup["key"];
+  label: string;
+}> = [
+  { key: "now", label: "🔴 今すぐやる" },
+  { key: "future", label: "🟡 未来を作る" },
+  { key: "review", label: "🔵 見直す" },
+  { key: "discard", label: "⚪ 手放す" },
+  { key: "unset", label: "未分類" },
+  { key: "scheduled", label: "予定化済み" },
+  { key: "done", label: "完了" },
+];
+
+function getLifeLogDisplayGroupKey(
+  log: LifeLog,
+): LifeLogDisplayGroup["key"] {
+  if (log.status === "done") return "done";
+  if (log.status === "scheduled") return "scheduled";
+  return log.focusArea;
+}
+
+function getScheduledEventTime(
+  log: LifeLog,
+  events: CalendarEvent[],
+  referenceDate: Date,
+) {
+  const event =
+    (log.eventId
+      ? events.find((item) => item.id === log.eventId)
+      : undefined) ?? events.find((item) => item.lifeLogId === log.id);
+  if (!event) return Number.POSITIVE_INFINITY;
+
+  const date =
+    event.date ??
+    getCalendarDateForWeekDay(
+      event.weekOffset,
+      event.day,
+      referenceDate,
+    );
+  const parsedDate = parseCalendarDate(date);
+  if (!parsedDate) return Number.POSITIVE_INFINITY;
+  return parsedDate.getTime() + event.start * 60_000;
+}
+
+export function sortLifeLogsForDisplay(
+  logs: LifeLog[],
+  events: CalendarEvent[] = [],
+  referenceDate = new Date(),
+) {
+  const groupRank = new Map(
+    LIFE_LOG_DISPLAY_GROUPS.map(({ key }, index) => [key, index]),
+  );
+
+  return [...logs].sort((first, second) => {
+    const firstKey = getLifeLogDisplayGroupKey(first);
+    const secondKey = getLifeLogDisplayGroupKey(second);
+    const rankDifference =
+      (groupRank.get(firstKey) ?? Number.MAX_SAFE_INTEGER) -
+      (groupRank.get(secondKey) ?? Number.MAX_SAFE_INTEGER);
+    if (rankDifference !== 0) return rankDifference;
+
+    if (firstKey === "scheduled" && secondKey === "scheduled") {
+      const firstSchedule = getScheduledEventTime(
+        first,
+        events,
+        referenceDate,
+      );
+      const secondSchedule = getScheduledEventTime(
+        second,
+        events,
+        referenceDate,
+      );
+      if (firstSchedule !== secondSchedule) {
+        return firstSchedule - secondSchedule;
+      }
+    }
+
+    return Date.parse(second.createdAt) - Date.parse(first.createdAt);
+  });
+}
+
+export function getLifeLogDisplayGroups(
+  logs: LifeLog[],
+  filter: LifeLogFocusFilter,
+  events: CalendarEvent[] = [],
+  referenceDate = new Date(),
+): LifeLogDisplayGroup[] {
+  const filteredLogs =
+    filter === "all"
+      ? logs
+      : logs.filter((log) => log.focusArea === filter);
+  const sortedLogs = sortLifeLogsForDisplay(
+    filteredLogs,
+    events,
+    referenceDate,
+  );
+
+  return LIFE_LOG_DISPLAY_GROUPS.flatMap(({ key, label }) => {
+    const groupedLogs = sortedLogs.filter(
+      (log) => getLifeLogDisplayGroupKey(log) === key,
+    );
+    return groupedLogs.length > 0 ? [{ key, label, logs: groupedLogs }] : [];
+  });
+}
+
 export function getInboxLifeLogs(logs: LifeLog[]) {
   return sortLifeLogsNewestFirst(logs);
 }
@@ -275,12 +386,13 @@ export function getFutureInboxLifeLogCount(logs: LifeLog[]) {
 export function getLifeLogsByFocusFilter(
   logs: LifeLog[],
   filter: LifeLogFocusFilter,
+  events: CalendarEvent[] = [],
 ) {
   const filteredLogs =
     filter === "all"
       ? logs
       : logs.filter((log) => log.focusArea === filter);
-  return sortLifeLogsNewestFirst(filteredLogs);
+  return sortLifeLogsForDisplay(filteredLogs, events);
 }
 
 export function getUnclassifiedLifeLogs(logs: LifeLog[]) {

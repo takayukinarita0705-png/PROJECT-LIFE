@@ -11,6 +11,7 @@ import {
   getInboxLifeLogs,
   getInboxReviewState,
   getLifeLogFocusAreaLabel,
+  getLifeLogDisplayGroups,
   getLifeLogForEvent,
   getLifeLogStatusLabel,
   getLifeLogStatusForEventStatus,
@@ -25,6 +26,7 @@ import {
   normalizeLifeLogBody,
   restoreLifeLogFocusArea,
   sortLifeLogsNewestFirst,
+  sortLifeLogsForDisplay,
   unlinkEventFromLifeLog,
   unlinkLifeLogFromEvent,
 } from "@/app/lib/lifeLogs";
@@ -68,6 +70,92 @@ const event: CalendarEvent = {
 };
 
 describe("ライフログ", () => {
+  it("重要度順に並べ、各グループ内は作成日時の新しい順にする", () => {
+    const logs: LifeLog[] = [
+      { ...newerLog, id: "done", status: "done", focusArea: "now" },
+      { ...newerLog, id: "scheduled", status: "scheduled", focusArea: "now" },
+      { ...newerLog, id: "discard", focusArea: "discard" },
+      { ...newerLog, id: "review", focusArea: "review" },
+      { ...olderLog, id: "future-old", focusArea: "future" },
+      { ...newerLog, id: "future-new", focusArea: "future" },
+      { ...newerLog, id: "now", focusArea: "now" },
+      { ...newerLog, id: "unset", focusArea: "unset" },
+    ];
+
+    expect(sortLifeLogsForDisplay(logs).map(({ id }) => id)).toEqual([
+      "now",
+      "future-new",
+      "future-old",
+      "review",
+      "discard",
+      "unset",
+      "scheduled",
+      "done",
+    ]);
+  });
+
+  it("予定化済みは関連予定日時が近い順にする", () => {
+    const scheduledLogs: LifeLog[] = [
+      {
+        ...newerLog,
+        id: "later-log",
+        status: "scheduled",
+        eventId: "later-event",
+      },
+      {
+        ...olderLog,
+        id: "sooner-log",
+        status: "scheduled",
+        eventId: "sooner-event",
+      },
+      {
+        ...newerLog,
+        id: "legacy-log",
+        status: "scheduled",
+        eventId: undefined,
+      },
+    ];
+    const scheduledEvents: CalendarEvent[] = [
+      {
+        ...event,
+        id: "later-event",
+        date: "2026-07-16",
+        start: 10 * 60,
+      },
+      {
+        ...event,
+        id: "sooner-event",
+        date: "2026-07-15",
+        start: 18 * 60,
+      },
+    ];
+
+    expect(
+      sortLifeLogsForDisplay(
+        scheduledLogs,
+        scheduledEvents,
+        new Date(2026, 6, 14),
+      ).map(({ id }) => id),
+    ).toEqual(["sooner-log", "later-log", "legacy-log"]);
+  });
+
+  it("分類フィルター後も同じ表示順を維持する", () => {
+    const groups = getLifeLogDisplayGroups(
+      [
+        { ...newerLog, id: "future-done", focusArea: "future", status: "done" },
+        { ...olderLog, id: "future-inbox", focusArea: "future" },
+        { ...newerLog, id: "now", focusArea: "now" },
+      ],
+      "future",
+    );
+
+    expect(groups.map(({ key }) => key)).toEqual(["future", "done"]);
+    expect(groups.flatMap(({ logs }) => logs.map(({ id }) => id))).toEqual([
+      "future-inbox",
+      "future-done",
+    ]);
+  });
+
   it("予定からタイトルをコピーした未分類ログを作成しeventIdを保存する", () => {
     expect(
       createLifeLogFromEvent(

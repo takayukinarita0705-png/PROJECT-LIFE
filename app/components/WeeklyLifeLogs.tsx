@@ -1,5 +1,8 @@
 import LifeLogEventLink from "./LifeLogEventLink";
-import { formatLifeLogTime } from "@/app/lib/lifeLogs";
+import {
+  formatLifeLogTime,
+  sortLifeLogsForDisplay,
+} from "@/app/lib/lifeLogs";
 import type {
   CalendarEvent,
   Category,
@@ -17,7 +20,7 @@ export default function WeeklyLifeLogs({
   logs: LifeLog[];
   onViewAll: () => void;
 }) {
-  const latestLogs = logs.slice(0, 3);
+  const latestLogs = sortLifeLogsForDisplay(logs, events).slice(0, 3);
 
   return (
     <section
