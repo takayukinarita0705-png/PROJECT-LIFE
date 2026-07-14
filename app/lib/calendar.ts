@@ -12,6 +12,7 @@ import {
 } from "@/app/lib/time";
 import {
   addDaysToCalendarDate,
+  getEventEndDate,
   getCalendarDayIndex,
   getWeekOffsetForDate,
   getWeekStart,
@@ -350,6 +351,38 @@ export function moveEventToNextDay(
       status: "pending" as const,
     };
   });
+}
+
+export function canQuickPostponeEvent(event: CalendarEvent) {
+  return event.status !== "completed" && event.status !== "skipped";
+}
+
+export function postponeEventToDate(
+  event: CalendarEvent,
+  targetDate: string,
+  referenceDate = new Date(),
+): CalendarEvent {
+  if (!canQuickPostponeEvent(event)) return event;
+
+  const parsedTargetDate = parseCalendarDate(targetDate);
+  if (
+    parsedTargetDate === null ||
+    targetDate <= resolveEventDate(event, referenceDate)
+  ) {
+    return event;
+  }
+
+  return {
+    ...event,
+    date: targetDate,
+    endDate:
+      event.endDate !== undefined || event.end > 24 * 60
+        ? getEventEndDate(targetDate, event.end)
+        : undefined,
+    day: getCalendarDayIndex(parsedTargetDate),
+    weekOffset: getWeekOffsetForDate(parsedTargetDate, referenceDate),
+    notificationSentAt: undefined,
+  };
 }
 
 export function mergeUniqueEvents(

@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import {
   DAYS,
+  canQuickPostponeEvent,
   dateLabel,
   isCarryoverEligibleEvent,
 } from "@/app/lib/calendar";
@@ -8,8 +12,10 @@ import MorningSummaryCard from "./MorningSummaryCard";
 import { getLifeLogsForEvent } from "@/app/lib/lifeLogs";
 import { MOBILE_SCROLL_TARGETS } from "@/app/lib/mobileNavigation";
 import {
+  addDaysToCalendarDate,
   formatCalendarDate,
   isEventOnDate,
+  resolveEventDate,
 } from "@/app/lib/date";
 import {
   getActualsByCategory,
@@ -86,6 +92,7 @@ function MobileEventCard({
   logs,
   onMoveToTomorrow,
   onOpenLifeLog,
+  onRequestPostpone,
   onResetStatus,
   onToggleCompleted,
   onToggleSkipped,
@@ -95,6 +102,7 @@ function MobileEventCard({
   logs: LifeLog[];
   onMoveToTomorrow: (eventId: string) => void;
   onOpenLifeLog: (log: LifeLog) => void;
+  onRequestPostpone: (event: CalendarEvent) => void;
   onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
@@ -176,7 +184,16 @@ function MobileEventCard({
           </div>
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex w-28 shrink-0 flex-wrap justify-end gap-1">
+        {canQuickPostponeEvent(event) && (
+          <button
+            type="button"
+            onClick={() => onRequestPostpone(event)}
+            className="min-h-10 rounded-xl bg-blue-50 px-2 text-xs font-bold text-blue-700"
+          >
+            延期
+          </button>
+        )}
         {!isCheckable ? null : isCompleted || isSkipped ? (
           <>
             {canMoveToTomorrow && (
@@ -237,6 +254,7 @@ type MobileScheduleProps = {
   onOpenFutureLogsSummary: () => void;
   onMoveToTomorrow: (eventId: string) => void;
   onOpenLifeLog: (log: LifeLog) => void;
+  onPostpone: (eventId: string, targetDate: string) => void;
   onOpenScheduleSummary: () => void;
   onOpenStreakSummary: () => void;
   onResetStatus: (eventId: string) => void;
@@ -256,6 +274,7 @@ export default function MobileSchedule({
   onOpenFutureLogsSummary,
   onMoveToTomorrow,
   onOpenLifeLog,
+  onPostpone,
   onOpenScheduleSummary,
   onOpenStreakSummary,
   onResetStatus,
@@ -263,6 +282,9 @@ export default function MobileSchedule({
   onToggleSkipped,
   todaySchedule,
 }: MobileScheduleProps) {
+  const [postponingEvent, setPostponingEvent] =
+    useState<CalendarEvent | null>(null);
+  const [customPostponeDate, setCustomPostponeDate] = useState("");
   const currentMinutes =
     currentTime === null
       ? null
@@ -289,6 +311,19 @@ export default function MobileSchedule({
         ({ event }) => event.id !== currentScheduleItem.event.id,
       )
     : todaySchedule;
+
+  function openPostponeOptions(event: CalendarEvent) {
+    setPostponingEvent(event);
+    setCustomPostponeDate(
+      addDaysToCalendarDate(resolveEventDate(event), 1),
+    );
+  }
+
+  function postponeTo(targetDate: string) {
+    if (!postponingEvent) return;
+    onPostpone(postponingEvent.id, targetDate);
+    setPostponingEvent(null);
+  }
 
   return (
     <section className="md:hidden">
@@ -369,6 +404,7 @@ export default function MobileSchedule({
                 logs={logs}
                 onMoveToTomorrow={onMoveToTomorrow}
                 onOpenLifeLog={onOpenLifeLog}
+                onRequestPostpone={openPostponeOptions}
                 onResetStatus={onResetStatus}
                 onToggleCompleted={onToggleCompleted}
                 onToggleSkipped={onToggleSkipped}
@@ -400,6 +436,7 @@ export default function MobileSchedule({
                     logs={logs}
                     onMoveToTomorrow={onMoveToTomorrow}
                     onOpenLifeLog={onOpenLifeLog}
+                    onRequestPostpone={openPostponeOptions}
                     onResetStatus={onResetStatus}
                     onToggleCompleted={onToggleCompleted}
                     onToggleSkipped={onToggleSkipped}
@@ -414,6 +451,85 @@ export default function MobileSchedule({
             title="今日の実績"
             actuals={todayActuals}
           />
+        </div>
+      )}
+
+      {postponingEvent && (
+        <div
+          className="fixed inset-0 z-[145] flex items-end bg-slate-950/45 p-3 backdrop-blur-sm md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="postpone-dialog-title"
+        >
+          <div className="w-full rounded-3xl bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-blue-600">クイック延期</p>
+                <h3
+                  id="postpone-dialog-title"
+                  className="mt-1 text-lg font-bold text-slate-900"
+                >
+                  {postponingEvent.title?.trim() || "予定"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPostponingEvent(null)}
+                aria-label="延期を閉じる"
+                className="rounded-full bg-slate-100 px-3 py-2 text-slate-500"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {[
+                { label: "明日", days: 1 },
+                { label: "3日後", days: 3 },
+                { label: "来週", days: 7 },
+              ].map(({ label, days }) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() =>
+                    postponeTo(
+                      addDaysToCalendarDate(
+                        resolveEventDate(postponingEvent),
+                        days,
+                      ),
+                    )
+                  }
+                  className="min-h-12 rounded-xl bg-blue-50 px-3 text-sm font-bold text-blue-700"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <label className="mt-4 block text-sm font-bold text-slate-600">
+              日付を選択
+              <input
+                type="date"
+                min={addDaysToCalendarDate(
+                  resolveEventDate(postponingEvent),
+                  1,
+                )}
+                value={customPostponeDate}
+                onChange={(event) =>
+                  setCustomPostponeDate(event.target.value)
+                }
+                className="mt-2 min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-slate-900"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={!customPostponeDate}
+              onClick={() => postponeTo(customPostponeDate)}
+              className="mt-3 min-h-11 w-full rounded-xl bg-slate-900 px-4 text-sm font-bold text-white disabled:opacity-40"
+            >
+              この日へ延期
+            </button>
+          </div>
         </div>
       )}
     </section>

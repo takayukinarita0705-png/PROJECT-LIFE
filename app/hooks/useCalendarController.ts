@@ -14,6 +14,7 @@ import {
   mergeUniqueEvents,
   moveEventToNextDay,
   preserveRemoteEventStatuses,
+  postponeEventToDate,
   reconcileTemplateEvents,
   normalizeNewEventTitle,
   resetEventStatus,
@@ -460,6 +461,23 @@ export default function useCalendarController(weekOffset: number) {
     if (event) syncLinkedLifeLogStatus(event, "pending");
     showUndo(events);
     setEvents((current) => moveEventToNextDay(current, id));
+  }
+
+  function postponeEvent(id: string, targetDate: string) {
+    const event = events.find((item) => item.id === id);
+    if (!event) return false;
+    const postponedEvent = postponeEventToDate(event, targetDate);
+    if (postponedEvent === event) return false;
+
+    showUndo(events);
+    setEvents((current) =>
+      current.map((item) =>
+        item.id === id
+          ? postponeEventToDate(item, targetDate)
+          : item,
+      ),
+    );
+    return true;
   }
 
   function saveEventEdit(
@@ -912,6 +930,7 @@ export default function useCalendarController(weekOffset: number) {
     logs,
     moveEvent,
     moveEventToTomorrow,
+    postponeEvent,
     resetEventToPending,
     saveCategory,
     saveCurrentWeekAsTemplate,

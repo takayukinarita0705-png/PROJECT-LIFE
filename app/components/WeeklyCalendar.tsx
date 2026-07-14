@@ -126,6 +126,7 @@ export default function WeeklyCalendar() {
     logs,
     moveEvent: moveCalendarEvent,
     moveEventToTomorrow,
+    postponeEvent,
     resetEventToPending,
     saveCategory,
     saveCurrentWeekAsTemplate,
@@ -840,6 +841,7 @@ export default function WeeklyCalendar() {
               handleMorningSummaryAction("futureLogs")
             }
             onOpenLifeLog={openLifeLogEditor}
+            onPostpone={postponeEvent}
             onOpenScheduleSummary={() =>
               handleMorningSummaryAction("todaySchedule")
             }

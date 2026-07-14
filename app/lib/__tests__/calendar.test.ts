@@ -5,6 +5,7 @@ import {
   FREE_CATEGORY_ID,
   WORKDAY_ROUTINE,
   attachRoutineRelations,
+  canQuickPostponeEvent,
   createFixedTemplateEvents,
   ensureFreeCategory,
   filterEventsByDate,
@@ -14,6 +15,7 @@ import {
   moveEventToNextDay,
   normalizeNewEventTitle,
   preserveRemoteEventStatuses,
+  postponeEventToDate,
   reconcileTemplateEvents,
   resetEventStatus,
   toggleEventCompletion,
@@ -45,6 +47,91 @@ function createEvent(
     ...overrides,
   };
 }
+
+describe("予定のクイック延期", () => {
+  const referenceDate = new Date(2026, 6, 14, 12);
+
+  it("明日へ延期する", () => {
+    const postponed = postponeEventToDate(
+      createEvent({ date: "2026-07-14", day: 0 }),
+      "2026-07-15",
+      referenceDate,
+    );
+
+    expect(postponed).toMatchObject({
+      date: "2026-07-15",
+      day: 1,
+      weekOffset: 0,
+    });
+  });
+
+  it("来週へ延期する", () => {
+    const postponed = postponeEventToDate(
+      createEvent({ date: "2026-07-14", day: 0 }),
+      "2026-07-21",
+      referenceDate,
+    );
+
+    expect(postponed).toMatchObject({
+      date: "2026-07-21",
+      day: 0,
+      weekOffset: 1,
+    });
+  });
+
+  it("延期後も開始・終了時刻と日付またぎの時間を維持する", () => {
+    const postponed = postponeEventToDate(
+      createEvent({
+        date: "2026-07-14",
+        start: 23 * 60 + 30,
+        end: 24 * 60 + 30,
+        endDate: "2026-07-15",
+      }),
+      "2026-07-17",
+      referenceDate,
+    );
+
+    expect(postponed).toMatchObject({
+      date: "2026-07-17",
+      start: 23 * 60 + 30,
+      end: 24 * 60 + 30,
+      endDate: "2026-07-18",
+    });
+  });
+
+  it("通知設定とライフログ紐付けを維持する", () => {
+    const postponed = postponeEventToDate(
+      createEvent({
+        date: "2026-07-14",
+        lifeLogId: "log-1",
+        notificationMinutes: 30,
+        notificationSentAt: "2026-07-14T00:00:00.000Z",
+      }),
+      "2026-07-17",
+      referenceDate,
+    );
+
+    expect(postponed.lifeLogId).toBe("log-1");
+    expect(postponed.notificationMinutes).toBe(30);
+    expect(postponed.notificationSentAt).toBeUndefined();
+  });
+
+  it.each(["completed", "skipped"] as const)(
+    "%s予定は延期できない",
+    (status) => {
+      const original = createEvent({ status, date: "2026-07-14" });
+
+      expect(canQuickPostponeEvent(original)).toBe(false);
+      expect(
+        postponeEventToDate(
+          original,
+          "2026-07-15",
+          referenceDate,
+        ),
+      ).toBe(original);
+    },
+  );
+});
 
 describe("テンプレート重複防止", () => {
   it("同じ週・曜日・時間・カテゴリの予定を重複追加しない", () => {
