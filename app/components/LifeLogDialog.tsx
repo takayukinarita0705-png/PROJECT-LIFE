@@ -7,25 +7,36 @@ import type {
 
 type LifeLogDialogProps = {
   log: LifeLog | null;
+  initialTitle?: string;
+  isCreatedFromEvent?: boolean;
   onCancel: () => void;
-  onSave: (body: string, focusArea: LifeLogFocusArea) => boolean;
+  onSave: (
+    title: string,
+    body: string,
+    focusArea: LifeLogFocusArea,
+  ) => string | null;
 };
 
 export default function LifeLogDialog({
   log,
+  initialTitle = "",
+  isCreatedFromEvent = false,
   onCancel,
   onSave,
 }: LifeLogDialogProps) {
+  const [title, setTitle] = useState(log?.title ?? initialTitle);
   const [body, setBody] = useState(log?.body ?? "");
   const [focusArea, setFocusArea] = useState<LifeLogFocusArea>(
     log?.focusArea ?? "unset",
   );
   const [error, setError] = useState("");
 
+  const showsTitle = isCreatedFromEvent || log?.title !== undefined;
+  const showsEventOrigin = isCreatedFromEvent || log?.origin === "event";
+
   function save() {
-    if (!onSave(body, focusArea)) {
-      setError("本文を入力してください。");
-    }
+    const saveError = onSave(title, body, focusArea);
+    if (saveError) setError(saveError);
   }
 
   return (
@@ -42,10 +53,37 @@ export default function LifeLogDialog({
         >
           {log ? "ログを編集" : "新しいログ"}
         </h2>
+        {showsEventOrigin && (
+          <p className="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">
+            このログは予定から作成されました
+          </p>
+        )}
+        {showsTitle && (
+          <label className="mt-4 block text-sm font-bold text-slate-600">
+            タイトル
+            <input
+              autoFocus
+              value={title}
+              onChange={(event) => {
+                setTitle(event.target.value);
+                setError("");
+              }}
+              className="mt-2 w-full rounded-2xl border border-slate-300 px-4 py-3 text-base text-slate-900 outline-none focus:border-slate-500"
+            />
+          </label>
+        )}
+        {isCreatedFromEvent && (
+          <p className="mt-4 text-sm font-bold text-slate-600">
+            カテゴリ
+            <span className="ml-2 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+              未分類
+            </span>
+          </p>
+        )}
         <label className="mt-4 block text-sm font-bold text-slate-600">
           本文
           <textarea
-            autoFocus
+            autoFocus={!showsTitle}
             value={body}
             onChange={(event) => {
               setBody(event.target.value);

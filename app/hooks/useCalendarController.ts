@@ -47,11 +47,15 @@ import {
 import { parseTime } from "@/app/lib/time";
 import {
   canScheduleLifeLog,
+  createLifeLogFromEvent,
   createLifeLogScheduledEvent,
+  getLifeLogForEvent,
   getLifeLogStatusForEventStatus,
-  markLifeLogAsInbox,
+  linkEventToLifeLog,
   markLifeLogAsScheduled,
   normalizeLifeLogBody,
+  unlinkLifeLogFromEvent,
+  unlinkEventFromLifeLog,
 } from "@/app/lib/lifeLogs";
 import type {
   CalendarEvent,
@@ -335,7 +339,7 @@ export default function useCalendarController(weekOffset: number) {
       current.map((log) =>
         deletedLifeLogIds.has(log.id) ||
         (log.eventId !== undefined && deletedEventIds.has(log.eventId))
-          ? markLifeLogAsInbox(log, updatedAt)
+          ? unlinkLifeLogFromEvent(log, updatedAt)
           : log,
       ),
     );
@@ -781,9 +785,14 @@ export default function useCalendarController(weekOffset: number) {
     id: string,
     body: string,
     focusArea: LifeLogFocusArea,
+    title?: string,
   ) {
-    const normalizedBody = normalizeLifeLogBody(body);
-    if (normalizedBody === null) return false;
+    const normalizedBody = body.trim();
+    const normalizedTitle = title?.trim();
+    const existingLog = logs.find((log) => log.id === id);
+    const effectiveTitle =
+      title === undefined ? existingLog?.title : normalizedTitle;
+    if (!normalizedBody && !effectiveTitle) return false;
 
     setLogs((current) =>
       current.map((log) =>
@@ -791,6 +800,9 @@ export default function useCalendarController(weekOffset: number) {
           ? {
               ...log,
               body: normalizedBody,
+              ...(title !== undefined
+                ? { title: normalizedTitle || undefined }
+                : {}),
               focusArea,
               updatedAt: new Date().toISOString(),
             }
@@ -800,10 +812,41 @@ export default function useCalendarController(weekOffset: number) {
     return true;
   }
 
+  function addLifeLogFromEvent(
+    eventId: string,
+    title: string,
+    body: string,
+  ) {
+    const event = events.find((item) => item.id === eventId);
+    if (!event) return "予定が見つかりません。";
+    if (getLifeLogForEvent(logs, event)) {
+      return "この予定にはすでにライフログがあります。";
+    }
+
+    const createdAt = new Date().toISOString();
+    const log = createLifeLogFromEvent(
+      event,
+      logs,
+      title,
+      body,
+      crypto.randomUUID(),
+      createdAt,
+    );
+    if (!log) return "タイトルを入力してください。";
+
+    setLogs((current) => [log, ...current]);
+    setEvents((current) =>
+      current.map((item) =>
+        item.id === eventId ? linkEventToLifeLog(item, log.id) : item,
+      ),
+    );
+    return null;
+  }
+
   function deleteLifeLog(id: string) {
     setEvents((current) =>
       current.map((event) =>
-        event.lifeLogId === id ? { ...event, lifeLogId: undefined } : event,
+        unlinkEventFromLifeLog(event, id),
       ),
     );
     setLogs((current) => current.filter((log) => log.id !== id));
@@ -849,6 +892,7 @@ export default function useCalendarController(weekOffset: number) {
 
   return {
     activeCategoryId,
+    addLifeLogFromEvent,
     addLifeLog,
     addEvent,
     applyFixedTemplate,

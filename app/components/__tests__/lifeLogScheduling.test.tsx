@@ -1,6 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import EventDialog from "@/app/components/EventDialog";
+import EventDialog, {
+  MobileWeekEventDialog,
+} from "@/app/components/EventDialog";
 import LifeLogDialog from "@/app/components/LifeLogDialog";
 import MobileLifeLog from "@/app/components/MobileLifeLog";
 import { FREE_CATEGORY } from "@/app/lib/calendar";
@@ -86,7 +88,7 @@ describe("ライフログ予定化UI", () => {
       <LifeLogDialog
         log={createLog("legacy", "future", { eventId: "event-1" })}
         onCancel={() => undefined}
-        onSave={() => true}
+        onSave={() => null}
       />,
     );
 
@@ -119,5 +121,80 @@ describe("ライフログ予定化UI", () => {
     expect(markup).toContain('<option value="30" selected="">30分後</option>');
     expect(markup).not.toContain("終了時間（カスタム）");
     expect(markup).not.toContain("<option value=\"work\"");
+  });
+
+  it("予定詳細にライフログ作成ボタンを表示する", () => {
+    const markup = renderToStaticMarkup(
+      <MobileWeekEventDialog
+        draft={{
+          eventId: "event-1",
+          title: "朝の散歩",
+          categoryId: FREE_CATEGORY.id,
+          start: "09:00",
+          end: "09:30",
+        }}
+        categories={[FREE_CATEGORY]}
+        relatedLifeLog={null}
+        error=""
+        onChange={() => undefined}
+        onCancel={() => undefined}
+        onDelete={() => undefined}
+        onCreateLifeLog={() => undefined}
+        onOpenLifeLog={() => undefined}
+        onSave={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("関連ライフログ");
+    expect(markup).toContain("ライフログを作成");
+  });
+
+  it("関連ログがある予定ではライフログを開くUIへ切り替える", () => {
+    const relatedLog = createLog("log-1", "unset", {
+      title: "朝の散歩",
+      body: "",
+      eventId: "event-1",
+      origin: "event",
+    });
+    const markup = renderToStaticMarkup(
+      <MobileWeekEventDialog
+        draft={{
+          eventId: "event-1",
+          title: "朝の散歩",
+          categoryId: FREE_CATEGORY.id,
+          start: "09:00",
+          end: "09:30",
+        }}
+        categories={[FREE_CATEGORY]}
+        relatedLifeLog={relatedLog}
+        error=""
+        onChange={() => undefined}
+        onCancel={() => undefined}
+        onDelete={() => undefined}
+        onCreateLifeLog={() => undefined}
+        onOpenLifeLog={() => undefined}
+        onSave={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("ライフログを開く");
+    expect(markup).not.toContain("ライフログを作成");
+    expect(markup).toContain("朝の散歩");
+  });
+
+  it("予定から開いた新規ログ画面へタイトルをコピーして生成元を表示する", () => {
+    const markup = renderToStaticMarkup(
+      <LifeLogDialog
+        log={null}
+        initialTitle="朝の散歩"
+        isCreatedFromEvent
+        onCancel={() => undefined}
+        onSave={() => null}
+      />,
+    );
+
+    expect(markup).toContain('value="朝の散歩"');
+    expect(markup).toContain("このログは予定から作成されました");
+    expect(markup).toContain("未分類");
   });
 });

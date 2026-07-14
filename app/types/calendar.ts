@@ -81,10 +81,12 @@ export type LifeLogFocusArea =
 
 export type LifeLog = {
   id: string;
+  title?: string;
   body: string;
   status: LifeLogStatus;
   focusArea: LifeLogFocusArea;
   eventId?: string;
+  origin?: "event";
   createdAt: string;
   updatedAt: string;
 };

@@ -165,6 +165,68 @@ export function markLifeLogAsInbox(log: LifeLog, updatedAt: string): LifeLog {
   };
 }
 
+export function unlinkLifeLogFromEvent(
+  log: LifeLog,
+  updatedAt: string,
+): LifeLog {
+  return {
+    ...log,
+    eventId: undefined,
+    updatedAt,
+  };
+}
+
+export function getLifeLogForEvent(
+  logs: LifeLog[],
+  event: Pick<CalendarEvent, "id" | "lifeLogId">,
+) {
+  return (
+    (event.lifeLogId
+      ? logs.find((log) => log.id === event.lifeLogId)
+      : undefined) ?? logs.find((log) => log.eventId === event.id)
+  );
+}
+
+export function createLifeLogFromEvent(
+  event: Pick<CalendarEvent, "id" | "lifeLogId">,
+  logs: LifeLog[],
+  title: string,
+  body: string,
+  id: string,
+  createdAt: string,
+): LifeLog | null {
+  const normalizedTitle = title.trim();
+  if (!normalizedTitle || getLifeLogForEvent(logs, event)) return null;
+
+  return {
+    id,
+    title: normalizedTitle,
+    body: body.trim(),
+    status: "inbox",
+    focusArea: "unset",
+    eventId: event.id,
+    origin: "event",
+    createdAt,
+    updatedAt: createdAt,
+  };
+}
+
+export function linkEventToLifeLog(
+  event: CalendarEvent,
+  lifeLogId: string,
+): CalendarEvent {
+  return { ...event, lifeLogId };
+}
+
+export function unlinkEventFromLifeLog(
+  event: CalendarEvent,
+  lifeLogId: string,
+): CalendarEvent {
+  return event.lifeLogId === lifeLogId
+    ? { ...event, lifeLogId: undefined }
+    : event;
+}
+
 export function getLifeLogStatusForEventStatus(
   eventStatus: "pending" | "active" | "completed" | "skipped",
 ): LifeLog["status"] {
@@ -269,9 +331,15 @@ export function restoreLifeLogFocusArea(
   );
 }
 
-export function getLifeLogsForEvent(logs: LifeLog[], eventId: string) {
+export function getLifeLogsForEvent(
+  logs: LifeLog[],
+  eventId: string,
+  lifeLogId?: string,
+) {
   return sortLifeLogsNewestFirst(
-    logs.filter((log) => log.eventId === eventId),
+    logs.filter(
+      (log) => log.eventId === eventId || log.id === lifeLogId,
+    ),
   );
 }
 

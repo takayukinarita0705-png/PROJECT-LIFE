@@ -57,6 +57,7 @@ import {
   canScheduleLifeLog,
   getCurrentWeekLifeLogs,
   getFutureLifeLogWeeklyRecord,
+  getLifeLogForEvent,
   type LifeLogFocusFilter,
 } from "@/app/lib/lifeLogs";
 import {
@@ -105,6 +106,7 @@ export default function WeeklyCalendar() {
   const [weekOffset, setWeekOffset] = useState(0);
   const {
     activeCategoryId,
+    addLifeLogFromEvent,
     addLifeLog,
     addEvent: addCalendarEvent,
     applyFixedTemplate,
@@ -180,6 +182,10 @@ export default function WeeklyCalendar() {
   const [editingLifeLog, setEditingLifeLog] = useState<LifeLog | null>(
     null,
   );
+  const [lifeLogSourceEvent, setLifeLogSourceEvent] = useState<{
+    eventId: string;
+    title: string;
+  } | null>(null);
   const [schedulingLifeLog, setSchedulingLifeLog] =
     useState<LifeLog | null>(null);
   const [lifeLogScheduleError, setLifeLogScheduleError] = useState("");
@@ -200,6 +206,12 @@ export default function WeeklyCalendar() {
     ? categories.find(
         (category) => category.id === movingCalendarEvent.categoryId,
       ) ?? null
+    : null;
+  const mobileWeekEditedEvent = mobileWeekEditDraft
+    ? events.find((event) => event.id === mobileWeekEditDraft.eventId)
+    : undefined;
+  const mobileWeekRelatedLifeLog = mobileWeekEditedEvent
+    ? getLifeLogForEvent(logs, mobileWeekEditedEvent) ?? null
     : null;
   const currentDay =
     currentTime === null ? null : getCalendarDayIndex(currentTime);
@@ -644,11 +656,32 @@ export default function WeeklyCalendar() {
 
   function openNewLifeLog() {
     setEditingLifeLog(null);
+    setLifeLogSourceEvent(null);
     setIsLifeLogDialogOpen(true);
   }
 
   function openLifeLogEditor(log: LifeLog) {
     setEditingLifeLog(log);
+    setLifeLogSourceEvent(null);
+    setIsLifeLogDialogOpen(true);
+  }
+
+  function openLifeLogFromMobileEvent() {
+    if (!mobileWeekEditDraft) return;
+    const event = events.find(
+      (item) => item.id === mobileWeekEditDraft.eventId,
+    );
+    if (!event) return;
+    const relatedLog = getLifeLogForEvent(logs, event);
+    if (relatedLog) {
+      openLifeLogEditor(relatedLog);
+      return;
+    }
+    setEditingLifeLog(null);
+    setLifeLogSourceEvent({
+      eventId: event.id,
+      title: mobileWeekEditDraft.title,
+    });
     setIsLifeLogDialogOpen(true);
   }
 
@@ -689,17 +722,30 @@ export default function WeeklyCalendar() {
   }
 
   function saveLifeLog(
+    title: string,
     body: string,
     focusArea: LifeLogFocusArea,
   ) {
-    const saved = editingLifeLog
-      ? updateLifeLog(editingLifeLog.id, body, focusArea)
-      : addLifeLog(body, focusArea);
+    const error = lifeLogSourceEvent
+      ? addLifeLogFromEvent(
+          lifeLogSourceEvent.eventId,
+          title,
+          body,
+        )
+      : editingLifeLog
+        ? updateLifeLog(editingLifeLog.id, body, focusArea, title)
+          ? null
+          : "タイトルまたは本文を入力してください。"
+        : addLifeLog(body, focusArea)
+          ? null
+          : "本文を入力してください。";
+    const saved = error === null;
     if (saved) {
       setIsLifeLogDialogOpen(false);
       setEditingLifeLog(null);
+      setLifeLogSourceEvent(null);
     }
-    return saved;
+    return error;
   }
 
   function classifyLifeLog(log: LifeLog, focusArea: LifeLogFocusArea) {
@@ -882,6 +928,7 @@ export default function WeeklyCalendar() {
         <MobileWeekEventDialog
           draft={mobileWeekEditDraft}
           categories={categories}
+          relatedLifeLog={mobileWeekRelatedLifeLog}
           error={mobileWeekEditError}
           onChange={setMobileWeekEditDraft}
           onCancel={() => {
@@ -889,6 +936,8 @@ export default function WeeklyCalendar() {
             setMobileWeekEditError("");
           }}
           onDelete={deleteMobileWeekEvent}
+          onCreateLifeLog={openLifeLogFromMobileEvent}
+          onOpenLifeLog={openLifeLogEditor}
           onSave={saveMobileWeekEdit}
         />
       )}
@@ -903,9 +952,12 @@ export default function WeeklyCalendar() {
       {isLifeLogDialogOpen && (
         <LifeLogDialog
           log={editingLifeLog}
+          initialTitle={lifeLogSourceEvent?.title}
+          isCreatedFromEvent={lifeLogSourceEvent !== null}
           onCancel={() => {
             setIsLifeLogDialogOpen(false);
             setEditingLifeLog(null);
+            setLifeLogSourceEvent(null);
           }}
           onSave={saveLifeLog}
         />

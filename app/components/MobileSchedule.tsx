@@ -104,7 +104,11 @@ function MobileEventCard({
   const isSkipped = event.status === "skipped";
   const isCheckable = isPerformanceTrackedCategory(category);
   const canMoveToTomorrow = isSkipped && isCarryoverEligibleEvent(event);
-  const linkedLogs = getLifeLogsForEvent(logs, event.id);
+  const linkedLogs = getLifeLogsForEvent(
+    logs,
+    event.id,
+    event.lifeLogId,
+  );
 
   return (
     <article
@@ -166,7 +170,7 @@ function MobileEventCard({
                 onClick={() => onOpenLifeLog(log)}
                 className="whitespace-pre-wrap break-words rounded-lg bg-slate-100/80 px-2 py-1 text-left text-xs text-slate-600"
               >
-                📝 {log.body}
+                📝 {log.title || log.body || "本文なし"}
               </button>
             ))}
           </div>

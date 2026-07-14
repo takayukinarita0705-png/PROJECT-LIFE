@@ -57,7 +57,7 @@ export default function WeeklyLifeLogs({
                   {formatLifeLogTime(log.createdAt)}
                 </time>
                 <p className="min-w-0 whitespace-pre-wrap break-words text-xs text-slate-700">
-                  {log.body}
+                  {log.title || log.body}
                 </p>
               </div>
               <LifeLogEventLink

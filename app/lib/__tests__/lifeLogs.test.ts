@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   canScheduleLifeLog,
   classifyLifeLog,
+  createLifeLogFromEvent,
   createLifeLogScheduledEvent,
   getFutureLifeLogs,
   getFutureInboxLifeLogCount,
@@ -10,6 +11,7 @@ import {
   getInboxLifeLogs,
   getInboxReviewState,
   getLifeLogFocusAreaLabel,
+  getLifeLogForEvent,
   getLifeLogStatusLabel,
   getLifeLogStatusForEventStatus,
   getLifeLogTimelineGroups,
@@ -19,12 +21,17 @@ import {
   getUnclassifiedLifeLogs,
   markLifeLogAsInbox,
   markLifeLogAsScheduled,
+  linkEventToLifeLog,
   normalizeLifeLogBody,
   restoreLifeLogFocusArea,
   sortLifeLogsNewestFirst,
+  unlinkEventFromLifeLog,
+  unlinkLifeLogFromEvent,
 } from "@/app/lib/lifeLogs";
 import { normalizeLifeLog } from "@/app/lib/storage";
-import type { LifeLog } from "@/app/types/calendar";
+import type { CalendarEvent, LifeLog } from "@/app/types/calendar";
+
+const createdAt = "2026-07-14T00:00:00.000Z";
 
 const olderLog: LifeLog = {
   id: "older",
@@ -44,7 +51,108 @@ const newerLog: LifeLog = {
   updatedAt: "2026-07-02T01:00:00.000Z",
 };
 
+const event: CalendarEvent = {
+  id: "event-1",
+  title: "朝の散歩",
+  categoryId: "free",
+  mode: "fixed",
+  status: "pending",
+  linkType: "none",
+  offsetMinutes: 0,
+  date: "2026-07-14",
+  day: 0,
+  start: 9 * 60,
+  end: 9 * 60 + 30,
+  weekOffset: 0,
+  notificationMinutes: null,
+};
+
 describe("ライフログ", () => {
+  it("予定からタイトルをコピーした未分類ログを作成しeventIdを保存する", () => {
+    expect(
+      createLifeLogFromEvent(
+        event,
+        [],
+        "  朝の散歩  ",
+        "",
+        "log-from-event",
+        createdAt,
+      ),
+    ).toEqual({
+      id: "log-from-event",
+      title: "朝の散歩",
+      body: "",
+      status: "inbox",
+      focusArea: "unset",
+      eventId: "event-1",
+      origin: "event",
+      createdAt,
+      updatedAt: createdAt,
+    });
+  });
+
+  it("予定へlifeLogIdを保存し、IDのどちらからでも関連ログを取得する", () => {
+    const log = { ...olderLog, id: "linked-log", eventId: event.id };
+    const linkedEvent = linkEventToLifeLog(event, log.id);
+
+    expect(linkedEvent.lifeLogId).toBe(log.id);
+    expect(getLifeLogForEvent([log], linkedEvent)).toBe(log);
+    expect(
+      getLifeLogForEvent(
+        [{ ...log, eventId: undefined }],
+        linkedEvent,
+      )?.id,
+    ).toBe(log.id);
+  });
+
+  it("関連ログがある予定からは重複作成できない", () => {
+    const existingLog = { ...olderLog, eventId: event.id };
+    expect(
+      createLifeLogFromEvent(
+        event,
+        [existingLog],
+        event.title ?? "",
+        "",
+        "duplicate",
+        createdAt,
+      ),
+    ).toBeNull();
+    expect(
+      createLifeLogFromEvent(
+        { ...event, lifeLogId: existingLog.id },
+        [{ ...existingLog, eventId: undefined }],
+        event.title ?? "",
+        "",
+        "duplicate",
+        createdAt,
+      ),
+    ).toBeNull();
+  });
+
+  it("予定削除ではログのeventIdだけを解除する", () => {
+    const linkedLog = {
+      ...olderLog,
+      title: "振り返り",
+      body: "よかった",
+      status: "done" as const,
+      eventId: event.id,
+      origin: "event" as const,
+    };
+    expect(unlinkLifeLogFromEvent(linkedLog, createdAt)).toEqual({
+      ...linkedLog,
+      eventId: undefined,
+      updatedAt: createdAt,
+    });
+  });
+
+  it("ログ削除では予定のlifeLogIdだけを解除する", () => {
+    const linkedEvent = { ...event, lifeLogId: olderLog.id };
+    expect(unlinkEventFromLifeLog(linkedEvent, olderLog.id)).toEqual({
+      ...linkedEvent,
+      lifeLogId: undefined,
+    });
+  });
+
   it("本文をtrimし、空文字を拒否する", () => {
     expect(normalizeLifeLogBody("  出来事  ")).toBe("出来事");
     expect(normalizeLifeLogBody("   ")).toBeNull();
@@ -192,6 +300,20 @@ describe("ライフログ", () => {
       eventId: "event-1",
     });
     expect(normalizeLifeLog({ ...olderLog, createdAt: "invalid" })).toBeNull();
+    expect(
+      normalizeLifeLog({
+        ...olderLog,
+        title: "  朝の散歩  ",
+        body: "",
+        eventId: "event-1",
+        origin: "event",
+      }),
+    ).toMatchObject({
+      title: "朝の散歩",
+      body: "",
+      eventId: "event-1",
+      origin: "event",
+    });
   });
 
   it("Inboxでは全ログを新しい順で一覧対象にする", () => {

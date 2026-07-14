@@ -120,7 +120,7 @@ export default function MobileLifeLog({
               </time>
             </div>
             <p className="mt-4 whitespace-pre-wrap break-words text-base font-bold leading-relaxed text-slate-900">
-              {currentLog.body}
+              {currentLog.title || currentLog.body}
             </p>
             <div className="mt-5 grid gap-2">
               {QUICK_CLASSIFY_OPTIONS.map(({ value, label }) => (
@@ -286,9 +286,21 @@ export default function MobileLifeLog({
                           )}
                         </div>
                       </div>
-                      <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">
-                        {log.body}
-                      </p>
+                      {log.title && (
+                        <p className="mt-2 break-words text-sm font-bold text-slate-900">
+                          {log.title}
+                        </p>
+                      )}
+                      {log.body && (
+                        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">
+                          {log.body}
+                        </p>
+                      )}
+                      {log.origin === "event" && (
+                        <p className="mt-2 text-xs font-bold text-blue-600">
+                          このログは予定から作成されました
+                        </p>
+                      )}
                       {log.focusArea === "unset" && (
                         <div className="mt-3 rounded-2xl bg-slate-50 px-3 py-2">
                           <p className="text-[11px] font-bold text-slate-400">

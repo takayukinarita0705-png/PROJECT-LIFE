@@ -163,11 +163,15 @@ export function normalizeLifeLog(value: unknown): LifeLog | null {
   if (typeof value !== "object" || value === null) return null;
 
   const log = value as Record<string, unknown>;
+  const title = typeof log.title === "string" ? log.title.trim() : "";
+  const body = typeof log.body === "string" ? log.body.trim() : "";
   if (
     typeof log.id !== "string" ||
     typeof log.body !== "string" ||
-    !log.body.trim() ||
+    (!title && !body) ||
+    (log.title !== undefined && typeof log.title !== "string") ||
     (log.eventId !== undefined && typeof log.eventId !== "string") ||
+    (log.origin !== undefined && log.origin !== "event") ||
     typeof log.createdAt !== "string" ||
     Number.isNaN(Date.parse(log.createdAt)) ||
     typeof log.updatedAt !== "string" ||
@@ -178,12 +182,14 @@ export function normalizeLifeLog(value: unknown): LifeLog | null {
 
   return {
     id: log.id,
-    body: log.body.trim(),
+    title: title || undefined,
+    body,
     status: isLifeLogStatus(log.status) ? log.status : "inbox",
     focusArea: isLifeLogFocusArea(log.focusArea)
       ? log.focusArea
       : "unset",
     eventId: typeof log.eventId === "string" ? log.eventId : undefined,
+    origin: log.origin === "event" ? "event" : undefined,
     createdAt: log.createdAt,
     updatedAt: log.updatedAt,
   };

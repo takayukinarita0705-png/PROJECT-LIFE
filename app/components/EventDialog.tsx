@@ -9,6 +9,7 @@ import type {
   Category,
   Draft,
   EventEditDraft,
+  LifeLog,
   LifeLogScheduleDetails,
   LifeLogScheduleDuration,
 } from "@/app/types/calendar";
@@ -236,20 +237,26 @@ export default function EventDialog({
 type MobileWeekEventDialogProps = {
   draft: EventEditDraft;
   categories: Category[];
+  relatedLifeLog: LifeLog | null;
   error: string;
   onChange: (draft: EventEditDraft) => void;
   onCancel: () => void;
   onDelete: () => void;
+  onCreateLifeLog: () => void;
+  onOpenLifeLog: (log: LifeLog) => void;
   onSave: () => void;
 };
 
 export function MobileWeekEventDialog({
   draft,
   categories,
+  relatedLifeLog,
   error,
   onChange,
   onCancel,
   onDelete,
+  onCreateLifeLog,
+  onOpenLifeLog,
   onSave,
 }: MobileWeekEventDialogProps) {
   return (
@@ -321,6 +328,32 @@ export function MobileWeekEventDialog({
             />
           </label>
         </div>
+
+        <section className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-bold text-slate-500">関連ライフログ</p>
+          {relatedLifeLog ? (
+            <button
+              type="button"
+              onClick={() => onOpenLifeLog(relatedLifeLog)}
+              className="mt-2 w-full rounded-xl bg-white px-3 py-2 text-left text-sm font-bold text-slate-700 shadow-sm"
+            >
+              📝 {relatedLifeLog.title || relatedLifeLog.body || "本文なし"}
+            </button>
+          ) : (
+            <p className="mt-2 text-sm text-slate-400">まだありません</p>
+          )}
+          <button
+            type="button"
+            onClick={
+              relatedLifeLog
+                ? () => onOpenLifeLog(relatedLifeLog)
+                : onCreateLifeLog
+            }
+            className="mt-3 min-h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-bold text-white"
+          >
+            {relatedLifeLog ? "ライフログを開く" : "ライフログを作成"}
+          </button>
+        </section>
 
         {error && (
           <p className="mt-3 text-sm font-bold text-red-600">{error}</p>
