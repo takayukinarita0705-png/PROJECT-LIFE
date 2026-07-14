@@ -12,6 +12,7 @@ import CategoryDialog from "./CategoryDialog";
 import EventDialog, {
   MobileWeekEventDialog,
   type EventDialogScheduleDetails,
+  type EventDialogTimeDetails,
 } from "./EventDialog";
 import MobileBottomTabs from "./MobileBottomTabs";
 import type { MobilePage } from "./MobileBottomTabs";
@@ -526,7 +527,10 @@ export default function WeeklyCalendar() {
     eventMoveDidMoveRef.current = false;
   }
 
-  function addEvent(details?: EventDialogScheduleDetails) {
+  function addEvent(
+    details?: EventDialogScheduleDetails,
+    timeDetails?: EventDialogTimeDetails,
+  ) {
     if (!draft) return;
     if (schedulingLifeLog) {
       if (!details) return;
@@ -542,7 +546,15 @@ export default function WeeklyCalendar() {
       setLifeLogScheduleError("");
       setSchedulingLifeLog(null);
     } else {
-      addCalendarEvent(draft);
+      const timedDraft = timeDetails
+        ? {
+            ...draft,
+            start: timeDetails.start,
+            end: timeDetails.end,
+            endDate: getEventEndDate(draft.date, timeDetails.end),
+          }
+        : draft;
+      addCalendarEvent(timedDraft);
     }
     setDraft(null);
   }

@@ -100,6 +100,27 @@ body {
     overscroll-behavior: contain;
     padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
   }
+
+  .mobile-modal-panel {
+    max-height: calc(
+      var(--mobile-modal-viewport-height, 100dvh) -
+        env(safe-area-inset-top) - 0.75rem
+    );
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+
+  .mobile-modal-layer {
+    top: var(--mobile-modal-viewport-offset-top, 0px);
+    bottom: auto;
+    height: var(--mobile-modal-viewport-height, 100dvh);
+  }
+
+  .mobile-modal-body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-padding-block: 1rem 6rem;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

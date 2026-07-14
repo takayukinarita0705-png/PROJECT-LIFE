@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import EventDialog, {
+  getEventDialogTimeDetails,
   MobileWeekEventDialog,
 } from "@/app/components/EventDialog";
 import LifeLogDialog from "@/app/components/LifeLogDialog";
@@ -123,6 +124,57 @@ describe("ライフログ予定化UI", () => {
     expect(markup).not.toContain("<option value=\"work\"");
   });
 
+  it("スマホ予定追加モーダルは本文をスクロールでき下部ナビより前面に表示する", () => {
+    const markup = renderToStaticMarkup(
+      <EventDialog
+        draft={{
+          date: "2026-07-14",
+          day: 0,
+          weekOffset: 0,
+          start: 9 * 60 + 30,
+          end: 10 * 60 + 30,
+          title: "週間予定",
+        }}
+        categories={[FREE_CATEGORY]}
+        activeCategoryId={FREE_CATEGORY.id}
+        onCategoryChange={() => undefined}
+        onTitleChange={() => undefined}
+        onCancel={() => undefined}
+        onAdd={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("z-[160]");
+    expect(markup).toContain("mobile-modal-panel");
+    expect(markup).toContain("mobile-modal-body");
+    expect(markup).toContain('type="time"');
+    expect(markup).toContain('value="09:30"');
+    expect(markup).toContain('value="10:30"');
+    expect(markup).not.toContain("inputmode=");
+  });
+
+  it("時刻選択値を保存用の分へ変換し終了時刻以前を拒否する", () => {
+    expect(getEventDialogTimeDetails("09:35", "10:50")).toEqual({
+      details: { start: 9 * 60 + 35, end: 10 * 60 + 50 },
+      error: "",
+    });
+    expect(getEventDialogTimeDetails("09:35", "09:35")).toEqual({
+      details: null,
+      error: "終了時刻は開始時刻より後を選択してください。",
+    });
+    expect(getEventDialogTimeDetails("10:00", "09:30")).toEqual({
+      details: null,
+      error: "終了時刻は開始時刻より後を選択してください。",
+    });
+  });
+
+  it("既存の日付またぎ予定は時刻選択UIのまま翌日終了を維持する", () => {
+    expect(getEventDialogTimeDetails("23:30", "00:00", true)).toEqual({
+      details: { start: 23 * 60 + 30, end: 24 * 60 },
+      error: "",
+    });
+  });
+
   it("予定詳細にライフログ作成ボタンを表示する", () => {
     const markup = renderToStaticMarkup(
       <MobileWeekEventDialog
@@ -147,6 +199,10 @@ describe("ライフログ予定化UI", () => {
 
     expect(markup).toContain("関連ライフログ");
     expect(markup).toContain("ライフログを作成");
+    expect(markup.match(/type="time"/g)).toHaveLength(2);
+    expect(markup).not.toContain("inputmode=");
+    expect(markup).toContain("mobile-modal-body");
+    expect(markup).toContain("z-[160]");
   });
 
   it("関連ログがある予定ではライフログを開くUIへ切り替える", () => {

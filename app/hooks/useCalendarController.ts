@@ -504,8 +504,11 @@ export default function useCalendarController(weekOffset: number) {
       event.endDate > eventDate
         ? parsedEnd + 24 * 60
         : parsedEnd;
-    if (start === null || end === null || end <= start) {
+    if (start === null || end === null) {
       return "開始・終了時刻を HH:MM 形式で正しく入力してください。";
+    }
+    if (end <= start) {
+      return "終了時刻は開始時刻より後を選択してください。";
     }
 
     const editedEvent = materializeEventDate({

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { FocusEvent as ReactFocusEvent } from "react";
 import { DAYS, FREE_CATEGORY_ID } from "@/app/lib/calendar";
 import {
   getLifeLogScheduleTiming,
   LIFE_LOG_SCHEDULE_DURATION_OPTIONS,
 } from "@/app/lib/lifeLogs";
-import { formatTime } from "@/app/lib/time";
+import { formatTime, parseTime } from "@/app/lib/time";
 import type {
   Category,
   Draft,
@@ -15,6 +16,88 @@ import type {
 } from "@/app/types/calendar";
 
 export type EventDialogScheduleDetails = LifeLogScheduleDetails;
+export type EventDialogTimeDetails = {
+  start: number;
+  end: number;
+};
+
+export function getEventDialogTimeDetails(
+  startValue: string,
+  endValue: string,
+  allowsNextDay = false,
+) {
+  const start = parseTime(startValue);
+  const parsedEnd = parseTime(endValue);
+  if (start === null || parsedEnd === null) {
+    return {
+      details: null,
+      error: "開始時刻と終了時刻を選択してください。",
+    };
+  }
+  const end =
+    allowsNextDay && parsedEnd <= start
+      ? parsedEnd + 24 * 60
+      : parsedEnd;
+  if (end <= start) {
+    return {
+      details: null,
+      error: "終了時刻は開始時刻より後を選択してください。",
+    };
+  }
+  return { details: { start, end }, error: "" };
+}
+
+function useMobileModalEnvironment() {
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+
+    const bodyOverflow = document.body.style.overflow;
+    const rootOverflow = document.documentElement.style.overflow;
+    const viewport = window.visualViewport;
+    const updateViewportHeight = () => {
+      const height = viewport?.height ?? window.innerHeight;
+      document.documentElement.style.setProperty(
+        "--mobile-modal-viewport-height",
+        `${height}px`,
+      );
+      document.documentElement.style.setProperty(
+        "--mobile-modal-viewport-offset-top",
+        `${viewport?.offsetTop ?? 0}px`,
+      );
+    };
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    updateViewportHeight();
+    viewport?.addEventListener("resize", updateViewportHeight);
+    viewport?.addEventListener("scroll", updateViewportHeight);
+    window.addEventListener("resize", updateViewportHeight);
+
+    return () => {
+      document.body.style.overflow = bodyOverflow;
+      document.documentElement.style.overflow = rootOverflow;
+      document.documentElement.style.removeProperty(
+        "--mobile-modal-viewport-height",
+      );
+      document.documentElement.style.removeProperty(
+        "--mobile-modal-viewport-offset-top",
+      );
+      viewport?.removeEventListener("resize", updateViewportHeight);
+      viewport?.removeEventListener("scroll", updateViewportHeight);
+      window.removeEventListener("resize", updateViewportHeight);
+    };
+  }, []);
+}
+
+function keepFocusedFieldVisible(event: ReactFocusEvent<HTMLDivElement>) {
+  if (!window.matchMedia("(max-width: 767px)").matches) return;
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+
+  window.setTimeout(() => {
+    target.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, 150);
+}
 
 type EventDialogProps = {
   draft: Draft;
@@ -26,7 +109,10 @@ type EventDialogProps = {
   onCategoryChange: (categoryId: string) => void;
   onTitleChange: (title: string) => void;
   onCancel: () => void;
-  onAdd: (details?: EventDialogScheduleDetails) => void;
+  onAdd: (
+    details?: EventDialogScheduleDetails,
+    timeDetails?: EventDialogTimeDetails,
+  ) => void;
 };
 
 export default function EventDialog({
@@ -41,8 +127,15 @@ export default function EventDialog({
   onCancel,
   onAdd,
 }: EventDialogProps) {
+  useMobileModalEnvironment();
   const [date, setDate] = useState("");
   const [start, setStart] = useState("");
+  const [eventStart, setEventStart] = useState(
+    formatTime(draft.start % (24 * 60)),
+  );
+  const [eventEnd, setEventEnd] = useState(
+    formatTime(draft.end % (24 * 60)),
+  );
   const [duration, setDuration] =
     useState<LifeLogScheduleDuration>(30);
   const [customEnd, setCustomEnd] = useState("");
@@ -52,6 +145,14 @@ export default function EventDialog({
   const scheduleTiming = requiresScheduleDetails
     ? getLifeLogScheduleTiming(date, start, duration, customEnd)
     : null;
+  const eventTiming = requiresScheduleDetails
+    ? { details: null, error: "" }
+    : getEventDialogTimeDetails(
+        eventStart,
+        eventEnd,
+        draft.end >= 24 * 60 ||
+          (draft.endDate !== undefined && draft.endDate > draft.date),
+      );
   const hasRequiredCategory = requiresScheduleDetails
     ? categories.some((category) => category.id === FREE_CATEGORY_ID)
     : categories.length > 0 && Boolean(activeCategoryId);
@@ -59,150 +160,192 @@ export default function EventDialog({
     !requiresScheduleDetails || scheduleTiming !== null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 backdrop-blur-sm md:items-center md:p-4 md:backdrop-blur-none">
-      <div className="mobile-sheet w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl md:rounded-2xl md:shadow-xl">
-        <h3 className="text-xl font-bold text-slate-900">予定を追加</h3>
-        {requiresScheduleDetails ? (
-          <div className="mt-4 grid gap-3">
-            <label className="block text-sm font-bold text-slate-700">
-              日付
-              <input
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-                className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
-              />
-            </label>
-            <label className="block text-sm font-bold text-slate-700">
-              開始時間
-              <input
-                type="time"
-                value={start}
-                onChange={(event) => setStart(event.target.value)}
-                className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
-              />
-            </label>
-            <label className="block text-sm font-bold text-slate-700">
-              所要時間
-              <select
-                aria-label="所要時間"
-                value={duration}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  setDuration(
-                    value === "custom"
-                      ? "custom"
-                      : (Number(value) as Exclude<
-                          LifeLogScheduleDuration,
-                          "custom"
-                        >),
-                  );
-                }}
-                className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
-              >
-                {LIFE_LOG_SCHEDULE_DURATION_OPTIONS.map(
-                  ({ value, label }) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ),
-                )}
-              </select>
-            </label>
-            {duration === "custom" && (
+    <div className="mobile-modal-layer fixed inset-0 z-[160] flex items-end justify-center bg-black/50 p-3 backdrop-blur-sm md:z-50 md:items-center md:h-auto md:p-4 md:backdrop-blur-none">
+      <div className="mobile-modal-panel flex w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white p-5 shadow-2xl md:block md:overflow-visible md:rounded-2xl md:shadow-xl">
+        <div className="shrink-0">
+          <h3 className="text-xl font-bold text-slate-900">予定を追加</h3>
+        </div>
+        <div
+          className="mobile-modal-body min-h-0 flex-1"
+          onFocusCapture={keepFocusedFieldVisible}
+        >
+          {requiresScheduleDetails ? (
+            <div className="mt-4 grid gap-3">
               <label className="block text-sm font-bold text-slate-700">
-                終了時間（カスタム）
+                日付
                 <input
-                  type="time"
-                  value={customEnd}
-                  onChange={(event) => setCustomEnd(event.target.value)}
+                  type="date"
+                  value={date}
+                  onChange={(event) => setDate(event.target.value)}
                   className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
                 />
               </label>
-            )}
-            {scheduleTiming && scheduleTiming.endDate !== date && (
-              <p className="text-xs font-bold text-amber-700">
-                終了は翌日 {formatTime(scheduleTiming.end)} です
-              </p>
-            )}
-            {showsNotificationSetting && (
               <label className="block text-sm font-bold text-slate-700">
-                通知
+                開始時間
+                <input
+                  type="time"
+                  value={start}
+                  onChange={(event) => setStart(event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
+                />
+              </label>
+              <label className="block text-sm font-bold text-slate-700">
+                所要時間
                 <select
-                  value={notificationMinutes ?? "none"}
+                  aria-label="所要時間"
+                  value={duration}
                   onChange={(event) => {
                     const value = event.target.value;
-                    setNotificationMinutes(
-                      value === "none" ? null : Number(value),
+                    setDuration(
+                      value === "custom"
+                        ? "custom"
+                        : (Number(value) as Exclude<
+                            LifeLogScheduleDuration,
+                            "custom"
+                          >),
                     );
                   }}
                   className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
                 >
-                  <option value="none">通知なし</option>
-                  <option value="0">開始時刻</option>
-                  <option value="10">10分前</option>
-                  <option value="30">30分前</option>
-                  <option value="60">1時間前</option>
+                  {LIFE_LOG_SCHEDULE_DURATION_OPTIONS.map(
+                    ({ value, label }) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ),
+                  )}
                 </select>
               </label>
-            )}
-          </div>
-        ) : (
-          <p className="mt-1 text-sm text-slate-500">
-            {DAYS[draft.day]}曜日 {formatTime(draft.start)}〜
-            {formatTime(draft.end)}
-          </p>
-        )}
+              {duration === "custom" && (
+                <label className="block text-sm font-bold text-slate-700">
+                  終了時間（カスタム）
+                  <input
+                    type="time"
+                    value={customEnd}
+                    onChange={(event) => setCustomEnd(event.target.value)}
+                    className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
+                  />
+                </label>
+              )}
+              {scheduleTiming && scheduleTiming.endDate !== date && (
+                <p className="text-xs font-bold text-amber-700">
+                  終了は翌日 {formatTime(scheduleTiming.end)} です
+                </p>
+              )}
+              {showsNotificationSetting && (
+                <label className="block text-sm font-bold text-slate-700">
+                  通知
+                  <select
+                    value={notificationMinutes ?? "none"}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setNotificationMinutes(
+                        value === "none" ? null : Number(value),
+                      );
+                    }}
+                    className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
+                  >
+                    <option value="none">通知なし</option>
+                    <option value="0">開始時刻</option>
+                    <option value="10">10分前</option>
+                    <option value="30">30分前</option>
+                    <option value="60">1時間前</option>
+                  </select>
+                </label>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="mt-1 text-sm text-slate-500">
+                {DAYS[draft.day]}曜日{` `}
+                <span className="md:hidden">
+                  {eventStart}〜{eventEnd}
+                </span>
+                <span className="hidden md:inline">
+                  {formatTime(draft.start)}〜{formatTime(draft.end)}
+                </span>
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3 md:hidden">
+                <label className="text-sm font-bold text-slate-700">
+                  開始時刻
+                  <input
+                    type="time"
+                    value={eventStart}
+                    onChange={(event) => setEventStart(event.target.value)}
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 text-slate-900"
+                  />
+                </label>
+                <label className="text-sm font-bold text-slate-700">
+                  終了時刻
+                  <input
+                    type="time"
+                    value={eventEnd}
+                    onChange={(event) => setEventEnd(event.target.value)}
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 text-slate-900"
+                  />
+                </label>
+              </div>
+              {eventTiming.error && (
+                <p
+                  role="alert"
+                  className="mt-2 text-sm font-bold text-red-600 md:hidden"
+                >
+                  {eventTiming.error}
+                </p>
+              )}
+            </>
+          )}
 
-        {!requiresScheduleDetails && (
-          <>
-            <label className="mt-4 block text-sm font-bold text-slate-700">
-              予定
-            </label>
-            <select
-              value={activeCategoryId}
-              onChange={(event) => onCategoryChange(event.target.value)}
-              className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900 max-md:border-slate-300"
-            >
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.icon} {category.name}
-                </option>
-              ))}
-            </select>
-          </>
-        )}
+          {!requiresScheduleDetails && (
+            <>
+              <label className="mt-4 block text-sm font-bold text-slate-700">
+                予定
+              </label>
+              <select
+                value={activeCategoryId}
+                onChange={(event) => onCategoryChange(event.target.value)}
+                className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900 max-md:border-slate-300"
+              >
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.icon} {category.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
 
-        {(requiresScheduleDetails ||
-          activeCategoryId === FREE_CATEGORY_ID) && (
-          <>
-            <label className="mt-4 block text-sm font-bold text-slate-700">
-              予定名
-            </label>
-            <input
-              value={draft.title ?? ""}
-              onChange={(event) => onTitleChange(event.target.value)}
-              placeholder="予定名を入力"
-              autoFocus
-              className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900 max-md:border-slate-300"
-            />
-          </>
-        )}
+          {(requiresScheduleDetails ||
+            activeCategoryId === FREE_CATEGORY_ID) && (
+            <>
+              <label className="mt-4 block text-sm font-bold text-slate-700">
+                予定名
+              </label>
+              <input
+                value={draft.title ?? ""}
+                onChange={(event) => onTitleChange(event.target.value)}
+                placeholder="予定名を入力"
+                autoFocus
+                className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900 max-md:border-slate-300"
+              />
+            </>
+          )}
 
-        {!hasRequiredCategory && (
-          <p className="mt-2 text-sm text-red-600">
-            {requiresScheduleDetails
-              ? "フリーカテゴリが見つかりません。"
-              : "先にカテゴリ管理からカテゴリを追加してください。"}
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="mt-2 text-sm font-bold text-red-600">
-            {error}
-          </p>
-        )}
+          {!hasRequiredCategory && (
+            <p className="mt-2 text-sm text-red-600">
+              {requiresScheduleDetails
+                ? "フリーカテゴリが見つかりません。"
+                : "先にカテゴリ管理からカテゴリを追加してください。"}
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="mt-2 text-sm font-bold text-red-600">
+              {error}
+            </p>
+          )}
+        </div>
 
-        <div className="mt-5 flex gap-3">
+        <div className="mt-5 flex shrink-0 gap-3">
           <button
             onClick={onCancel}
             className="mobile-interactive min-h-12 flex-1 rounded-xl border py-3 font-bold text-slate-700 max-md:border-slate-200"
@@ -215,11 +358,15 @@ export default function EventDialog({
                 requiresScheduleDetails && scheduleTiming
                   ? { ...scheduleTiming, notificationMinutes }
                   : undefined,
+                !requiresScheduleDetails && eventTiming.details
+                  ? eventTiming.details
+                  : undefined,
               );
             }}
             disabled={
               !hasRequiredCategory ||
               !hasValidScheduleDetails ||
+              (!requiresScheduleDetails && !eventTiming.details) ||
               ((requiresScheduleDetails ||
                 activeCategoryId === FREE_CATEGORY_ID) &&
                 !draft.title?.trim())
@@ -259,10 +406,11 @@ export function MobileWeekEventDialog({
   onOpenLifeLog,
   onSave,
 }: MobileWeekEventDialogProps) {
+  useMobileModalEnvironment();
   return (
-    <div className="fixed inset-0 z-[140] flex items-end bg-slate-950/50 p-3 backdrop-blur-sm md:hidden">
-      <div className="mobile-sheet w-full rounded-3xl bg-white p-5 shadow-2xl">
-        <div className="flex items-center justify-between">
+    <div className="mobile-modal-layer fixed inset-0 z-[160] flex items-end bg-slate-950/50 p-3 backdrop-blur-sm md:hidden">
+      <div className="mobile-modal-panel flex w-full flex-col overflow-hidden rounded-3xl bg-white p-5 shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between">
           <h3 className="text-lg font-bold text-slate-900">予定を編集</h3>
           <button
             type="button"
@@ -274,92 +422,97 @@ export function MobileWeekEventDialog({
           </button>
         </div>
 
-        <label className="mt-4 block text-sm font-bold text-slate-700">
-          タイトル
-        </label>
-        <input
-          value={draft.title}
-          onChange={(event) =>
-            onChange({ ...draft, title: event.target.value })
-          }
-          className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 text-slate-900"
-        />
-
-        <label className="mt-4 block text-sm font-bold text-slate-700">
-          カテゴリ
-        </label>
-        <select
-          value={draft.categoryId}
-          onChange={(event) =>
-            onChange({ ...draft, categoryId: event.target.value })
-          }
-          className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 text-slate-900"
+        <div
+          className="mobile-modal-body min-h-0 flex-1"
+          onFocusCapture={keepFocusedFieldVisible}
         >
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.icon} {category.name}
-            </option>
-          ))}
-        </select>
-
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <label className="text-sm font-bold text-slate-700">
-            開始
-            <input
-              value={draft.start}
-              onChange={(event) =>
-                onChange({ ...draft, start: event.target.value })
-              }
-              inputMode="numeric"
-              placeholder="09:00"
-              className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 font-mono text-slate-900"
-            />
+          <label className="mt-4 block text-sm font-bold text-slate-700">
+            タイトル
           </label>
-          <label className="text-sm font-bold text-slate-700">
-            終了
-            <input
-              value={draft.end}
-              onChange={(event) =>
-                onChange({ ...draft, end: event.target.value })
-              }
-              inputMode="numeric"
-              placeholder="10:00"
-              className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 font-mono text-slate-900"
-            />
-          </label>
-        </div>
+          <input
+            value={draft.title}
+            onChange={(event) =>
+              onChange({ ...draft, title: event.target.value })
+            }
+            className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 text-slate-900"
+          />
 
-        <section className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-          <p className="text-xs font-bold text-slate-500">関連ライフログ</p>
-          {relatedLifeLog ? (
+          <label className="mt-4 block text-sm font-bold text-slate-700">
+            カテゴリ
+          </label>
+          <select
+            value={draft.categoryId}
+            onChange={(event) =>
+              onChange({ ...draft, categoryId: event.target.value })
+            }
+            className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 text-slate-900"
+          >
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.icon} {category.name}
+              </option>
+            ))}
+          </select>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <label className="text-sm font-bold text-slate-700">
+              開始
+              <input
+                type="time"
+                value={draft.start}
+                onChange={(event) =>
+                  onChange({ ...draft, start: event.target.value })
+                }
+                className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 font-mono text-slate-900"
+              />
+            </label>
+            <label className="text-sm font-bold text-slate-700">
+              終了
+              <input
+                type="time"
+                value={draft.end}
+                onChange={(event) =>
+                  onChange({ ...draft, end: event.target.value })
+                }
+                className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 font-mono text-slate-900"
+              />
+            </label>
+          </div>
+
+          <section className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <p className="text-xs font-bold text-slate-500">関連ライフログ</p>
+            {relatedLifeLog ? (
+              <button
+                type="button"
+                onClick={() => onOpenLifeLog(relatedLifeLog)}
+                className="mobile-interactive mt-2 min-h-11 w-full break-words rounded-xl bg-white px-3 py-2 text-left text-sm font-bold leading-relaxed text-slate-700 shadow-sm [overflow-wrap:anywhere]"
+              >
+                📝 {relatedLifeLog.title || relatedLifeLog.body || "本文なし"}
+              </button>
+            ) : (
+              <p className="mt-2 text-sm text-slate-400">まだありません</p>
+            )}
             <button
               type="button"
-              onClick={() => onOpenLifeLog(relatedLifeLog)}
-              className="mobile-interactive mt-2 min-h-11 w-full break-words rounded-xl bg-white px-3 py-2 text-left text-sm font-bold leading-relaxed text-slate-700 shadow-sm [overflow-wrap:anywhere]"
+              onClick={
+                relatedLifeLog
+                  ? () => onOpenLifeLog(relatedLifeLog)
+                  : onCreateLifeLog
+              }
+              className="mobile-interactive mt-3 min-h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-bold text-white"
             >
-              📝 {relatedLifeLog.title || relatedLifeLog.body || "本文なし"}
+              {relatedLifeLog ? "ライフログを開く" : "ライフログを作成"}
             </button>
-          ) : (
-            <p className="mt-2 text-sm text-slate-400">まだありません</p>
+          </section>
+
+          {error && (
+            <p role="alert" className="mt-3 text-sm font-bold text-red-600">
+              {error}
+            </p>
           )}
-          <button
-            type="button"
-            onClick={
-              relatedLifeLog
-                ? () => onOpenLifeLog(relatedLifeLog)
-                : onCreateLifeLog
-            }
-            className="mobile-interactive mt-3 min-h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-bold text-white"
-          >
-            {relatedLifeLog ? "ライフログを開く" : "ライフログを作成"}
-          </button>
-        </section>
+        </div>
 
-        {error && (
-          <p className="mt-3 text-sm font-bold text-red-600">{error}</p>
-        )}
-
-        <div className="mt-5 grid grid-cols-[auto_1fr_1fr] gap-2">
+        <div className="mt-5 grid shrink-0 grid-cols-[auto_1fr_1fr] gap-2">
           <button
             type="button"
             onClick={onDelete}
