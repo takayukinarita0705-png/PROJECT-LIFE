@@ -70,6 +70,10 @@ function installPushBrowserStubs({
     },
     showNotification,
   };
+  const register = vi.fn().mockImplementation(() => {
+    events.push("registerServiceWorker");
+    return Promise.resolve(registration);
+  });
 
   vi.stubGlobal("Notification", {
     permission,
@@ -79,10 +83,7 @@ function installPushBrowserStubs({
     serviceWorker: {
       getRegistration: vi.fn().mockResolvedValue(registration),
       ready: Promise.resolve(registration),
-      register: vi.fn().mockImplementation(() => {
-        events.push("registerServiceWorker");
-        return Promise.resolve(registration);
-      }),
+      register,
     },
   });
   vi.stubGlobal("window", {
@@ -97,6 +98,7 @@ function installPushBrowserStubs({
     getSubscription,
     registration,
     requestPermission,
+    register,
     showNotification,
     subscribe,
     subscription,
@@ -158,6 +160,18 @@ describe("Push通知設定", () => {
       status: "subscribed",
     });
     expect(events).toEqual(["requestPermission", "registerServiceWorker"]);
+  });
+
+  it("アイコン更新版のService Workerをキャッシュを使わず登録する", async () => {
+    const { register } = installPushBrowserStubs({ permission: "granted" });
+
+    await expect(enablePushNotifications()).resolves.toEqual({
+      status: "subscribed",
+    });
+    expect(register).toHaveBeenCalledWith("/sw.js?v=20260714-1", {
+      scope: "/",
+      updateViaCache: "none",
+    });
   });
 
   it("無効化時に購読解除できる", async () => {

@@ -115,11 +115,20 @@ function isPushSupported() {
   );
 }
 
+const SERVICE_WORKER_VERSION = "20260714-1";
+const SERVICE_WORKER_URL = `/sw.js?v=${SERVICE_WORKER_VERSION}`;
+
 async function getServiceWorkerRegistration() {
   let registration = await navigator.serviceWorker.getRegistration("/");
-  if (!registration || !registration.active) {
-    registration = await navigator.serviceWorker.register("/sw.js", {
+  const activeScriptURL = registration?.active?.scriptURL ?? "";
+  if (
+    !registration ||
+    !registration.active ||
+    !activeScriptURL.includes(`v=${SERVICE_WORKER_VERSION}`)
+  ) {
+    registration = await navigator.serviceWorker.register(SERVICE_WORKER_URL, {
       scope: "/",
+      updateViaCache: "none",
     });
   }
   await navigator.serviceWorker.ready;

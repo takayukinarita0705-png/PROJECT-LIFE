@@ -20,19 +20,34 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/icons/lifeos-192.png",
+        url: "/favicon.ico?v=20260714-1",
+        sizes: "any",
+        type: "image/x-icon",
+      },
+      {
+        url: "/favicon-32x32.png?v=20260714-1",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        url: "/favicon-16x16.png?v=20260714-1",
+        sizes: "16x16",
+        type: "image/png",
+      },
+      {
+        url: "/icon-192.png?v=20260714-1",
         sizes: "192x192",
         type: "image/png",
       },
       {
-        url: "/icons/lifeos-512.png",
+        url: "/icon-512.png?v=20260714-1",
         sizes: "512x512",
         type: "image/png",
       },
     ],
     apple: [
       {
-        url: "/icons/apple-touch-icon.png",
+        url: "/apple-touch-icon.png?v=20260714-1",
         sizes: "180x180",
         type: "image/png",
       },

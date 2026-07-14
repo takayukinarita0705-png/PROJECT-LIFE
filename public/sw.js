@@ -1,3 +1,5 @@
+const PROJECT_LIFE_ASSET_VERSION = "20260714-1";
+
 self.addEventListener("push", (event) => {
   const fallbackData = {
     title: "Project LIFE",
@@ -8,8 +10,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || fallbackData.title;
   const options = {
     body: data.body || fallbackData.body,
-    icon: "/icons/lifeos-192.png",
-    badge: "/icons/lifeos-192.png",
+    icon: `/icon-192.png?v=${PROJECT_LIFE_ASSET_VERSION}`,
+    badge: `/icon-192.png?v=${PROJECT_LIFE_ASSET_VERSION}`,
     data: {
       url: data.url || fallbackData.url,
       eventId: data.eventId,
