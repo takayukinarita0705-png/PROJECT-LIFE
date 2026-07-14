@@ -32,9 +32,39 @@ const JAPAN_UTC_OFFSET_MINUTES = 9 * 60;
 const MAX_STATE_UPDATE_ATTEMPTS = 3;
 
 function requireEnv(name: string) {
-  const value = Deno.env.get(name);
+  const value = Deno.env.get(name)?.trim();
   if (!value) throw new Error(`${name} is required`);
   return value;
+}
+
+function decodeBase64Url(value: string) {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(base64), (character) =>
+    character.charCodeAt(0),
+  );
+}
+
+function validateVapidKeys(publicKey: string, privateKey: string) {
+  const isBase64Url = (value: string) => /^[A-Za-z0-9_-]+$/.test(value);
+  if (!isBase64Url(publicKey)) {
+    throw new Error("VAPID_PUBLIC_KEY must be unpadded Base64URL");
+  }
+  if (!isBase64Url(privateKey)) {
+    throw new Error("VAPID_PRIVATE_KEY must be unpadded Base64URL");
+  }
+
+  const decodedPublicKey = decodeBase64Url(publicKey);
+  const decodedPrivateKey = decodeBase64Url(privateKey);
+  if (decodedPublicKey.length !== 65 || decodedPublicKey[0] !== 4) {
+    throw new Error("VAPID_PUBLIC_KEY must be a 65-byte public key");
+  }
+  if (decodedPrivateKey.length !== 32) {
+    throw new Error("VAPID_PRIVATE_KEY must be a 32-byte private key");
+  }
+  if (publicKey === privateKey) {
+    throw new Error("VAPID public and private keys must be different");
+  }
 }
 
 function getEventStartDateTime(event: CalendarEvent) {
@@ -177,6 +207,7 @@ Deno.serve(async (request) => {
       Deno.env.get("VAPID_SUBJECT") ?? "mailto:project-life@example.com";
     const appUrl = Deno.env.get("PROJECT_LIFE_APP_URL") ?? "/";
 
+    validateVapidKeys(vapidPublicKey, vapidPrivateKey);
     webPush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
