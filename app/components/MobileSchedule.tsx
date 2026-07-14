@@ -121,7 +121,7 @@ function MobileEventCard({
   return (
     <article
       aria-current={isCurrent ? "time" : undefined}
-      className={`flex min-h-16 w-full items-center gap-3 rounded-2xl border border-l-4 px-3 py-2 text-left ${
+      className={`grid min-h-16 w-full grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 rounded-2xl border border-l-4 p-3 text-left ${
         isCompleted
           ? "border-emerald-200 bg-emerald-50"
           : isSkipped
@@ -138,10 +138,10 @@ function MobileEventCard({
       >
         {category.icon}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+      <div className="min-w-0">
+        <div className="flex items-start justify-between gap-2">
           <h3
-            className={`truncate font-bold ${
+            className={`line-clamp-2 min-w-0 break-words text-sm font-bold leading-snug [overflow-wrap:anywhere] ${
               isCompleted
                 ? "text-emerald-700 line-through"
                 : isSkipped
@@ -151,16 +151,25 @@ function MobileEventCard({
           >
             {displayTitle}
           </h3>
-          {isCurrent && (
-            <span className="shrink-0 rounded-full bg-rose-200 px-2 py-0.5 text-[10px] font-bold text-rose-700">
-              進行中
-            </span>
-          )}
-          {isSkipped && (
-            <span className="shrink-0 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-              スキップ
-            </span>
-          )}
+          <span
+            className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${
+              isCompleted
+                ? "bg-emerald-100 text-emerald-700"
+                : isSkipped
+                  ? "bg-slate-200 text-slate-600"
+                  : isCurrent
+                    ? "bg-rose-200 text-rose-700"
+                    : "bg-slate-100 text-slate-600"
+            }`}
+          >
+            {isCompleted
+              ? "完了"
+              : isSkipped
+                ? "スキップ"
+                : isCurrent
+                  ? "進行中"
+                  : "未完了"}
+          </span>
         </div>
         <p
           className={`text-sm font-medium tabular-nums ${
@@ -176,7 +185,7 @@ function MobileEventCard({
                 key={log.id}
                 type="button"
                 onClick={() => onOpenLifeLog(log)}
-                className="whitespace-pre-wrap break-words rounded-lg bg-slate-100/80 px-2 py-1 text-left text-xs text-slate-600"
+                className="mobile-interactive min-h-11 whitespace-pre-wrap break-words rounded-xl bg-slate-100/80 px-3 py-2 text-left text-xs leading-relaxed text-slate-600 [overflow-wrap:anywhere]"
               >
                 📝 {log.title || log.body || "本文なし"}
               </button>
@@ -184,12 +193,12 @@ function MobileEventCard({
           </div>
         )}
       </div>
-      <div className="flex w-28 shrink-0 flex-wrap justify-end gap-1">
+      <div className="col-span-2 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-2">
         {canQuickPostponeEvent(event) && (
           <button
             type="button"
             onClick={() => onRequestPostpone(event)}
-            className="min-h-10 rounded-xl bg-blue-50 px-2 text-xs font-bold text-blue-700"
+            className="mobile-interactive min-h-11 rounded-xl bg-blue-50 px-3 text-xs font-bold text-blue-700"
           >
             延期
           </button>
@@ -201,7 +210,7 @@ function MobileEventCard({
                 type="button"
                 onClick={() => onMoveToTomorrow(event.id)}
                 aria-label={`${displayTitle}を明日に移動`}
-                className="min-h-11 rounded-xl bg-amber-100 px-3 text-xs font-bold text-amber-700"
+                className="mobile-interactive min-h-11 rounded-xl bg-amber-100 px-3 text-xs font-bold text-amber-700"
               >
                 明日に移動
               </button>
@@ -210,7 +219,7 @@ function MobileEventCard({
               type="button"
               onClick={() => onResetStatus(event.id)}
               aria-label={`${displayTitle}を未完了に戻す`}
-              className={`min-h-11 rounded-xl px-3 text-xs font-bold ${
+              className={`mobile-interactive min-h-11 rounded-xl px-3 text-xs font-bold ${
                 isCompleted
                   ? "bg-emerald-100 text-emerald-700"
                   : "bg-slate-700 text-white"
@@ -224,7 +233,7 @@ function MobileEventCard({
             <button
               type="button"
               onClick={() => onToggleSkipped(event.id)}
-              className="min-h-11 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-600"
+              className="mobile-interactive min-h-11 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-600"
             >
               スキップ
             </button>
@@ -232,7 +241,7 @@ function MobileEventCard({
               type="button"
               onClick={() => onToggleCompleted(event.id)}
               aria-label={`${displayTitle}を完了`}
-              className="min-h-11 rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white"
+              className="mobile-interactive min-h-11 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm"
             >
               完了
             </button>
@@ -327,7 +336,7 @@ export default function MobileSchedule({
 
   return (
     <section className="md:hidden">
-      <header className="mb-3">
+      <header className="mb-4">
         <p className="text-xs font-bold tracking-[0.18em] text-slate-400">
           TODAY
         </p>
@@ -348,7 +357,7 @@ export default function MobileSchedule({
           予定を読み込んでいます…
         </div>
       ) : currentDay === null ? null : (
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           <MorningSummaryCard
             completionStreak={completionStreak}
             currentDay={currentDay}
@@ -461,7 +470,7 @@ export default function MobileSchedule({
           aria-modal="true"
           aria-labelledby="postpone-dialog-title"
         >
-          <div className="w-full rounded-3xl bg-white p-5 shadow-2xl">
+          <div className="mobile-sheet w-full rounded-3xl bg-white p-5 shadow-2xl">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold text-blue-600">クイック延期</p>
@@ -476,7 +485,7 @@ export default function MobileSchedule({
                 type="button"
                 onClick={() => setPostponingEvent(null)}
                 aria-label="延期を閉じる"
-                className="rounded-full bg-slate-100 px-3 py-2 text-slate-500"
+                className="mobile-interactive grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-500"
               >
                 ✕
               </button>
@@ -499,7 +508,7 @@ export default function MobileSchedule({
                       ),
                     )
                   }
-                  className="min-h-12 rounded-xl bg-blue-50 px-3 text-sm font-bold text-blue-700"
+                  className="mobile-interactive min-h-12 rounded-xl bg-blue-50 px-3 text-sm font-bold text-blue-700"
                 >
                   {label}
                 </button>
@@ -525,7 +534,7 @@ export default function MobileSchedule({
               type="button"
               disabled={!customPostponeDate}
               onClick={() => postponeTo(customPostponeDate)}
-              className="mt-3 min-h-11 w-full rounded-xl bg-slate-900 px-4 text-sm font-bold text-white disabled:opacity-40"
+              className="mobile-interactive mt-3 min-h-12 w-full rounded-xl bg-slate-900 px-4 text-sm font-bold text-white disabled:opacity-40"
             >
               この日へ延期
             </button>

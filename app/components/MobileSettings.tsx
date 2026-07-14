@@ -99,9 +99,9 @@ function DiagnosticsRow({
   value: string;
 }) {
   return (
-    <div className="flex justify-between gap-3 border-b border-slate-100 py-1.5 last:border-b-0">
+    <div className="flex justify-between gap-3 border-b border-slate-200/70 py-2 last:border-b-0">
       <dt className="text-slate-400">{label}</dt>
-      <dd className="max-w-[60%] break-words text-right font-bold text-slate-600">
+      <dd className="max-w-[60%] break-words text-right font-bold text-slate-600 [overflow-wrap:anywhere]">
         {value}
       </dd>
     </div>
@@ -260,7 +260,7 @@ export default function MobileSettings() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="font-bold text-slate-800">通知</p>
-            <p className="text-xs text-slate-400">
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
               {getPushMessage(pushState, pushResult)}
             </p>
             <p className="mt-2 text-xs font-bold text-slate-500">
@@ -286,12 +286,12 @@ export default function MobileSettings() {
                 通知が拒否されています。再要求は行わないため、端末設定から通知を許可してください。
               </p>
             )}
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-4 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
               <button
                 type="button"
                 onClick={enablePush}
                 disabled={isEnablingPush || !pushViewState.canEnable}
-                className="min-h-10 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-50"
+                className="mobile-interactive min-h-11 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-50"
               >
                 {isEnablingPush ? "確認中" : "通知を有効にする"}
               </button>
@@ -299,7 +299,7 @@ export default function MobileSettings() {
                 type="button"
                 onClick={disablePush}
                 disabled={isDisablingPush || !pushViewState.canDisable}
-                className="min-h-10 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-600 disabled:opacity-50"
+                className="mobile-interactive min-h-11 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-600 disabled:opacity-50"
               >
                 {isDisablingPush ? "解除中" : "通知を無効にする"}
               </button>
@@ -308,7 +308,7 @@ export default function MobileSettings() {
                   type="button"
                   onClick={sendTest}
                   disabled={isSendingTest}
-                  className="min-h-10 rounded-xl bg-emerald-50 px-3 text-xs font-bold text-emerald-700 disabled:opacity-50"
+                  className="mobile-interactive min-h-11 rounded-xl bg-emerald-50 px-3 text-xs font-bold text-emerald-700 disabled:opacity-50"
                 >
                   {isSendingTest ? "送信中" : "テスト通知を送る"}
                 </button>
@@ -319,11 +319,11 @@ export default function MobileSettings() {
                 {testMessage}
               </p>
             )}
-            <div className="mt-3 rounded-2xl bg-slate-50 px-3 py-2">
-              <p className="text-[11px] font-bold text-slate-400">
+            <div className="mt-4 rounded-2xl bg-slate-50 p-3">
+              <p className="text-xs font-bold text-slate-500">
                 通知診断情報
               </p>
-              <dl className="mt-1 text-[11px]">
+              <dl className="mt-1 text-xs">
                 <DiagnosticsRow
                   label="Notification API"
                   value={getBooleanLabel(pushDiagnostics.hasNotificationApi)}

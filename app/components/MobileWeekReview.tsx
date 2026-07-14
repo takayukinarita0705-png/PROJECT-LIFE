@@ -76,7 +76,7 @@ export default function MobileWeekReview({
           記録を読み込んでいます…
         </div>
       ) : hasLoadedEvents ? (
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           <section
             aria-label="水曜レビュー"
             className="rounded-3xl border border-violet-100 bg-white p-4 shadow-sm"
@@ -111,7 +111,7 @@ export default function MobileWeekReview({
             </div>
             <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
               <div className="rounded-xl bg-emerald-50 px-2 py-3">
-                <dt className="text-[10px] font-bold text-emerald-700">
+                <dt className="text-[11px] font-bold text-emerald-700">
                   完了数
                 </dt>
                 <dd className="mt-0.5 text-lg font-bold tabular-nums text-emerald-800">
@@ -119,7 +119,7 @@ export default function MobileWeekReview({
                 </dd>
               </div>
               <div className="rounded-xl bg-slate-100 px-2 py-3">
-                <dt className="text-[10px] font-bold text-slate-500">
+                <dt className="text-[11px] font-bold text-slate-500">
                   スキップ数
                 </dt>
                 <dd className="mt-0.5 text-lg font-bold tabular-nums text-slate-700">
@@ -127,7 +127,7 @@ export default function MobileWeekReview({
                 </dd>
               </div>
               <div className="rounded-xl bg-blue-50 px-2 py-3">
-                <dt className="text-[10px] font-bold text-blue-600">
+                <dt className="text-[11px] font-bold text-blue-600">
                   合計実績時間
                 </dt>
                 <dd className="mt-0.5 text-sm font-bold tabular-nums text-blue-700">

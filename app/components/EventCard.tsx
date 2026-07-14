@@ -21,6 +21,7 @@ type EventCardProps = {
   onPointerCancel: (pointerEvent: ReactPointerEvent<HTMLDivElement>) => void;
   onDelete: (id: string) => void;
   onEdit?: (event: CalendarEvent) => void;
+  compactLayout?: boolean;
   readOnly?: boolean;
 };
 
@@ -35,6 +36,7 @@ export default function EventCard({
   onPointerCancel,
   onDelete,
   onEdit,
+  compactLayout = false,
   readOnly = false,
 }: EventCardProps) {
   const pointerOriginRef = useRef<{ x: number; y: number } | null>(null);
@@ -43,22 +45,38 @@ export default function EventCard({
   const isCompact = event.end - event.start <= MINUTES_PER_ROW;
   const timeLabel = `${formatTime(event.start)}〜${formatTime(event.end)}`;
   const displayTitle = event.title?.trim() || category.name;
+  const compactStatusPrefix = compactLayout
+    ? event.status === "completed"
+      ? "✓ "
+      : event.status === "skipped"
+        ? "↷ "
+        : ""
+    : "";
+  const interactionClass = eventMove?.eventId === event.id
+    ? "cursor-grabbing"
+    : readOnly
+      ? onEdit
+        ? "cursor-pointer"
+        : "cursor-default"
+      : "cursor-grab";
+  const visibilityClass =
+    eventMove?.eventId === event.id
+      ? "opacity-35 scale-[0.98]"
+      : compactLayout && event.status === "completed"
+        ? "opacity-70 ring-1 ring-inset ring-white/70"
+        : compactLayout && event.status === "skipped"
+          ? "opacity-55 grayscale-[35%]"
+          : "opacity-100";
 
   return (
     <div
       title={`${category.icon} ${displayTitle} ${timeLabel}`}
       aria-grabbed={eventMove?.eventId === event.id}
-      className={`absolute z-10 box-border touch-none overflow-hidden text-white transition-[opacity,transform] duration-150 ${
-        eventMove?.eventId === event.id
-          ? "cursor-grabbing opacity-35 scale-[0.98]"
-          : readOnly
-            ? onEdit
-              ? "cursor-pointer opacity-100"
-              : "cursor-default opacity-100"
-            : "cursor-grab opacity-100"
-      } ${
+      className={`absolute z-10 box-border touch-none overflow-hidden text-white transition-[opacity,transform] duration-150 ${interactionClass} ${visibilityClass} ${
         isCompact
-          ? "left-1 right-1 rounded px-1 text-[10px] leading-none"
+          ? `left-1 right-1 rounded px-1 text-[10px] leading-none ${
+              compactLayout ? "rounded-md" : ""
+            }`
           : "left-1 right-1 rounded p-1 text-xs shadow"
       }`}
       style={{
@@ -112,19 +130,37 @@ export default function EventCard({
       }}
     >
       {isCompact ? (
-        <div className="truncate pr-5 font-bold leading-[16px]">
-          {category.icon} {displayTitle}{" "}
+        <div
+          className={`truncate font-bold leading-[16px] ${
+            compactLayout ? "pr-1" : "pr-5"
+          } ${
+            compactLayout &&
+            (event.status === "completed" || event.status === "skipped")
+              ? "line-through"
+              : ""
+          }`}
+        >
+          {compactStatusPrefix}{category.icon} {displayTitle}{" "}
           <span className="font-normal opacity-90">{timeLabel}</span>
         </div>
       ) : (
         <>
-          <div className="truncate pr-5 font-bold">
-            {category.icon} {displayTitle}
+          <div
+            className={`truncate font-bold ${
+              compactLayout ? "pr-1" : "pr-5"
+            } ${
+              compactLayout &&
+              (event.status === "completed" || event.status === "skipped")
+                ? "line-through"
+                : ""
+            }`}
+          >
+            {compactStatusPrefix}{category.icon} {displayTitle}
           </div>
           <div className="truncate opacity-80">{timeLabel}</div>
         </>
       )}
-      {!readOnly && (
+      {!readOnly && !compactLayout && (
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onPointerUp={(e) => e.stopPropagation()}

@@ -19,7 +19,7 @@ export default function MobileBottomTabs({
   return (
     <nav
       aria-label="スマホページ"
-      className="fixed inset-x-0 bottom-0 z-[110] border-t border-slate-200 bg-white/95 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-[110] border-t border-slate-200/90 bg-white/95 px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
     >
       <div className="mx-auto grid max-w-md grid-cols-4 gap-1">
         {TABS.map((tab) => {
@@ -30,7 +30,7 @@ export default function MobileBottomTabs({
               type="button"
               aria-current={isActive ? "page" : undefined}
               onClick={() => onChange(tab.page)}
-              className={`flex min-h-12 touch-manipulation items-center justify-center gap-1 rounded-xl px-1 py-2 text-sm font-bold transition-colors ${
+              className={`mobile-interactive flex min-h-[52px] items-center justify-center gap-1 rounded-xl px-1 py-2 text-sm font-bold ${
                 isActive
                   ? "bg-slate-900 text-white shadow-sm"
                   : "text-slate-500 active:bg-slate-100"
@@ -38,7 +38,7 @@ export default function MobileBottomTabs({
             >
               <span
                 aria-hidden="true"
-                className={`grid h-7 w-7 place-items-center rounded-lg text-base transition-colors ${
+                className={`grid h-7 w-7 place-items-center rounded-lg text-lg transition-colors ${
                   isActive ? "bg-white/15" : "bg-transparent"
                 }`}
               >

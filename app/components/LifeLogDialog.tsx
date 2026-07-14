@@ -46,7 +46,7 @@ export default function LifeLogDialog({
       aria-modal="true"
       aria-labelledby="life-log-dialog-title"
     >
-      <div className="w-full rounded-3xl bg-white p-5 shadow-2xl md:max-w-md">
+      <div className="mobile-sheet w-full rounded-3xl bg-white p-5 shadow-2xl md:max-w-md">
         <h2
           id="life-log-dialog-title"
           className="text-lg font-bold text-slate-900"
@@ -117,14 +117,14 @@ export default function LifeLogDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600"
+            className="mobile-interactive min-h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 md:min-h-11"
           >
             キャンセル
           </button>
           <button
             type="button"
             onClick={save}
-            className="min-h-11 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white"
+            className="mobile-interactive min-h-12 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white md:min-h-11"
           >
             保存
           </button>

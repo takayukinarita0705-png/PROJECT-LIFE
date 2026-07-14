@@ -106,13 +106,13 @@ export default function MobileLifeLog({
                 setIsReviewingInbox(false);
                 setUndoLog(null);
               }}
-              className="mt-4 min-h-11 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white"
+              className="mobile-interactive mt-4 min-h-11 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white"
             >
               ログへ戻る
             </button>
           </div>
         ) : (
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-start justify-between gap-3">
               <p className="text-xs font-bold text-slate-400">
                 残り未分類 {inboxReview.remainingCount}件
@@ -133,7 +133,7 @@ export default function MobileLifeLog({
                   key={value}
                   type="button"
                   onClick={() => classifyFromReview(currentLog, value)}
-                  className="min-h-12 rounded-2xl bg-slate-50 px-4 text-left text-sm font-bold text-slate-700"
+                  className="mobile-interactive min-h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-left text-sm font-bold text-slate-700"
                 >
                   {label}
                 </button>
@@ -143,7 +143,7 @@ export default function MobileLifeLog({
               <button
                 type="button"
                 onClick={() => setIsReviewingInbox(false)}
-                className="min-h-11 rounded-xl px-3 text-sm font-bold text-slate-500"
+                className="mobile-interactive min-h-11 rounded-xl px-3 text-sm font-bold text-slate-500"
               >
                 ログへ戻る
               </button>
@@ -151,7 +151,7 @@ export default function MobileLifeLog({
                 <button
                   type="button"
                   onClick={undoLastClassification}
-                  className="min-h-11 rounded-xl bg-slate-100 px-3 text-sm font-bold text-slate-700"
+                  className="mobile-interactive min-h-11 rounded-xl bg-slate-100 px-3 text-sm font-bold text-slate-700"
                 >
                   元に戻す
                 </button>
@@ -177,13 +177,13 @@ export default function MobileLifeLog({
         <button
           type="button"
           onClick={onAdd}
-          className="min-h-11 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white shadow-sm"
+          className="mobile-interactive min-h-12 rounded-xl bg-slate-900 px-4 text-sm font-bold text-white shadow-sm"
         >
           ＋ 新しいログ
         </button>
       </header>
 
-      <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="mb-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-bold text-slate-700">
             未分類 {inboxReview.remainingCount}件
@@ -195,7 +195,7 @@ export default function MobileLifeLog({
                 setIsReviewingInbox(true);
                 setUndoLog(null);
               }}
-              className="min-h-10 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white"
+              className="mobile-interactive min-h-11 rounded-xl bg-slate-900 px-3 text-xs font-bold text-white"
             >
               Inboxを整理する
             </button>
@@ -215,7 +215,7 @@ export default function MobileLifeLog({
               type="button"
               aria-pressed={isActive}
               onClick={() => setActiveFilter(value)}
-              className={`min-h-10 shrink-0 rounded-full border px-3 text-xs font-bold transition-colors ${
+              className={`mobile-interactive min-h-11 shrink-0 rounded-full border px-3 text-xs font-bold transition-colors ${
                 isActive
                   ? "border-slate-900 bg-slate-900 text-white shadow-sm"
                   : "border-slate-200 bg-white text-slate-500"
@@ -265,7 +265,7 @@ export default function MobileLifeLog({
                       className="absolute -left-[1.65rem] top-1.5 h-3 w-3 rounded-full border-2 border-white bg-slate-400 ring-1 ring-slate-200"
                     />
                     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
                         <time
                           dateTime={log.createdAt}
                           className="text-xs font-bold tabular-nums text-slate-400"
@@ -273,32 +273,30 @@ export default function MobileLifeLog({
                           {formatLifeLogDate(log.createdAt)}{" "}
                           {formatLifeLogTime(log.createdAt)}
                         </time>
-                        <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                        <div className="flex flex-wrap justify-end gap-1">
                           <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-600">
                             {getLifeLogFocusAreaLabel(log.focusArea)}
                           </span>
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-500">
+                          <span
+                            className={`rounded-full px-2 py-1 text-[11px] font-bold ${
+                              log.status === "done"
+                                ? "bg-emerald-50 text-emerald-700"
+                                : log.status === "scheduled"
+                                  ? "bg-blue-50 text-blue-700"
+                                  : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
                             {getLifeLogStatusLabel(log.status)}
                           </span>
-                          {log.status === "scheduled" && (
-                            <span className="rounded-full bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700">
-                              📅 予定化済み
-                            </span>
-                          )}
-                          {log.status === "done" && (
-                            <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700">
-                              ✅ 完了
-                            </span>
-                          )}
                         </div>
                       </div>
                       {log.title && (
-                        <p className="mt-2 break-words text-sm font-bold text-slate-900">
+                        <p className="mt-2 break-words text-sm font-bold leading-relaxed text-slate-900 [overflow-wrap:anywhere]">
                           {log.title}
                         </p>
                       )}
                       {log.body && (
-                        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-slate-800">
+                        <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700 [overflow-wrap:anywhere]">
                           {log.body}
                         </p>
                       )}
@@ -318,7 +316,7 @@ export default function MobileLifeLog({
                                 key={value}
                                 type="button"
                                 onClick={() => onClassify(log, value)}
-                                className="min-h-8 shrink-0 rounded-full bg-white px-2.5 text-[11px] font-bold text-slate-600 shadow-sm"
+                                className="mobile-interactive min-h-11 shrink-0 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600"
                               >
                                 {label}
                               </button>
@@ -326,12 +324,12 @@ export default function MobileLifeLog({
                           </div>
                         </div>
                       )}
-                      <div className="mt-2 flex justify-end gap-2">
+                      <div className="mt-3 grid grid-cols-2 gap-2">
                         {canScheduleLifeLog(log) && (
                           <button
                             type="button"
                             onClick={() => onSchedule(log)}
-                            className="min-h-9 rounded-lg bg-amber-50 px-3 text-xs font-bold text-amber-700"
+                            className="mobile-interactive min-h-11 rounded-xl bg-amber-500 px-3 text-xs font-bold text-white shadow-sm"
                           >
                             予定にする
                           </button>
@@ -340,7 +338,7 @@ export default function MobileLifeLog({
                           <button
                             type="button"
                             onClick={() => onOpenEvent(log)}
-                            className="min-h-9 rounded-lg bg-blue-50 px-3 text-xs font-bold text-blue-700"
+                            className="mobile-interactive min-h-11 rounded-xl bg-blue-50 px-3 text-xs font-bold text-blue-700"
                           >
                             予定を開く
                           </button>
@@ -348,14 +346,14 @@ export default function MobileLifeLog({
                         <button
                           type="button"
                           onClick={() => onEdit(log)}
-                          className="min-h-9 rounded-lg px-3 text-xs font-bold text-slate-500"
+                          className="mobile-interactive min-h-11 rounded-xl bg-slate-50 px-3 text-xs font-bold text-slate-600"
                         >
                           編集
                         </button>
                         <button
                           type="button"
                           onClick={() => onDelete(log)}
-                          className="min-h-9 rounded-lg px-3 text-xs font-bold text-rose-600"
+                          className="mobile-interactive min-h-11 rounded-xl bg-rose-50 px-3 text-xs font-bold text-rose-600"
                         >
                           削除
                         </button>

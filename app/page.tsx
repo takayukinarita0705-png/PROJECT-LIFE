@@ -12,7 +12,7 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="lifeos-content mx-auto max-w-7xl p-3 md:p-6">
+      <div className="lifeos-content mx-auto max-w-7xl px-4 pb-4 pt-4 md:p-6">
         <WeeklyCalendar />
       </div>
     </main>

@@ -363,11 +363,11 @@ export function getInboxLifeLogs(logs: LifeLog[]) {
 export function getLifeLogStatusLabel(status: LifeLog["status"]) {
   switch (status) {
     case "scheduled":
-      return "scheduled";
+      return "予定化済み";
     case "done":
-      return "done";
+      return "ライフログ完了";
     case "inbox":
-      return "inbox";
+      return "未完了";
   }
 }
 

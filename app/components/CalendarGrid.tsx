@@ -174,7 +174,11 @@ export default function CalendarGrid({
   return (
     <div
       ref={gridScrollRef}
-      className="overflow-auto overscroll-x-contain rounded-xl border border-gray-700 bg-white select-none"
+      className={`overflow-auto overscroll-x-contain border bg-white select-none ${
+        compactColumns
+          ? "rounded-2xl border-slate-300 shadow-sm"
+          : "rounded-xl border-gray-700"
+      }`}
       onMouseLeave={onSelectionCancel}
       onPointerMove={moveTouchGesture}
       onPointerUp={(pointerEvent) =>
@@ -357,6 +361,7 @@ export default function CalendarGrid({
                             onPointerCancel={onEventPointerCancel}
                             onDelete={onDeleteEvent}
                             onEdit={onEditEvent}
+                            compactLayout={compactColumns}
                             readOnly={readOnly}
                           />
                         );

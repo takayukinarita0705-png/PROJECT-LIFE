@@ -59,8 +59,8 @@ export default function EventDialog({
     !requiresScheduleDetails || scheduleTiming !== null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 backdrop-blur-sm md:items-center md:p-4 md:backdrop-blur-none">
+      <div className="mobile-sheet w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl md:rounded-2xl md:shadow-xl">
         <h3 className="text-xl font-bold text-slate-900">予定を追加</h3>
         {requiresScheduleDetails ? (
           <div className="mt-4 grid gap-3">
@@ -162,7 +162,7 @@ export default function EventDialog({
             <select
               value={activeCategoryId}
               onChange={(event) => onCategoryChange(event.target.value)}
-              className="mt-1 w-full rounded-xl border p-3 text-slate-900"
+              className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900 max-md:border-slate-300"
             >
               {categories.map((category) => (
                 <option key={category.id} value={category.id}>
@@ -184,7 +184,7 @@ export default function EventDialog({
               onChange={(event) => onTitleChange(event.target.value)}
               placeholder="予定名を入力"
               autoFocus
-              className="mt-1 w-full rounded-xl border p-3 text-slate-900"
+              className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900 max-md:border-slate-300"
             />
           </>
         )}
@@ -205,7 +205,7 @@ export default function EventDialog({
         <div className="mt-5 flex gap-3">
           <button
             onClick={onCancel}
-            className="flex-1 rounded-xl border py-3 font-bold text-slate-700"
+            className="mobile-interactive min-h-12 flex-1 rounded-xl border py-3 font-bold text-slate-700 max-md:border-slate-200"
           >
             キャンセル
           </button>
@@ -224,7 +224,7 @@ export default function EventDialog({
                 activeCategoryId === FREE_CATEGORY_ID) &&
                 !draft.title?.trim())
             }
-            className="flex-1 rounded-xl bg-blue-600 py-3 font-bold text-white disabled:opacity-40"
+            className="mobile-interactive min-h-12 flex-1 rounded-xl bg-blue-600 py-3 font-bold text-white shadow-sm disabled:opacity-40 md:shadow-none"
           >
             追加
           </button>
@@ -261,14 +261,14 @@ export function MobileWeekEventDialog({
 }: MobileWeekEventDialogProps) {
   return (
     <div className="fixed inset-0 z-[140] flex items-end bg-slate-950/50 p-3 backdrop-blur-sm md:hidden">
-      <div className="w-full rounded-3xl bg-white p-5 shadow-2xl">
+      <div className="mobile-sheet w-full rounded-3xl bg-white p-5 shadow-2xl">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold text-slate-900">予定を編集</h3>
           <button
             type="button"
             onClick={onCancel}
             aria-label="編集を閉じる"
-            className="rounded-full bg-slate-100 px-3 py-2 text-slate-500"
+            className="mobile-interactive grid h-11 w-11 place-items-center rounded-full bg-slate-100 text-slate-500"
           >
             ✕
           </button>
@@ -282,7 +282,7 @@ export function MobileWeekEventDialog({
           onChange={(event) =>
             onChange({ ...draft, title: event.target.value })
           }
-          className="mt-1 w-full rounded-xl border p-3 text-slate-900"
+          className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 text-slate-900"
         />
 
         <label className="mt-4 block text-sm font-bold text-slate-700">
@@ -293,7 +293,7 @@ export function MobileWeekEventDialog({
           onChange={(event) =>
             onChange({ ...draft, categoryId: event.target.value })
           }
-          className="mt-1 w-full rounded-xl border p-3 text-slate-900"
+          className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 text-slate-900"
         >
           {categories.map((category) => (
             <option key={category.id} value={category.id}>
@@ -312,7 +312,7 @@ export function MobileWeekEventDialog({
               }
               inputMode="numeric"
               placeholder="09:00"
-              className="mt-1 w-full rounded-xl border p-3 font-mono text-slate-900"
+              className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 font-mono text-slate-900"
             />
           </label>
           <label className="text-sm font-bold text-slate-700">
@@ -324,7 +324,7 @@ export function MobileWeekEventDialog({
               }
               inputMode="numeric"
               placeholder="10:00"
-              className="mt-1 w-full rounded-xl border p-3 font-mono text-slate-900"
+              className="mt-1 min-h-11 w-full rounded-xl border border-slate-300 p-3 font-mono text-slate-900"
             />
           </label>
         </div>
@@ -335,7 +335,7 @@ export function MobileWeekEventDialog({
             <button
               type="button"
               onClick={() => onOpenLifeLog(relatedLifeLog)}
-              className="mt-2 w-full rounded-xl bg-white px-3 py-2 text-left text-sm font-bold text-slate-700 shadow-sm"
+              className="mobile-interactive mt-2 min-h-11 w-full break-words rounded-xl bg-white px-3 py-2 text-left text-sm font-bold leading-relaxed text-slate-700 shadow-sm [overflow-wrap:anywhere]"
             >
               📝 {relatedLifeLog.title || relatedLifeLog.body || "本文なし"}
             </button>
@@ -349,7 +349,7 @@ export function MobileWeekEventDialog({
                 ? () => onOpenLifeLog(relatedLifeLog)
                 : onCreateLifeLog
             }
-            className="mt-3 min-h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-bold text-white"
+            className="mobile-interactive mt-3 min-h-11 w-full rounded-xl bg-blue-600 px-4 text-sm font-bold text-white"
           >
             {relatedLifeLog ? "ライフログを開く" : "ライフログを作成"}
           </button>
@@ -363,21 +363,21 @@ export function MobileWeekEventDialog({
           <button
             type="button"
             onClick={onDelete}
-            className="rounded-xl bg-red-50 px-4 py-3 font-bold text-red-600"
+            className="mobile-interactive min-h-12 rounded-xl bg-red-50 px-3 py-3 text-sm font-bold text-red-600"
           >
             削除
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border px-4 py-3 font-bold text-slate-600"
+            className="mobile-interactive min-h-12 rounded-xl border border-slate-200 px-3 py-3 text-sm font-bold text-slate-600"
           >
             キャンセル
           </button>
           <button
             type="button"
             onClick={onSave}
-            className="rounded-xl bg-slate-900 px-4 py-3 font-bold text-white"
+            className="mobile-interactive min-h-12 rounded-xl bg-slate-900 px-3 py-3 text-sm font-bold text-white"
           >
             保存
           </button>

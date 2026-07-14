@@ -35,7 +35,7 @@ export default function WeeklyLifeLogs({
           <button
             type="button"
             onClick={onViewAll}
-            className="min-h-9 rounded-lg px-2 text-xs font-bold text-blue-600"
+            className="mobile-interactive min-h-11 rounded-xl bg-blue-50 px-3 text-xs font-bold text-blue-600"
           >
             すべて見る
           </button>
@@ -50,7 +50,7 @@ export default function WeeklyLifeLogs({
           {latestLogs.map((log) => (
             <article
               key={log.id}
-              className="rounded-xl bg-slate-50 px-3 py-2"
+              className="rounded-2xl bg-slate-50 p-3"
             >
               <div className="flex gap-2">
                 <time
@@ -59,7 +59,7 @@ export default function WeeklyLifeLogs({
                 >
                   {formatLifeLogTime(log.createdAt)}
                 </time>
-                <p className="min-w-0 whitespace-pre-wrap break-words text-xs text-slate-700">
+                <p className="min-w-0 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-700 [overflow-wrap:anywhere]">
                   {log.title || log.body}
                 </p>
               </div>

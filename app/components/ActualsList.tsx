@@ -21,11 +21,13 @@ export default function ActualsList({ actuals }: ActualsListProps) {
       {actuals.map((actual) => (
         <li
           key={actual.categoryId}
-          className="flex items-center gap-1.5 rounded-lg border bg-slate-50 px-2 py-1 text-xs"
+          className="flex max-w-full items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs"
           style={{ borderColor: actual.color }}
         >
           <span aria-hidden="true">{actual.icon}</span>
-          <span className="font-bold text-slate-700">{actual.name}</span>
+          <span className="min-w-0 break-words font-bold text-slate-700 [overflow-wrap:anywhere]">
+            {actual.name}
+          </span>
           <span className="font-bold tabular-nums text-slate-500">
             {formatActualMinutes(actual.minutes)}
           </span>

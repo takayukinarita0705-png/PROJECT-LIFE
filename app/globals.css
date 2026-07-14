@@ -80,10 +80,36 @@ body {
   animation: undo-toast-lifetime 5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+@media (max-width: 767px) {
+  .mobile-interactive {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      transform 120ms ease,
+      opacity 120ms ease,
+      background-color 120ms ease;
+  }
+
+  .mobile-interactive:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .mobile-sheet {
+    max-height: calc(100dvh - 1.5rem - env(safe-area-inset-top));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .toast-enter,
   .save-toast-lifetime,
   .undo-toast-lifetime {
     animation: none;
+  }
+
+  .mobile-interactive {
+    transition: none;
   }
 }

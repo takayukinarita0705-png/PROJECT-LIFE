@@ -760,14 +760,14 @@ export default function WeeklyCalendar() {
 
   return (
     <div className="weekly-calendar">
-      <div className="pb-[calc(6rem+env(safe-area-inset-bottom))] md:hidden">
+      <div className="pb-[calc(7rem+env(safe-area-inset-bottom))] md:hidden">
         {mobilePage === "today" && (
           <div className="mb-4 inline-flex rounded-xl bg-slate-200/70 p-1">
             <button
               type="button"
               onClick={() => setMobileView("today")}
               aria-pressed={mobileView === "today"}
-              className={`min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${
+              className={`mobile-interactive min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${
                 mobileView === "today"
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500"
@@ -779,7 +779,7 @@ export default function WeeklyCalendar() {
               type="button"
               onClick={() => setMobileView("week")}
               aria-pressed={mobileView === "week"}
-              className={`min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${
+              className={`mobile-interactive min-h-11 rounded-lg px-4 py-2 text-sm font-bold ${
                 mobileView === "week"
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500"
@@ -869,7 +869,7 @@ export default function WeeklyCalendar() {
                   onClick={() =>
                     setMobileDayOffset((value) => value - 3)
                   }
-                  className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm"
+                  className="mobile-interactive min-h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm"
                 >
                   ← 前へ
                 </button>
@@ -882,7 +882,7 @@ export default function WeeklyCalendar() {
                   onClick={() =>
                     setMobileDayOffset((value) => value + 3)
                   }
-                  className="min-h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm"
+                  className="mobile-interactive min-h-11 rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm"
                 >
                   次へ →
                 </button>
@@ -1092,12 +1092,12 @@ export default function WeeklyCalendar() {
           key={undoSnapshot.id}
           role="status"
           aria-live="polite"
-          className="undo-toast-lifetime fixed bottom-5 left-1/2 z-[120] flex -translate-x-1/2 items-center gap-4 rounded-2xl bg-slate-900/95 px-4 py-3 text-sm text-white shadow-2xl backdrop-blur"
+          className="undo-toast-lifetime fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] left-1/2 z-[120] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-4 rounded-2xl bg-slate-900/95 px-4 py-3 text-sm text-white shadow-2xl backdrop-blur md:bottom-5"
         >
           <span>操作しました</span>
           <button
             onClick={undoLastOperation}
-            className="min-h-11 rounded-lg bg-white/15 px-3 py-1.5 font-bold text-blue-200 transition-colors hover:bg-white/25 active:bg-white/30 md:min-h-0"
+            className="mobile-interactive min-h-11 shrink-0 rounded-lg bg-white/15 px-3 py-1.5 font-bold text-blue-200 transition-colors hover:bg-white/25 active:bg-white/30 md:min-h-0"
           >
             元に戻す
           </button>

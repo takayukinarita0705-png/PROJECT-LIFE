@@ -427,9 +427,9 @@ describe("ライフログ", () => {
         { ...newerLog, id: "done", status: "done" },
       ]).map(({ id }) => id),
     ).toEqual(["newer", "done", "older"]);
-    expect(getLifeLogStatusLabel("inbox")).toBe("inbox");
-    expect(getLifeLogStatusLabel("scheduled")).toBe("scheduled");
-    expect(getLifeLogStatusLabel("done")).toBe("done");
+    expect(getLifeLogStatusLabel("inbox")).toBe("未完了");
+    expect(getLifeLogStatusLabel("scheduled")).toBe("予定化済み");
+    expect(getLifeLogStatusLabel("done")).toBe("ライフログ完了");
   });
 
   it("未来を作るログだけを新しい順で取得する", () => {

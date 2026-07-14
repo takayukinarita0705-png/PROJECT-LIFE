@@ -66,17 +66,17 @@ export default function WeeklyCategoryGoals({
           {goals.map((goal) => (
             <div
               key={goal.category.id}
-              className="rounded-xl bg-slate-50 px-3 py-2"
+              className="rounded-2xl bg-slate-50 p-3"
             >
               <div className="flex items-center gap-2">
                 <span aria-hidden="true">{goal.category.icon}</span>
-                <span className="min-w-0 flex-1 truncate text-sm font-bold text-slate-700">
+                <span className="min-w-0 flex-1 break-words text-sm font-bold leading-snug text-slate-700 [overflow-wrap:anywhere]">
                   {goal.category.name}
                 </span>
                 <button
                   type="button"
                   onClick={() => startEditing(goal.category)}
-                  className="min-h-9 rounded-lg px-2 text-xs font-bold text-blue-600"
+                  className="mobile-interactive min-h-11 shrink-0 rounded-xl bg-blue-50 px-3 text-xs font-bold text-blue-600"
                 >
                   {goal.goalMinutes === null ? "目標を設定する" : "変更"}
                 </button>
@@ -84,7 +84,7 @@ export default function WeeklyCategoryGoals({
               {goal.goalMinutes !== null && (
                 <dl className="mt-2 grid grid-cols-3 gap-2 text-center">
                   <div>
-                    <dt className="text-[10px] font-bold text-slate-400">
+                    <dt className="text-[11px] font-bold text-slate-500">
                       目標
                     </dt>
                     <dd className="text-xs font-bold tabular-nums text-slate-700">
@@ -92,7 +92,7 @@ export default function WeeklyCategoryGoals({
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[10px] font-bold text-slate-400">
+                    <dt className="text-[11px] font-bold text-slate-500">
                       現在
                     </dt>
                     <dd className="text-xs font-bold tabular-nums text-emerald-700">
@@ -100,7 +100,7 @@ export default function WeeklyCategoryGoals({
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[10px] font-bold text-slate-400">
+                    <dt className="text-[11px] font-bold text-slate-500">
                       残り
                     </dt>
                     <dd className="text-xs font-bold tabular-nums text-blue-700">
@@ -121,7 +121,7 @@ export default function WeeklyCategoryGoals({
           aria-labelledby="weekly-goal-dialog-title"
           className="fixed inset-0 z-[150] flex items-end bg-slate-950/35 p-3 backdrop-blur-sm md:items-center md:justify-center"
         >
-          <div className="w-full rounded-3xl bg-white p-5 shadow-2xl md:max-w-sm">
+          <div className="mobile-sheet w-full rounded-3xl bg-white p-5 shadow-2xl md:max-w-sm">
             <h2
               id="weekly-goal-dialog-title"
               className="text-lg font-bold text-slate-900"
@@ -151,14 +151,14 @@ export default function WeeklyCategoryGoals({
               <button
                 type="button"
                 onClick={() => setEditingCategory(null)}
-                className="min-h-11 rounded-xl border border-slate-200 text-sm font-bold text-slate-600"
+                className="mobile-interactive min-h-11 rounded-xl border border-slate-200 text-sm font-bold text-slate-600"
               >
                 キャンセル
               </button>
               <button
                 type="button"
                 onClick={save}
-                className="min-h-11 rounded-xl bg-slate-900 text-sm font-bold text-white"
+                className="mobile-interactive min-h-11 rounded-xl bg-slate-900 text-sm font-bold text-white"
               >
                 保存
               </button>
@@ -167,7 +167,7 @@ export default function WeeklyCategoryGoals({
               <button
                 type="button"
                 onClick={clear}
-                className="mt-3 min-h-10 w-full rounded-xl text-sm font-bold text-rose-600"
+                className="mobile-interactive mt-3 min-h-11 w-full rounded-xl text-sm font-bold text-rose-600"
               >
                 目標を解除
               </button>

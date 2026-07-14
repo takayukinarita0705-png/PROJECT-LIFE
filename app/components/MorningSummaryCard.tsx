@@ -26,7 +26,7 @@ function SummaryStat({
 }) {
   const content = (
     <>
-      <dt className="text-[10px] font-bold text-slate-400">{label}</dt>
+      <dt className="text-[11px] font-bold text-slate-500">{label}</dt>
       <dd className="mt-0.5 flex items-center justify-center gap-1 text-sm font-bold tabular-nums text-slate-800">
         {value}
         {onClick && (
@@ -44,12 +44,12 @@ function SummaryStat({
         <button
           type="button"
           onClick={onClick}
-          className="w-full rounded-2xl bg-slate-50 px-2 py-2 text-center transition-colors active:bg-slate-100"
+          className="mobile-interactive min-h-11 w-full rounded-xl bg-slate-50 px-2 py-2 text-center active:bg-slate-100"
         >
           {content}
         </button>
       ) : (
-        <div className="rounded-2xl bg-slate-50 px-2 py-2 text-center">
+        <div className="flex min-h-11 flex-col justify-center rounded-xl bg-slate-50 px-2 py-2 text-center">
           {content}
         </div>
       )}
@@ -90,9 +90,9 @@ export default function MorningSummaryCard({
         <button
           type="button"
           onClick={onOpenStreak}
-          className="rounded-2xl bg-orange-50 px-3 py-2 text-right transition-colors active:bg-orange-100"
+          className="mobile-interactive min-h-11 rounded-xl bg-orange-50 px-3 py-2 text-right active:bg-orange-100"
         >
-          <p className="text-[10px] font-bold text-orange-500">連続達成</p>
+          <p className="text-[11px] font-bold text-orange-500">連続達成</p>
           <p className="flex items-center justify-end gap-1 text-sm font-bold tabular-nums text-orange-700">
             {completionStreak > 0
               ? `🔥 ${completionStreak}日`
