@@ -80,6 +80,7 @@ export function normalizeCalendarEvent(
     typeof event.day === "number" &&
     typeof event.start === "number" &&
     typeof event.end === "number" &&
+    (event.endDate === undefined || isCalendarDate(event.endDate)) &&
     typeof event.weekOffset === "number" &&
     (event.source === undefined || event.source === "fixed-template") &&
     (event.lifeLogId === undefined || typeof event.lifeLogId === "string") &&

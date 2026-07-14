@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_CATEGORIES,
+  FREE_CATEGORY_ID,
   attachRoutineRelations,
   createFixedTemplateEvents,
   dateLabel,
@@ -23,6 +24,7 @@ import {
 import {
   addDaysToCalendarDate,
   formatCalendarDate,
+  getEventEndDate,
   materializeEventDate,
   resolveEventDay,
   resolveEventDate,
@@ -44,6 +46,8 @@ import {
 } from "@/app/lib/supabaseStorage";
 import { parseTime } from "@/app/lib/time";
 import {
+  canScheduleLifeLog,
+  createLifeLogScheduledEvent,
   getLifeLogStatusForEventStatus,
   markLifeLogAsInbox,
   markLifeLogAsScheduled,
@@ -62,6 +66,7 @@ import type {
   SharedCalendarState,
   LifeLog,
   LifeLogFocusArea,
+  LifeLogScheduleDetails,
 } from "@/app/types/calendar";
 
 function prepareSharedCalendarState(
@@ -389,6 +394,7 @@ export default function useCalendarController(weekOffset: number) {
       day: draft.day,
       start: draft.start,
       end: draft.end,
+      endDate: draft.endDate,
       weekOffset: draft.weekOffset,
       lifeLogId: draft.lifeLogId,
       notificationMinutes: draft.notificationMinutes ?? null,
@@ -457,7 +463,7 @@ export default function useCalendarController(weekOffset: number) {
     detachFromRoutine = false,
   ) {
     const start = parseTime(draft.start);
-    const end = parseTime(draft.end);
+    const parsedEnd = parseTime(draft.end);
     const normalizedTitle = normalizeNewEventTitle(
       draft.categoryId,
       draft.title,
@@ -465,12 +471,20 @@ export default function useCalendarController(weekOffset: number) {
     if (normalizedTitle === null) return "タイトルを入力してください。";
     const title =
       (normalizedTitle ?? draft.title.trim()) || undefined;
+    const event = events.find((item) => item.id === draft.eventId);
+    if (!event) return null;
+    const eventDate = resolveEventDate(event);
+    const end =
+      start !== null &&
+      parsedEnd !== null &&
+      parsedEnd <= start &&
+      event.endDate !== undefined &&
+      event.endDate > eventDate
+        ? parsedEnd + 24 * 60
+        : parsedEnd;
     if (start === null || end === null || end <= start) {
       return "開始・終了時刻を HH:MM 形式で正しく入力してください。";
     }
-
-    const event = events.find((item) => item.id === draft.eventId);
-    if (!event) return null;
 
     const editedEvent = materializeEventDate({
       ...event,
@@ -478,6 +492,7 @@ export default function useCalendarController(weekOffset: number) {
       categoryId: draft.categoryId,
       start,
       end,
+      endDate: getEventEndDate(eventDate, end),
     });
     const eventToSave = detachFromRoutine
       ? detachEventFromRoutine(editedEvent)
@@ -504,6 +519,9 @@ export default function useCalendarController(weekOffset: number) {
         ...event,
         id: crypto.randomUUID(),
         date: addDaysToCalendarDate(resolveEventDate(event), 7),
+        endDate: event.endDate
+          ? addDaysToCalendarDate(event.endDate, 7)
+          : undefined,
         weekOffset: weekOffset + 1,
         status: "pending",
         linkedToEventId: undefined,
@@ -738,7 +756,6 @@ export default function useCalendarController(weekOffset: number) {
 
   function addLifeLog(
     body: string,
-    eventId?: string,
     focusArea: LifeLogFocusArea = "unset",
   ) {
     const normalizedBody = normalizeLifeLogBody(body);
@@ -752,7 +769,6 @@ export default function useCalendarController(weekOffset: number) {
         body: normalizedBody,
         status: "inbox",
         focusArea,
-        eventId: eventId || undefined,
         createdAt,
         updatedAt: createdAt,
       },
@@ -764,31 +780,11 @@ export default function useCalendarController(weekOffset: number) {
   function updateLifeLog(
     id: string,
     body: string,
-    eventId: string | undefined,
     focusArea: LifeLogFocusArea,
   ) {
     const normalizedBody = normalizeLifeLogBody(body);
     if (normalizedBody === null) return false;
 
-    const previousLog = logs.find((log) => log.id === id);
-    if (
-      previousLog?.status === "scheduled" ||
-      previousLog?.status === "done"
-    ) {
-      setEvents((current) =>
-        current.map((event) => {
-          if (previousLog.eventId === event.id && eventId !== event.id) {
-            return event.lifeLogId === id
-              ? { ...event, lifeLogId: undefined }
-              : event;
-          }
-          if (eventId === event.id) {
-            return { ...event, lifeLogId: id };
-          }
-          return event;
-        }),
-      );
-    }
     setLogs((current) =>
       current.map((log) =>
         log.id === id
@@ -796,7 +792,6 @@ export default function useCalendarController(weekOffset: number) {
               ...log,
               body: normalizedBody,
               focusArea,
-              eventId: eventId || undefined,
               updatedAt: new Date().toISOString(),
             }
           : log,
@@ -814,13 +809,42 @@ export default function useCalendarController(weekOffset: number) {
     setLogs((current) => current.filter((log) => log.id !== id));
   }
 
-  function markLifeLogScheduled(id: string, eventId: string) {
+  function scheduleLifeLog(
+    id: string,
+    title: string,
+    details: LifeLogScheduleDetails,
+  ) {
+    const log = logs.find((item) => item.id === id);
+    if (!log || !canScheduleLifeLog(log)) {
+      return "このライフログはすでに予定化済みです。";
+    }
+    if (!categories.some((category) => category.id === FREE_CATEGORY_ID)) {
+      return "フリーカテゴリが見つかりません。";
+    }
+
+    const event = createLifeLogScheduledEvent(
+      log,
+      title,
+      details,
+      crypto.randomUUID(),
+    );
+    if (!event) {
+      return "予定の日時を正しく入力してください。";
+    }
+    const nextEvents = mergeUniqueEvents(events, [event]);
+    if (nextEvents.length === events.length) {
+      return "同じ時間にフリー予定がすでにあります。";
+    }
+
+    showUndo(events);
+    setEvents(nextEvents);
     const updatedAt = new Date().toISOString();
     setLogs((current) =>
       current.map((log) =>
-        log.id === id ? markLifeLogAsScheduled(log, updatedAt, eventId) : log,
+        log.id === id ? markLifeLogAsScheduled(log, updatedAt, event.id) : log,
       ),
     );
+    return null;
   }
 
   return {
@@ -842,7 +866,6 @@ export default function useCalendarController(weekOffset: number) {
     hasLoadedTemplates,
     isSyncingSharedState,
     logs,
-    markLifeLogScheduled,
     moveEvent,
     moveEventToTomorrow,
     resetEventToPending,
@@ -851,6 +874,7 @@ export default function useCalendarController(weekOffset: number) {
     saveEventEdit,
     saveStatus,
     saveWeeklyCategoryGoal,
+    scheduleLifeLog,
     setCategoryDraft,
     setSelectedCategoryId,
     startAddingCategory,

@@ -17,8 +17,10 @@ export type CalendarEvent = {
   day: number;
   /** 0時からの経過分 */
   start: number;
-  /** 0時からの経過分。24:00は1440 */
+  /** 0時からの経過分。日付をまたぐ場合は1440を超える */
   end: number;
+  /** 終了日のローカル日付。日付をまたぐ予定で使用する */
+  endDate?: string;
   weekOffset: number;
   source?: "fixed-template";
   lifeLogId?: string;
@@ -104,6 +106,7 @@ export type CalendarDayColumn = {
 
 export type Draft = {
   date: string;
+  endDate?: string;
   day: number;
   weekOffset: number;
   start: number;
@@ -111,6 +114,16 @@ export type Draft = {
   title?: string;
   lifeLogId?: string;
   notificationMinutes?: number | null;
+};
+
+export type LifeLogScheduleDuration = 30 | 60 | 90 | 120 | "custom";
+
+export type LifeLogScheduleDetails = {
+  date: string;
+  end: number;
+  endDate: string;
+  notificationMinutes: number | null;
+  start: number;
 };
 
 export type EventEditDraft = {

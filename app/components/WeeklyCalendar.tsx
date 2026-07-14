@@ -24,6 +24,7 @@ import RoutineDetachDialog from "./RoutineDetachDialog";
 import WeekToolbar from "./WeekToolbar";
 import {
   DAYS,
+  FREE_CATEGORY_ID,
   dateLabel,
   filterEventsByDate,
   filterEventsByDates,
@@ -35,15 +36,13 @@ import {
   formatCalendarDate,
   getCalendarDayIndex,
   getCalendarDateForWeekDay,
-  getWeekOffsetForDate,
-  parseCalendarDate,
+  getEventEndDate,
 } from "@/app/lib/date";
 import {
   MINUTES_PER_ROW,
   displayRowToTimeRow,
   formatTime,
   minutesFromDisplayStart,
-  parseTime,
 } from "@/app/lib/time";
 import {
   getCompletionStreak,
@@ -55,6 +54,7 @@ import {
 } from "@/app/lib/records";
 import { isRoutineLinkedEvent } from "@/app/lib/engine/routineEngine";
 import {
+  canScheduleLifeLog,
   getCurrentWeekLifeLogs,
   getFutureLifeLogWeeklyRecord,
   type LifeLogFocusFilter,
@@ -122,7 +122,6 @@ export default function WeeklyCalendar() {
     hasLoadedTemplates,
     isSyncingSharedState,
     logs,
-    markLifeLogScheduled,
     moveEvent: moveCalendarEvent,
     moveEventToTomorrow,
     resetEventToPending,
@@ -131,6 +130,7 @@ export default function WeeklyCalendar() {
     saveEventEdit,
     saveStatus,
     saveWeeklyCategoryGoal,
+    scheduleLifeLog,
     setCategoryDraft,
     setSelectedCategoryId,
     startAddingCategory,
@@ -182,7 +182,7 @@ export default function WeeklyCalendar() {
   );
   const [schedulingLifeLog, setSchedulingLifeLog] =
     useState<LifeLog | null>(null);
-  const [schedulingCategoryId, setSchedulingCategoryId] = useState("");
+  const [lifeLogScheduleError, setLifeLogScheduleError] = useState("");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [isCategoryManagerOpen, setIsCategoryManagerOpen] = useState(false);
   const dragGhostRef = useRef<HTMLDivElement>(null);
@@ -490,6 +490,7 @@ export default function WeeklyCalendar() {
         const movedEvent = {
           ...event,
           date: target.date,
+          endDate: getEventEndDate(target.date, start + duration),
           day: target.day,
           weekOffset: target.weekOffset,
           start,
@@ -516,28 +517,17 @@ export default function WeeklyCalendar() {
     if (!draft) return;
     if (schedulingLifeLog) {
       if (!details) return;
-      const date = parseCalendarDate(details.date);
-      const start = parseTime(details.start);
-      const end = parseTime(details.end);
-      if (!date || start === null || end === null || end <= start) return;
-
-      const scheduledEvent = addCalendarEvent(
-        {
-          ...draft,
-          date: details.date,
-          day: getCalendarDayIndex(date),
-          weekOffset: getWeekOffsetForDate(date),
-          start,
-          end,
-          notificationMinutes: details.notificationMinutes,
-        },
-        schedulingCategoryId,
-        true,
+      const error = scheduleLifeLog(
+        schedulingLifeLog.id,
+        draft.title ?? schedulingLifeLog.body,
+        details,
       );
-      if (!scheduledEvent) return;
-      markLifeLogScheduled(schedulingLifeLog.id, scheduledEvent.id);
+      if (error) {
+        setLifeLogScheduleError(error);
+        return;
+      }
+      setLifeLogScheduleError("");
       setSchedulingLifeLog(null);
-      setSchedulingCategoryId("");
     } else {
       addCalendarEvent(draft);
     }
@@ -663,8 +653,16 @@ export default function WeeklyCalendar() {
   }
 
   function openLifeLogScheduler(log: LifeLog) {
+    setLifeLogScheduleError("");
+    if (!canScheduleLifeLog(log)) {
+      setLifeLogScheduleError("このライフログはすでに予定化済みです。");
+      return;
+    }
+    if (!categories.some((category) => category.id === FREE_CATEGORY_ID)) {
+      setLifeLogScheduleError("フリーカテゴリが見つかりません。");
+      return;
+    }
     setSchedulingLifeLog(log);
-    setSchedulingCategoryId("");
     setDraft({
       date: "",
       day: 0,
@@ -687,17 +685,16 @@ export default function WeeklyCalendar() {
   function closeEventDialog() {
     setDraft(null);
     setSchedulingLifeLog(null);
-    setSchedulingCategoryId("");
+    setLifeLogScheduleError("");
   }
 
   function saveLifeLog(
     body: string,
-    eventId: string | undefined,
     focusArea: LifeLogFocusArea,
   ) {
     const saved = editingLifeLog
-      ? updateLifeLog(editingLifeLog.id, body, eventId, focusArea)
-      : addLifeLog(body, eventId, focusArea);
+      ? updateLifeLog(editingLifeLog.id, body, focusArea)
+      : addLifeLog(body, focusArea);
     if (saved) {
       setIsLifeLogDialogOpen(false);
       setEditingLifeLog(null);
@@ -706,7 +703,7 @@ export default function WeeklyCalendar() {
   }
 
   function classifyLifeLog(log: LifeLog, focusArea: LifeLogFocusArea) {
-    updateLifeLog(log.id, log.body, log.eventId, focusArea);
+    updateLifeLog(log.id, log.body, focusArea);
   }
 
   function removeLifeLog(log: LifeLog) {
@@ -767,12 +764,11 @@ export default function WeeklyCalendar() {
           />
         ) : mobilePage === "log" ? (
           <MobileLifeLog
-            categories={categories}
-            events={events}
             hasCheckedLocalCache={hasCheckedLocalCache}
             hasLoadedState={hasLoadedEvents}
             initialFilter={lifeLogInitialFilter}
             logs={logs}
+            scheduleError={lifeLogScheduleError}
             onAdd={openNewLifeLog}
             onClassify={classifyLifeLog}
             onDelete={removeLifeLog}
@@ -907,7 +903,6 @@ export default function WeeklyCalendar() {
       {isLifeLogDialogOpen && (
         <LifeLogDialog
           log={editingLifeLog}
-          schedule={todaySchedule}
           onCancel={() => {
             setIsLifeLogDialogOpen(false);
             setEditingLifeLog(null);
@@ -1059,13 +1054,14 @@ export default function WeeklyCalendar() {
           draft={draft}
           categories={categories}
           activeCategoryId={
-            schedulingLifeLog ? schedulingCategoryId : activeCategoryId
+            schedulingLifeLog ? FREE_CATEGORY_ID : activeCategoryId
           }
           requiresScheduleDetails={schedulingLifeLog !== null}
           showsNotificationSetting={schedulingLifeLog !== null}
+          error={schedulingLifeLog ? lifeLogScheduleError : ""}
           onCategoryChange={
             schedulingLifeLog
-              ? setSchedulingCategoryId
+              ? () => undefined
               : setSelectedCategoryId
           }
           onTitleChange={(title) =>

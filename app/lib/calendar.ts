@@ -342,6 +342,9 @@ export function moveEventToNextDay(
     return {
       ...event,
       date: nextDate,
+      endDate: event.endDate
+        ? addDaysToCalendarDate(event.endDate, 1)
+        : undefined,
       day: getCalendarDayIndex(parsedNextDate),
       weekOffset: getWeekOffsetForDate(parsedNextDate, referenceDate),
       status: "pending" as const,

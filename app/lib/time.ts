@@ -11,8 +11,10 @@ export const DISPLAY_ROWS = Array.from(
 );
 
 export function formatTime(totalMinutes: number) {
-  const hour = Math.floor(totalMinutes / 60);
-  const minute = (totalMinutes % 60).toString().padStart(2, "0");
+  const displayMinutes =
+    totalMinutes > 24 * 60 ? totalMinutes % (24 * 60) : totalMinutes;
+  const hour = Math.floor(displayMinutes / 60);
+  const minute = (displayMinutes % 60).toString().padStart(2, "0");
   return `${hour.toString().padStart(2, "0")}:${minute}`;
 }
 

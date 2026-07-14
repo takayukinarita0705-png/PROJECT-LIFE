@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import LifeLogEventLink from "./LifeLogEventLink";
 import {
+  canScheduleLifeLog,
   LIFE_LOG_FOCUS_AREA_OPTIONS,
   LIFE_LOG_FOCUS_FILTER_OPTIONS,
   formatLifeLogDate,
@@ -15,8 +15,6 @@ import {
   type LifeLogFocusFilter,
 } from "@/app/lib/lifeLogs";
 import type {
-  CalendarEvent,
-  Category,
   LifeLog,
   LifeLogFocusArea,
 } from "@/app/types/calendar";
@@ -26,11 +24,10 @@ const QUICK_CLASSIFY_OPTIONS = LIFE_LOG_FOCUS_AREA_OPTIONS.filter(
 ) as Array<{ value: Exclude<LifeLogFocusArea, "unset">; label: string }>;
 
 type MobileLifeLogProps = {
-  categories: Category[];
-  events: CalendarEvent[];
   hasCheckedLocalCache: boolean;
   hasLoadedState: boolean;
   logs: LifeLog[];
+  scheduleError?: string;
   initialFilter?: LifeLogFocusFilter;
   onAdd: () => void;
   onClassify: (log: LifeLog, focusArea: LifeLogFocusArea) => void;
@@ -41,12 +38,11 @@ type MobileLifeLogProps = {
 };
 
 export default function MobileLifeLog({
-  categories,
-  events,
   hasCheckedLocalCache,
   hasLoadedState,
   initialFilter = "all",
   logs,
+  scheduleError = "",
   onAdd,
   onClassify,
   onDelete,
@@ -226,6 +222,15 @@ export default function MobileLifeLog({
         })}
       </div>
 
+      {scheduleError && (
+        <p
+          role="alert"
+          className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700"
+        >
+          {scheduleError}
+        </p>
+      )}
+
       {hasCheckedLocalCache && !hasLoadedState ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
           ログを読み込んでいます…
@@ -303,23 +308,16 @@ export default function MobileLifeLog({
                           </div>
                         </div>
                       )}
-                      <LifeLogEventLink
-                        categories={categories}
-                        events={events}
-                        log={log}
-                        onOpenEvent={onOpenEvent}
-                      />
                       <div className="mt-2 flex justify-end gap-2">
-                        {log.focusArea === "future" &&
-                          log.status === "inbox" && (
-                            <button
-                              type="button"
-                              onClick={() => onSchedule(log)}
-                              className="min-h-9 rounded-lg bg-amber-50 px-3 text-xs font-bold text-amber-700"
-                            >
-                              予定にする
-                            </button>
-                          )}
+                        {canScheduleLifeLog(log) && (
+                          <button
+                            type="button"
+                            onClick={() => onSchedule(log)}
+                            className="min-h-9 rounded-lg bg-amber-50 px-3 text-xs font-bold text-amber-700"
+                          >
+                            予定にする
+                          </button>
+                        )}
                         {log.eventId && log.status !== "inbox" && (
                           <button
                             type="button"

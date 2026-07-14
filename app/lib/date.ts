@@ -146,3 +146,10 @@ export function addDaysToCalendarDate(value: string, days: number) {
   date.setDate(date.getDate() + days);
   return formatCalendarDate(date);
 }
+
+export function getEventEndDate(date: string, endMinutes: number) {
+  return addDaysToCalendarDate(
+    date,
+    Math.max(0, Math.floor(endMinutes / (24 * 60))),
+  );
+}

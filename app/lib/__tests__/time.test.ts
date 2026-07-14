@@ -3,6 +3,7 @@ import {
   DISPLAY_ROWS,
   displayRowToTimeRow,
   minutesFromDisplayStart,
+  formatTime,
 } from "@/app/lib/time";
 
 describe("05:00起点の時間変換", () => {
@@ -20,5 +21,10 @@ describe("05:00起点の時間変換", () => {
     expect(minutesFromDisplayStart(5 * 60)).toBe(0);
     expect(minutesFromDisplayStart(0)).toBe(19 * 60);
     expect(minutesFromDisplayStart(4 * 60 + 59)).toBe(23 * 60 + 59);
+  });
+
+  it("翌日側の終了分を時計時刻として表示する", () => {
+    expect(formatTime(24 * 60)).toBe("24:00");
+    expect(formatTime(24 * 60 + 15)).toBe("00:15");
   });
 });

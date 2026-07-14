@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  canScheduleLifeLog,
   classifyLifeLog,
+  createLifeLogScheduledEvent,
   getFutureLifeLogs,
   getFutureInboxLifeLogCount,
   getFutureLifeLogWeeklyRecord,
@@ -13,6 +15,7 @@ import {
   getLifeLogTimelineGroups,
   getLifeLogsForEvent,
   getLifeLogsByFocusFilter,
+  getLifeLogScheduleTiming,
   getUnclassifiedLifeLogs,
   markLifeLogAsInbox,
   markLifeLogAsScheduled,
@@ -45,6 +48,121 @@ describe("ライフログ", () => {
   it("本文をtrimし、空文字を拒否する", () => {
     expect(normalizeLifeLogBody("  出来事  ")).toBe("出来事");
     expect(normalizeLifeLogBody("   ")).toBeNull();
+  });
+
+  it("すべてのfocusAreaで未予定化ログを予定化できる", () => {
+    const focusAreas: LifeLog["focusArea"][] = [
+      "unset",
+      "now",
+      "future",
+      "review",
+      "discard",
+    ];
+
+    expect(
+      focusAreas.every((focusArea) =>
+        canScheduleLifeLog({ ...olderLog, focusArea }),
+      ),
+    ).toBe(true);
+  });
+
+  it("予定化済み・完了済み・eventIdがあるログは重複予定化できない", () => {
+    expect(
+      canScheduleLifeLog({
+        ...olderLog,
+        status: "scheduled",
+        eventId: "event-1",
+      }),
+    ).toBe(false);
+    expect(
+      canScheduleLifeLog({
+        ...olderLog,
+        status: "done",
+        eventId: "event-1",
+      }),
+    ).toBe(false);
+    expect(
+      canScheduleLifeLog({ ...olderLog, eventId: "legacy-event" }),
+    ).toBe(false);
+  });
+
+  it.each([
+    [30, 9 * 60 + 30],
+    [60, 10 * 60],
+    [90, 10 * 60 + 30],
+    [120, 11 * 60],
+  ] as const)("所要時間%s分後を正しく計算する", (duration, expectedEnd) => {
+    expect(
+      getLifeLogScheduleTiming("2026-07-14", "09:00", duration),
+    ).toMatchObject({
+      date: "2026-07-14",
+      start: 9 * 60,
+      end: expectedEnd,
+      endDate: "2026-07-14",
+    });
+  });
+
+  it("カスタム終了時刻を保存できる", () => {
+    expect(
+      getLifeLogScheduleTiming(
+        "2026-07-14",
+        "09:00",
+        "custom",
+        "10:15",
+      ),
+    ).toEqual({
+      date: "2026-07-14",
+      start: 9 * 60,
+      end: 10 * 60 + 15,
+      endDate: "2026-07-14",
+    });
+  });
+
+  it("日付またぎを翌日の終了日・時刻として計算する", () => {
+    expect(
+      getLifeLogScheduleTiming("2026-07-14", "23:45", 30),
+    ).toEqual({
+      date: "2026-07-14",
+      start: 23 * 60 + 45,
+      end: 24 * 60 + 15,
+      endDate: "2026-07-15",
+    });
+    expect(
+      getLifeLogScheduleTiming(
+        "2026-07-14",
+        "23:45",
+        "custom",
+        "00:30",
+      ),
+    ).toMatchObject({
+      end: 24 * 60 + 30,
+      endDate: "2026-07-15",
+    });
+  });
+
+  it("ログ由来予定をフリーカテゴリ・本文タイトル・通知設定付きで作る", () => {
+    const event = createLifeLogScheduledEvent(
+      { ...olderLog, body: "  歯医者へ行く  " },
+      "  歯医者へ行く  ",
+      {
+        date: "2026-07-14",
+        start: 9 * 60,
+        end: 9 * 60 + 30,
+        endDate: "2026-07-14",
+        notificationMinutes: 10,
+      },
+      "event-1",
+      new Date(2026, 6, 14, 12),
+    );
+
+    expect(event).toMatchObject({
+      id: "event-1",
+      title: "歯医者へ行く",
+      categoryId: "free",
+      lifeLogId: olderLog.id,
+      status: "pending",
+      notificationMinutes: 10,
+    });
   });
 
   it("Future Engineの分類ラベルを返す", () => {

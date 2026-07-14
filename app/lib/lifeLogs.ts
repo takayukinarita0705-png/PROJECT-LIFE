@@ -1,12 +1,105 @@
 import type {
+  CalendarEvent,
   LifeLog,
   LifeLogFocusArea,
+  LifeLogScheduleDetails,
+  LifeLogScheduleDuration,
 } from "@/app/types/calendar";
+import { FREE_CATEGORY_ID } from "@/app/lib/calendar";
 import {
   addDaysToCalendarDate,
   formatCalendarDate,
   getCalendarDateForWeekDay,
+  getCalendarDayIndex,
+  getEventEndDate,
+  getWeekOffsetForDate,
+  parseCalendarDate,
 } from "@/app/lib/date";
+import { parseTime } from "@/app/lib/time";
+
+export const LIFE_LOG_SCHEDULE_DURATION_OPTIONS: ReadonlyArray<{
+  value: LifeLogScheduleDuration;
+  label: string;
+}> = [
+  { value: 30, label: "30分後" },
+  { value: 60, label: "1時間後" },
+  { value: 90, label: "1時間30分後" },
+  { value: 120, label: "2時間後" },
+  { value: "custom", label: "カスタム" },
+];
+
+export function canScheduleLifeLog(log: LifeLog) {
+  return log.status === "inbox" && !log.eventId;
+}
+
+export function getLifeLogScheduleTiming(
+  date: string,
+  startValue: string,
+  duration: LifeLogScheduleDuration,
+  customEndValue = "",
+) {
+  if (!parseCalendarDate(date)) return null;
+  const start = parseTime(startValue);
+  if (start === null || start >= 24 * 60) return null;
+
+  let end: number;
+  if (duration === "custom") {
+    const customEnd = parseTime(customEndValue);
+    if (customEnd === null || customEnd >= 24 * 60) return null;
+    end = customEnd <= start ? customEnd + 24 * 60 : customEnd;
+  } else {
+    if (![30, 60, 90, 120].includes(duration)) return null;
+    end = start + duration;
+  }
+
+  return {
+    date,
+    start,
+    end,
+    endDate: getEventEndDate(date, end),
+  };
+}
+
+export function createLifeLogScheduledEvent(
+  log: LifeLog,
+  title: string,
+  details: LifeLogScheduleDetails,
+  eventId: string,
+  referenceDate = new Date(),
+): CalendarEvent | null {
+  const date = parseCalendarDate(details.date);
+  const endDate = parseCalendarDate(details.endDate);
+  const normalizedTitle = title.trim();
+  if (
+    !date ||
+    !endDate ||
+    !normalizedTitle ||
+    details.start < 0 ||
+    details.start >= 24 * 60 ||
+    details.end <= details.start ||
+    details.endDate !== getEventEndDate(details.date, details.end)
+  ) {
+    return null;
+  }
+
+  return {
+    id: eventId,
+    title: normalizedTitle,
+    categoryId: FREE_CATEGORY_ID,
+    mode: "fixed",
+    status: "pending",
+    linkType: "none",
+    offsetMinutes: 0,
+    date: details.date,
+    endDate: details.endDate,
+    day: getCalendarDayIndex(date),
+    start: details.start,
+    end: details.end,
+    weekOffset: getWeekOffsetForDate(date, referenceDate),
+    lifeLogId: log.id,
+    notificationMinutes: details.notificationMinutes,
+  };
+}
 
 export type FutureLifeLogWeeklyRecord = {
   total: number;

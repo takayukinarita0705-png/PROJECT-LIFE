@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { DAYS, FREE_CATEGORY_ID } from "@/app/lib/calendar";
+import {
+  getLifeLogScheduleTiming,
+  LIFE_LOG_SCHEDULE_DURATION_OPTIONS,
+} from "@/app/lib/lifeLogs";
 import { formatTime } from "@/app/lib/time";
 import type {
   Category,
   Draft,
   EventEditDraft,
+  LifeLogScheduleDetails,
+  LifeLogScheduleDuration,
 } from "@/app/types/calendar";
 
-export type EventDialogScheduleDetails = {
-  date: string;
-  start: string;
-  end: string;
-  notificationMinutes: number | null;
-};
+export type EventDialogScheduleDetails = LifeLogScheduleDetails;
 
 type EventDialogProps = {
   draft: Draft;
@@ -20,6 +21,7 @@ type EventDialogProps = {
   activeCategoryId: string;
   requiresScheduleDetails?: boolean;
   showsNotificationSetting?: boolean;
+  error?: string;
   onCategoryChange: (categoryId: string) => void;
   onTitleChange: (title: string) => void;
   onCancel: () => void;
@@ -32,6 +34,7 @@ export default function EventDialog({
   activeCategoryId,
   requiresScheduleDetails = false,
   showsNotificationSetting = false,
+  error = "",
   onCategoryChange,
   onTitleChange,
   onCancel,
@@ -39,13 +42,20 @@ export default function EventDialog({
 }: EventDialogProps) {
   const [date, setDate] = useState("");
   const [start, setStart] = useState("");
-  const [end, setEnd] = useState("");
+  const [duration, setDuration] =
+    useState<LifeLogScheduleDuration>(30);
+  const [customEnd, setCustomEnd] = useState("");
   const [notificationMinutes, setNotificationMinutes] = useState<
     number | null
   >(null);
+  const scheduleTiming = requiresScheduleDetails
+    ? getLifeLogScheduleTiming(date, start, duration, customEnd)
+    : null;
+  const hasRequiredCategory = requiresScheduleDetails
+    ? categories.some((category) => category.id === FREE_CATEGORY_ID)
+    : categories.length > 0 && Boolean(activeCategoryId);
   const hasValidScheduleDetails =
-    !requiresScheduleDetails ||
-    Boolean(date && start && end && end > start);
+    !requiresScheduleDetails || scheduleTiming !== null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -62,26 +72,58 @@ export default function EventDialog({
                 className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
               />
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm font-bold text-slate-700">
+              開始時間
+              <input
+                type="time"
+                value={start}
+                onChange={(event) => setStart(event.target.value)}
+                className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
+              />
+            </label>
+            <label className="block text-sm font-bold text-slate-700">
+              所要時間
+              <select
+                aria-label="所要時間"
+                value={duration}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setDuration(
+                    value === "custom"
+                      ? "custom"
+                      : (Number(value) as Exclude<
+                          LifeLogScheduleDuration,
+                          "custom"
+                        >),
+                  );
+                }}
+                className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
+              >
+                {LIFE_LOG_SCHEDULE_DURATION_OPTIONS.map(
+                  ({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ),
+                )}
+              </select>
+            </label>
+            {duration === "custom" && (
               <label className="block text-sm font-bold text-slate-700">
-                開始時間
+                終了時間（カスタム）
                 <input
                   type="time"
-                  value={start}
-                  onChange={(event) => setStart(event.target.value)}
+                  value={customEnd}
+                  onChange={(event) => setCustomEnd(event.target.value)}
                   className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
                 />
               </label>
-              <label className="block text-sm font-bold text-slate-700">
-                終了時間
-                <input
-                  type="time"
-                  value={end}
-                  onChange={(event) => setEnd(event.target.value)}
-                  className="mt-1 min-h-11 w-full rounded-xl border p-3 text-slate-900"
-                />
-              </label>
-            </div>
+            )}
+            {scheduleTiming && scheduleTiming.endDate !== date && (
+              <p className="text-xs font-bold text-amber-700">
+                終了は翌日 {formatTime(scheduleTiming.end)} です
+              </p>
+            )}
             {showsNotificationSetting && (
               <label className="block text-sm font-bold text-slate-700">
                 通知
@@ -111,20 +153,24 @@ export default function EventDialog({
           </p>
         )}
 
-        <label className="mt-4 block text-sm font-bold text-slate-700">
-          予定
-        </label>
-        <select
-          value={activeCategoryId}
-          onChange={(event) => onCategoryChange(event.target.value)}
-          className="mt-1 w-full rounded-xl border p-3 text-slate-900"
-        >
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.icon} {category.name}
-            </option>
-          ))}
-        </select>
+        {!requiresScheduleDetails && (
+          <>
+            <label className="mt-4 block text-sm font-bold text-slate-700">
+              予定
+            </label>
+            <select
+              value={activeCategoryId}
+              onChange={(event) => onCategoryChange(event.target.value)}
+              className="mt-1 w-full rounded-xl border p-3 text-slate-900"
+            >
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.icon} {category.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
 
         {(requiresScheduleDetails ||
           activeCategoryId === FREE_CATEGORY_ID) && (
@@ -142,9 +188,16 @@ export default function EventDialog({
           </>
         )}
 
-        {categories.length === 0 && (
+        {!hasRequiredCategory && (
           <p className="mt-2 text-sm text-red-600">
-            先にカテゴリ管理からカテゴリを追加してください。
+            {requiresScheduleDetails
+              ? "フリーカテゴリが見つかりません。"
+              : "先にカテゴリ管理からカテゴリを追加してください。"}
+          </p>
+        )}
+        {error && (
+          <p role="alert" className="mt-2 text-sm font-bold text-red-600">
+            {error}
           </p>
         )}
 
@@ -156,16 +209,15 @@ export default function EventDialog({
             キャンセル
           </button>
           <button
-            onClick={() =>
+            onClick={() => {
               onAdd(
-                requiresScheduleDetails
-                  ? { date, start, end, notificationMinutes }
+                requiresScheduleDetails && scheduleTiming
+                  ? { ...scheduleTiming, notificationMinutes }
                   : undefined,
-              )
-            }
+              );
+            }}
             disabled={
-              categories.length === 0 ||
-              !activeCategoryId ||
+              !hasRequiredCategory ||
               !hasValidScheduleDetails ||
               ((requiresScheduleDetails ||
                 activeCategoryId === FREE_CATEGORY_ID) &&
