@@ -112,6 +112,7 @@ export default function WeeklyCalendar() {
     addEvent: addCalendarEvent,
     applyFixedTemplate,
     applyTemplate,
+    autoCompleteEndedEvents,
     categories,
     categoryDraft,
     createNextWeek,
@@ -340,6 +341,11 @@ export default function WeeklyCalendar() {
       window.clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    if (currentTime === null || !hasLoadedEvents) return;
+    autoCompleteEndedEvents(currentTime);
+  }, [autoCompleteEndedEvents, currentTime, hasLoadedEvents]);
 
   function startDrag(
     day: number,

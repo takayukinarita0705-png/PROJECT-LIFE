@@ -37,6 +37,23 @@ describe("旧データ補完処理", () => {
     });
   });
 
+  it("自動完了日時を既存のEventデータ内で保持する", () => {
+    const completedAt = "2026-07-17T01:00:00.000Z";
+    const event = normalizeCalendarEvent({
+      id: "completed-event",
+      categoryId: "work",
+      date: "2026-07-17",
+      day: 3,
+      start: 9 * 60,
+      end: 10 * 60,
+      weekOffset: 0,
+      status: "completed",
+      completedAt,
+    });
+
+    expect(event?.completedAt).toBe(completedAt);
+  });
+
   it("旧Categoryへgroupと作成・更新日時を補完する", () => {
     const category = normalizeCategory({
       id: "legacy-category",

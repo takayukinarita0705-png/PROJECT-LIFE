@@ -278,17 +278,16 @@ export function toggleEventCompletion(
   events: CalendarEvent[],
   eventId: string,
 ) {
-  return events.map((event) =>
-    event.id === eventId
-      ? {
-          ...event,
-          status:
-            event.status === "completed"
-              ? ("pending" as const)
-              : ("completed" as const),
-        }
-      : event,
-  );
+  return events.map((event) => {
+    if (event.id !== eventId) return event;
+    if (event.status !== "completed") {
+      return { ...event, status: "completed" as const };
+    }
+
+    const pendingEvent = { ...event, status: "pending" as const };
+    delete pendingEvent.completedAt;
+    return pendingEvent;
+  });
 }
 
 export function toggleEventSkipped(
@@ -312,11 +311,13 @@ export function resetEventStatus(
   events: CalendarEvent[],
   eventId: string,
 ) {
-  return events.map((event) =>
-    event.id === eventId && event.status !== "pending"
-      ? { ...event, status: "pending" as const }
-      : event,
-  );
+  return events.map((event) => {
+    if (event.id !== eventId || event.status === "pending") return event;
+
+    const pendingEvent = { ...event, status: "pending" as const };
+    delete pendingEvent.completedAt;
+    return pendingEvent;
+  });
 }
 
 export function isCarryoverEligibleEvent(event: CalendarEvent) {
@@ -443,7 +444,18 @@ export function preserveRemoteEventStatuses(
     ) {
       return event;
     }
-    return { ...event, status: remoteEvent.status };
+    const mergedEvent = {
+      ...event,
+      status: remoteEvent.status,
+      completedAt:
+        remoteEvent.status === "completed"
+          ? remoteEvent.completedAt
+          : undefined,
+    };
+    if (mergedEvent.completedAt === undefined) {
+      delete mergedEvent.completedAt;
+    }
+    return mergedEvent;
   });
 }
 

@@ -89,6 +89,9 @@ export function normalizeCalendarEvent(
     (event.notificationSentAt === undefined ||
       (typeof event.notificationSentAt === "string" &&
         !Number.isNaN(Date.parse(event.notificationSentAt)))) &&
+    (event.completedAt === undefined ||
+      (typeof event.completedAt === "string" &&
+        !Number.isNaN(Date.parse(event.completedAt)))) &&
     (event.routineRelation === undefined ||
       event.routineRelation === "after-work-meal" ||
       event.routineRelation === "after-work-bath") &&

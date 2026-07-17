@@ -26,6 +26,7 @@ export type CalendarEvent = {
   lifeLogId?: string;
   notificationMinutes: number | null;
   notificationSentAt?: string;
+  completedAt?: string;
   routineRelation?: RoutineRelation;
   routineDetached?: boolean;
 };

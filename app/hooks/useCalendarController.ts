@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   DEFAULT_CATEGORIES,
   FREE_CATEGORY_ID,
@@ -58,6 +58,7 @@ import {
   unlinkLifeLogFromEvent,
   unlinkEventFromLifeLog,
 } from "@/app/lib/lifeLogs";
+import { completeEndedAutomaticEvents } from "@/app/lib/autoCompletion";
 import type {
   CalendarEvent,
   CalendarTemplate,
@@ -455,6 +456,30 @@ export default function useCalendarController(weekOffset: number) {
     setEvents((current) => resetEventStatus(current, id));
   }
 
+  const autoCompleteEndedEvents = useCallback(
+    (now: Date) => {
+      setEvents((current) => {
+        const completed = completeEndedAutomaticEvents(
+          current,
+          categories,
+          now,
+        );
+        if (completed === current) return current;
+
+        completed.forEach((event, index) => {
+          if (
+            event.status === "completed" &&
+            current[index]?.status !== "completed"
+          ) {
+            locallyChangedStatusIdsRef.current.add(event.id);
+          }
+        });
+        return completed;
+      });
+    },
+    [categories],
+  );
+
   function moveEventToTomorrow(id: string) {
     locallyChangedStatusIdsRef.current.add(id);
     const event = events.find((item) => item.id === id);
@@ -555,6 +580,7 @@ export default function useCalendarController(weekOffset: number) {
         lifeLogId: undefined,
         notificationMinutes: null,
         notificationSentAt: undefined,
+        completedAt: undefined,
         routineDetached: undefined,
       })),
     );
@@ -913,6 +939,7 @@ export default function useCalendarController(weekOffset: number) {
 
   return {
     activeCategoryId,
+    autoCompleteEndedEvents,
     addLifeLogFromEvent,
     addLifeLog,
     addEvent,

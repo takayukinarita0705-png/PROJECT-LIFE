@@ -23,6 +23,7 @@ import {
   isPerformanceTrackedCategory,
 } from "@/app/lib/records";
 import { formatTime } from "@/app/lib/time";
+import { isAutomaticCompletionEvent } from "@/app/lib/autoCompletion";
 import type {
   CalendarEvent,
   LifeLog,
@@ -111,7 +112,14 @@ function MobileEventCard({
   const isCompleted = event.status === "completed";
   const isSkipped = event.status === "skipped";
   const isCheckable = isPerformanceTrackedCategory(category);
+  const isAutomaticallyCompleted = isAutomaticCompletionEvent(
+    event,
+    category,
+  );
   const canMoveToTomorrow = isSkipped && isCarryoverEligibleEvent(event);
+  const showsActionFooter =
+    !(isAutomaticallyCompleted && isCompleted) &&
+    (canQuickPostponeEvent(event) || isCheckable);
   const linkedLogs = getLifeLogsForEvent(
     logs,
     event.id,
@@ -163,7 +171,9 @@ function MobileEventCard({
             }`}
           >
             {isCompleted
-              ? "完了"
+              ? isAutomaticallyCompleted
+                ? "✓ 完了"
+                : "完了"
               : isSkipped
                 ? "スキップ"
                 : isCurrent
@@ -193,61 +203,65 @@ function MobileEventCard({
           </div>
         )}
       </div>
-      <div className="col-span-2 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-2">
-        {canQuickPostponeEvent(event) && (
-          <button
-            type="button"
-            onClick={() => onRequestPostpone(event)}
-            className="mobile-interactive min-h-11 rounded-xl bg-blue-50 px-3 text-xs font-bold text-blue-700"
-          >
-            延期
-          </button>
-        )}
-        {!isCheckable ? null : isCompleted || isSkipped ? (
-          <>
-            {canMoveToTomorrow && (
+      {showsActionFooter && (
+        <div className="col-span-2 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-2">
+          {canQuickPostponeEvent(event) && (
+            <button
+              type="button"
+              onClick={() => onRequestPostpone(event)}
+              className="mobile-interactive min-h-11 rounded-xl bg-blue-50 px-3 text-xs font-bold text-blue-700"
+            >
+              延期
+            </button>
+          )}
+          {!isCheckable ? null : isCompleted || isSkipped ? (
+            <>
+              {canMoveToTomorrow && (
+                <button
+                  type="button"
+                  onClick={() => onMoveToTomorrow(event.id)}
+                  aria-label={`${displayTitle}を明日に移動`}
+                  className="mobile-interactive min-h-11 rounded-xl bg-amber-100 px-3 text-xs font-bold text-amber-700"
+                >
+                  明日に移動
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => onMoveToTomorrow(event.id)}
-                aria-label={`${displayTitle}を明日に移動`}
-                className="mobile-interactive min-h-11 rounded-xl bg-amber-100 px-3 text-xs font-bold text-amber-700"
+                onClick={() => onResetStatus(event.id)}
+                aria-label={`${displayTitle}を未完了に戻す`}
+                className={`mobile-interactive min-h-11 rounded-xl px-3 text-xs font-bold ${
+                  isCompleted
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-slate-700 text-white"
+                }`}
               >
-                明日に移動
+                戻す
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => onResetStatus(event.id)}
-              aria-label={`${displayTitle}を未完了に戻す`}
-              className={`mobile-interactive min-h-11 rounded-xl px-3 text-xs font-bold ${
-                isCompleted
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-slate-700 text-white"
-              }`}
-            >
-              戻す
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => onToggleSkipped(event.id)}
-              className="mobile-interactive min-h-11 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-600"
-            >
-              スキップ
-            </button>
-            <button
-              type="button"
-              onClick={() => onToggleCompleted(event.id)}
-              aria-label={`${displayTitle}を完了`}
-              className="mobile-interactive min-h-11 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm"
-            >
-              完了
-            </button>
-          </>
-        )}
-      </div>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => onToggleSkipped(event.id)}
+                className="mobile-interactive min-h-11 rounded-xl bg-slate-100 px-3 text-xs font-bold text-slate-600"
+              >
+                スキップ
+              </button>
+              {!isAutomaticallyCompleted && (
+                <button
+                  type="button"
+                  onClick={() => onToggleCompleted(event.id)}
+                  aria-label={`${displayTitle}を完了`}
+                  className="mobile-interactive min-h-11 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm"
+                >
+                  完了
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </article>
   );
 }
