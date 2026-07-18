@@ -19,9 +19,11 @@ import MobileBottomTabs from "./MobileBottomTabs";
 import type { MobilePage } from "./MobileBottomTabs";
 import MobileSchedule from "./MobileSchedule";
 import MobileLifeLog from "./MobileLifeLog";
+import MobileGrowth from "./MobileGrowth";
 import MobileStudyHistory from "./MobileStudyHistory";
 import MobileSettings from "./MobileSettings";
 import MobileWeekReview from "./MobileWeekReview";
+import { getGrowthDashboard } from "@/app/lib/growth";
 import {
   getJapanStudyDate,
   getMonthStudyMinutes,
@@ -358,6 +360,19 @@ export default function WeeklyCalendar() {
     currentTime === null
       ? 0
       : getMonthStudyMinutes(studyRecords, currentTime);
+  const growthDashboard = useMemo(
+    () =>
+      currentTime === null
+        ? null
+        : getGrowthDashboard(
+            studyRecords,
+            events,
+            categories,
+            logs,
+            currentTime,
+          ),
+    [categories, currentTime, events, logs, studyRecords],
+  );
   const currentWeekLogs =
     currentTime === null || !hasLoadedEvents
       ? []
@@ -874,6 +889,14 @@ export default function WeeklyCalendar() {
             record={currentWeekRecord}
             weeklyMvp={weeklyMvp}
           />
+        ) : mobilePage === "growth" ? (
+          growthDashboard ? (
+            <MobileGrowth dashboard={growthDashboard} />
+          ) : (
+            <div className="rounded-3xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
+              積み上げを読み込んでいます…
+            </div>
+          )
         ) : mobilePage === "log" ? (
           <MobileLifeLog
             hasCheckedLocalCache={hasCheckedLocalCache}
