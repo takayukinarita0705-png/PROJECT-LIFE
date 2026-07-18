@@ -95,6 +95,7 @@ export type LifeLog = {
   focusArea: LifeLogFocusArea;
   eventId?: string;
   origin?: "event";
+  completedAt?: string;
   createdAt: string;
   updatedAt: string;
 };

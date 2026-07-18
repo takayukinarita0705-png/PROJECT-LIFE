@@ -181,6 +181,8 @@ export function normalizeLifeLog(value: unknown): LifeLog | null {
   const log = value as Record<string, unknown>;
   const title = typeof log.title === "string" ? log.title.trim() : "";
   const body = typeof log.body === "string" ? log.body.trim() : "";
+  const isLegacyCompleted =
+    log.status === "completed" || log.completed === true;
   if (
     typeof log.id !== "string" ||
     typeof log.body !== "string" ||
@@ -196,16 +198,30 @@ export function normalizeLifeLog(value: unknown): LifeLog | null {
     return null;
   }
 
+  const status = isLegacyCompleted
+    ? "done"
+    : isLifeLogStatus(log.status)
+      ? log.status
+      : "inbox";
+  const storedCompletedAt =
+    typeof log.completedAt === "string" &&
+    !Number.isNaN(Date.parse(log.completedAt))
+      ? log.completedAt
+      : undefined;
+
   return {
     id: log.id,
     title: title || undefined,
     body,
-    status: isLifeLogStatus(log.status) ? log.status : "inbox",
+    status,
     focusArea: isLifeLogFocusArea(log.focusArea)
       ? log.focusArea
       : "unset",
     eventId: typeof log.eventId === "string" ? log.eventId : undefined,
     origin: log.origin === "event" ? "event" : undefined,
+    ...(status === "done"
+      ? { completedAt: storedCompletedAt ?? log.updatedAt }
+      : {}),
     createdAt: log.createdAt,
     updatedAt: log.updatedAt,
   };

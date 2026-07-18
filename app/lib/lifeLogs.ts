@@ -154,8 +154,10 @@ export function markLifeLogAsScheduled(
   updatedAt: string,
   eventId?: string,
 ): LifeLog {
+  const incompleteLog = { ...log };
+  delete incompleteLog.completedAt;
   return {
-    ...log,
+    ...incompleteLog,
     status: "scheduled",
     eventId: eventId ?? log.eventId,
     updatedAt,
@@ -163,8 +165,10 @@ export function markLifeLogAsScheduled(
 }
 
 export function markLifeLogAsInbox(log: LifeLog, updatedAt: string): LifeLog {
+  const incompleteLog = { ...log };
+  delete incompleteLog.completedAt;
   return {
-    ...log,
+    ...incompleteLog,
     status: "inbox",
     eventId: undefined,
     updatedAt,
@@ -253,6 +257,25 @@ export function sortLifeLogsNewestFirst(logs: LifeLog[]) {
 
 export function getIncompleteLifeLogs(logs: LifeLog[]) {
   return logs.filter((log) => log.status !== "done");
+}
+
+export function mergeLifeLogsPreservingLocalCompletion(
+  localLogs: LifeLog[],
+  remoteLogs: LifeLog[],
+) {
+  const merged = new Map(remoteLogs.map((log) => [log.id, log]));
+  localLogs.forEach((localLog) => {
+    if (localLog.status !== "done") return;
+    const remoteLog = merged.get(localLog.id);
+    if (
+      remoteLog === undefined ||
+      (remoteLog.status !== "done" &&
+        Date.parse(localLog.updatedAt) >= Date.parse(remoteLog.updatedAt))
+    ) {
+      merged.set(localLog.id, localLog);
+    }
+  });
+  return [...merged.values()];
 }
 
 const LIFE_LOG_DISPLAY_GROUPS: ReadonlyArray<{

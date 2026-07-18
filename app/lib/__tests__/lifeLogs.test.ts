@@ -22,6 +22,7 @@ import {
   getUnclassifiedLifeLogs,
   markLifeLogAsInbox,
   markLifeLogAsScheduled,
+  mergeLifeLogsPreservingLocalCompletion,
   linkEventToLifeLog,
   normalizeLifeLogBody,
   restoreLifeLogFocusArea,
@@ -153,6 +154,30 @@ describe("ライフログ", () => {
     ]);
     expect(logs).toHaveLength(3);
     expect(logs.find((log) => log.id === "future-done")?.status).toBe("done");
+  });
+
+  it("端末キャッシュの完了状態を古い同期データで未完了へ戻さない", () => {
+    const localDone: LifeLog = {
+      ...newerLog,
+      status: "done",
+      completedAt: "2026-07-19T01:00:00.000Z",
+      updatedAt: "2026-07-19T01:00:00.000Z",
+    };
+    const staleRemote: LifeLog = {
+      ...newerLog,
+      status: "scheduled",
+      updatedAt: "2026-07-18T01:00:00.000Z",
+    };
+    const merged = mergeLifeLogsPreservingLocalCompletion(
+      [localDone],
+      [staleRemote, olderLog],
+    );
+
+    expect(merged.find((log) => log.id === newerLog.id)).toEqual(localDone);
+    expect(getLifeLogDisplayGroups(merged, "all")).toMatchObject([
+      { logs: [{ id: olderLog.id }] },
+    ]);
+    expect(merged).toHaveLength(2);
   });
 
   it("予定からタイトルをコピーした未分類ログを作成しeventIdを保存する", () => {

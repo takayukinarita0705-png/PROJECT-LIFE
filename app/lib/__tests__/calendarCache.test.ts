@@ -60,6 +60,31 @@ describe("カレンダーのローカルキャッシュ", () => {
     expect(parseCachedCalendarState(cachedV1)?.studyDailyGoalMinutes).toBe(60);
   });
 
+  it("旧completed形式のLifeLogを完了履歴としてキャッシュ復元する", () => {
+    const cached = JSON.stringify({
+      ...state,
+      logs: [
+        {
+          id: "completed-log",
+          title: "完了したログ",
+          body: "",
+          status: "completed",
+          focusArea: "future",
+          createdAt: "2026-07-18T00:00:00.000Z",
+          updatedAt: "2026-07-19T01:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(parseCachedCalendarState(cached)?.logs).toMatchObject([
+      {
+        id: "completed-log",
+        status: "done",
+        completedAt: "2026-07-19T01:00:00.000Z",
+      },
+    ]);
+  });
+
   it("Supabase取得Stateの差分を判定する", () => {
     expect(areSharedCalendarStatesEqual(state, { ...state })).toBe(true);
     expect(

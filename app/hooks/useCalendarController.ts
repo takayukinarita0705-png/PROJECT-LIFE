@@ -54,6 +54,7 @@ import {
   getLifeLogStatusForEventStatus,
   linkEventToLifeLog,
   markLifeLogAsScheduled,
+  mergeLifeLogsPreservingLocalCompletion,
   normalizeLifeLogBody,
   unlinkLifeLogFromEvent,
   unlinkEventFromLifeLog,
@@ -167,12 +168,46 @@ export default function useCalendarController(weekOffset: number) {
         const loadedState = await loadSharedCalendarState();
         if (cancelled) return;
 
-        const sharedState = prepareSharedCalendarState(loadedState);
-        const serializedState =
-          serializeSharedCalendarState(sharedState);
+        const remoteState = prepareSharedCalendarState(loadedState);
+        const serializedRemoteState =
+          serializeSharedCalendarState(remoteState);
         const currentState = currentSharedStateRef.current;
+        const mergedLogs = currentState
+          ? mergeLifeLogsPreservingLocalCompletion(
+              currentState.logs,
+              remoteState.logs,
+            )
+          : remoteState.logs;
+        const completedEventIds = new Set(
+          mergedLogs.flatMap((log) =>
+            log.status === "done" && log.eventId ? [log.eventId] : [],
+          ),
+        );
+        const localCompletedEvents = new Map(
+          (currentState?.events ?? [])
+            .filter(
+              (event) =>
+                event.status === "completed" &&
+                completedEventIds.has(event.id),
+            )
+            .map((event) => [event.id, event]),
+        );
+        const mergedEvents = remoteState.events.map(
+          (event) => localCompletedEvents.get(event.id) ?? event,
+        );
+        const remoteEventIds = new Set(
+          remoteState.events.map((event) => event.id),
+        );
+        localCompletedEvents.forEach((event, id) => {
+          if (!remoteEventIds.has(id)) mergedEvents.push(event);
+        });
+        const sharedState = {
+          ...remoteState,
+          events: mergedEvents,
+          logs: mergedLogs,
+        };
 
-        lastSyncedStateRef.current = serializedState;
+        lastSyncedStateRef.current = serializedRemoteState;
         saveCachedCalendarState(sharedState);
         if (
           currentState === null ||
@@ -361,6 +396,10 @@ export default function useCalendarController(weekOffset: number) {
               ...log,
               status: nextStatus,
               eventId: event.id,
+              completedAt:
+                nextStatus === "done"
+                  ? event.completedAt ?? updatedAt
+                  : undefined,
               updatedAt,
             }
           : log,

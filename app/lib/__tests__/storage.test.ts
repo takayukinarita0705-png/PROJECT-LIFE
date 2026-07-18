@@ -3,6 +3,7 @@ import {
   normalizeCalendarEvent,
   normalizeCalendarTemplate,
   normalizeCategory,
+  normalizeLifeLog,
 } from "@/app/lib/storage";
 
 const normalizedAt = "2026-07-01T00:00:00.000Z";
@@ -52,6 +53,26 @@ describe("旧データ補完処理", () => {
     });
 
     expect(event?.completedAt).toBe(completedAt);
+  });
+
+  it.each([
+    { status: "completed" },
+    { status: "inbox", completed: true },
+  ])("旧LifeLog完了形式をdoneへ統一する", (legacyCompletion) => {
+    const log = normalizeLifeLog({
+      id: "completed-log",
+      title: "完了したアイデア",
+      body: "",
+      focusArea: "future",
+      createdAt: "2026-07-18T00:00:00.000Z",
+      updatedAt: "2026-07-19T01:00:00.000Z",
+      ...legacyCompletion,
+    });
+
+    expect(log).toMatchObject({
+      status: "done",
+      completedAt: "2026-07-19T01:00:00.000Z",
+    });
   });
 
   it("旧Categoryへgroupと作成・更新日時を補完する", () => {
