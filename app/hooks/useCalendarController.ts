@@ -59,6 +59,11 @@ import {
   unlinkEventFromLifeLog,
 } from "@/app/lib/lifeLogs";
 import { completeEndedAutomaticEvents } from "@/app/lib/autoCompletion";
+import {
+  createStudyTimeRecord,
+  isStudyCategory,
+  mergeStudyTimeRecords,
+} from "@/app/lib/studyTime";
 import type {
   CalendarEvent,
   CalendarTemplate,
@@ -73,6 +78,7 @@ import type {
   LifeLog,
   LifeLogFocusArea,
   LifeLogScheduleDetails,
+  StudyTimeRecord,
 } from "@/app/types/calendar";
 
 function prepareSharedCalendarState(
@@ -92,6 +98,7 @@ export default function useCalendarController(weekOffset: number) {
   const [hasLoadedEvents, setHasLoadedEvents] = useState(false);
   const [templates, setTemplates] = useState<CalendarTemplate[]>([]);
   const [logs, setLogs] = useState<LifeLog[]>([]);
+  const [studyRecords, setStudyRecords] = useState<StudyTimeRecord[]>([]);
   const [hasLoadedTemplates, setHasLoadedTemplates] = useState(false);
   const [hasCheckedLocalCache, setHasCheckedLocalCache] = useState(false);
   const [isSyncingSharedState, setIsSyncingSharedState] = useState(false);
@@ -110,6 +117,7 @@ export default function useCalendarController(weekOffset: number) {
   const currentSharedStateRef = useRef<SharedCalendarState | null>(null);
   const lastSyncedStateRef = useRef<string | null>(null);
   const locallyChangedStatusIdsRef = useRef(new Set<string>());
+  const locallyChangedStudyTaskIdsRef = useRef(new Set<string>());
 
   const weekDates = getWeekDates(weekOffset);
   const weekDateKeys = new Set(
@@ -135,6 +143,7 @@ export default function useCalendarController(weekOffset: number) {
         setEvents(preparedCache.events);
         setTemplates(preparedCache.templates);
         setLogs(preparedCache.logs);
+        setStudyRecords(preparedCache.studyRecords);
         setHasLoadedEvents(true);
         setHasLoadedTemplates(true);
       }
@@ -161,6 +170,7 @@ export default function useCalendarController(weekOffset: number) {
           setEvents(sharedState.events);
           setTemplates(sharedState.templates);
           setLogs(sharedState.logs);
+          setStudyRecords(sharedState.studyRecords);
         }
         setCanPersistSharedState(true);
       } catch (error) {
@@ -192,6 +202,7 @@ export default function useCalendarController(weekOffset: number) {
       events,
       templates,
       logs,
+      studyRecords,
     } as const;
     const serializedState = serializeSharedCalendarState(sharedState);
     currentSharedStateRef.current = sharedState;
@@ -218,6 +229,11 @@ export default function useCalendarController(weekOffset: number) {
             remoteState.events,
             locallyChangedStatusIdsRef.current,
           ),
+          studyRecords: mergeStudyTimeRecords(
+            sharedState.studyRecords,
+            remoteState.studyRecords,
+            locallyChangedStudyTaskIdsRef.current,
+          ),
         };
         await saveSharedCalendarState(stateToSave);
         return stateToSave;
@@ -243,6 +259,7 @@ export default function useCalendarController(weekOffset: number) {
               locallyChangedStatusIdsRef.current,
             ),
           );
+          setStudyRecords(savedState.studyRecords);
           setSaveStatus("saved");
           hideTimer = window.setTimeout(() => setSaveStatus(null), 2000);
         })
@@ -266,6 +283,7 @@ export default function useCalendarController(weekOffset: number) {
     hasLoadedTemplates,
     templates,
     logs,
+    studyRecords,
   ]);
 
   useEffect(() => {
@@ -433,6 +451,12 @@ export default function useCalendarController(weekOffset: number) {
         event,
         event.status === "completed" ? "pending" : "completed",
       );
+      if (event.status === "completed") {
+        locallyChangedStudyTaskIdsRef.current.add(id);
+        setStudyRecords((current) =>
+          current.filter((record) => record.taskId !== id),
+        );
+      }
     }
     setEvents((current) => toggleEventCompletion(current, id));
   }
@@ -453,7 +477,61 @@ export default function useCalendarController(weekOffset: number) {
     locallyChangedStatusIdsRef.current.add(id);
     const event = events.find((item) => item.id === id);
     if (event) syncLinkedLifeLogStatus(event, "pending");
+    locallyChangedStudyTaskIdsRef.current.add(id);
+    setStudyRecords((current) =>
+      current.filter((record) => record.taskId !== id),
+    );
     setEvents((current) => resetEventStatus(current, id));
+  }
+
+  function completeStudyEvent(id: string, minutes: number) {
+    const event = events.find((item) => item.id === id);
+    const category = event
+      ? categories.find((item) => item.id === event.categoryId)
+      : undefined;
+    if (
+      !event ||
+      !category ||
+      event.status === "completed" ||
+      event.status === "skipped" ||
+      !isStudyCategory(category) ||
+      !Number.isInteger(minutes) ||
+      minutes <= 0 ||
+      minutes > 24 * 60
+    ) {
+      return false;
+    }
+
+    const createdAt = new Date().toISOString();
+    const record = createStudyTimeRecord(
+      event.id,
+      resolveEventDate(event),
+      minutes,
+      crypto.randomUUID(),
+      createdAt,
+    );
+    if (!record) return false;
+    locallyChangedStatusIdsRef.current.add(id);
+    locallyChangedStudyTaskIdsRef.current.add(id);
+    syncLinkedLifeLogStatus(event, "completed");
+    setStudyRecords((current) => [
+      ...current.filter((item) => item.taskId !== id),
+      record,
+    ]);
+    setEvents((current) =>
+      current.map((item) =>
+        item.id === id &&
+        item.status !== "completed" &&
+        item.status !== "skipped"
+          ? {
+              ...item,
+              status: "completed" as const,
+              completedAt: createdAt,
+            }
+          : item,
+      ),
+    );
+    return true;
   }
 
   const autoCompleteEndedEvents = useCallback(
@@ -947,6 +1025,7 @@ export default function useCalendarController(weekOffset: number) {
     applyTemplate,
     categories,
     categoryDraft,
+    completeStudyEvent,
     createNextWeek,
     deleteCategory,
     deleteEvent,
@@ -972,6 +1051,7 @@ export default function useCalendarController(weekOffset: number) {
     setSelectedCategoryId,
     startAddingCategory,
     startEditingCategory,
+    studyRecords,
     templates,
     toggleEventCompleted,
     toggleEventSkip,

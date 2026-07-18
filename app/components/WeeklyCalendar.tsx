@@ -116,6 +116,7 @@ export default function WeeklyCalendar() {
     autoCompleteEndedEvents,
     categories,
     categoryDraft,
+    completeStudyEvent,
     createNextWeek,
     deleteCategory,
     deleteEvent: deleteCalendarEvent,
@@ -141,6 +142,7 @@ export default function WeeklyCalendar() {
     setSelectedCategoryId,
     startAddingCategory,
     startEditingCategory,
+    studyRecords,
     templates,
     toggleEventCompleted,
     toggleEventSkip,
@@ -316,7 +318,7 @@ export default function WeeklyCalendar() {
   const studyTimeSummary =
     currentTime === null || !hasLoadedEvents
       ? null
-      : getStudyTimeSummary(events, categories, currentTime);
+      : getStudyTimeSummary(studyRecords, currentTime);
   const currentWeekLogs =
     currentTime === null || !hasLoadedEvents
       ? []
@@ -873,6 +875,7 @@ export default function WeeklyCalendar() {
             }
             onResetStatus={resetEventToPending}
             onMoveToTomorrow={moveEventToTomorrow}
+            onCompleteStudy={completeStudyEvent}
             onToggleCompleted={toggleEventCompleted}
             onToggleSkipped={toggleEventSkip}
             studyTimeSummary={studyTimeSummary}

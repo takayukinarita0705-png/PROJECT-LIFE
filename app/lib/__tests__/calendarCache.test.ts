@@ -9,11 +9,20 @@ import type { SharedCalendarState } from "@/app/types/calendar";
 
 const state: SharedCalendarState = {
   version: 1,
-  schemaVersion: 7,
+  schemaVersion: 8,
   categories: [],
   events: [],
   templates: [],
   logs: [],
+  studyRecords: [
+    {
+      id: "study-record",
+      date: "2026-07-03",
+      taskId: "study-event",
+      minutes: 45,
+      createdAt: "2026-07-03T01:00:00.000Z",
+    },
+  ],
 };
 
 describe("カレンダーのローカルキャッシュ", () => {
@@ -42,8 +51,9 @@ describe("カレンダーのローカルキャッシュ", () => {
       templates: [],
     });
 
-    expect(parseCachedCalendarState(cachedV1)?.schemaVersion).toBe(7);
+    expect(parseCachedCalendarState(cachedV1)?.schemaVersion).toBe(8);
     expect(parseCachedCalendarState(cachedV1)?.logs).toEqual([]);
+    expect(parseCachedCalendarState(cachedV1)?.studyRecords).toEqual([]);
   });
 
   it("Supabase取得Stateの差分を判定する", () => {

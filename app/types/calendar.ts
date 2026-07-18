@@ -92,13 +92,22 @@ export type LifeLog = {
   updatedAt: string;
 };
 
+export type StudyTimeRecord = {
+  id: string;
+  date: string;
+  taskId: string;
+  minutes: number;
+  createdAt: string;
+};
+
 export type SharedCalendarState = {
   version: 1;
-  schemaVersion: 7;
+  schemaVersion: 8;
   categories: Category[];
   events: CalendarEvent[];
   templates: CalendarTemplate[];
   logs: LifeLog[];
+  studyRecords: StudyTimeRecord[];
 };
 
 export type CalendarDayColumn = {

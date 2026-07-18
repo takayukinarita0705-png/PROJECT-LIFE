@@ -10,6 +10,7 @@ import {
 import ActualsList from "./ActualsList";
 import MorningSummaryCard from "./MorningSummaryCard";
 import StudyTimeCard from "./StudyTimeCard";
+import StudyCompletionDialog from "./StudyCompletionDialog";
 import { getLifeLogsForEvent } from "@/app/lib/lifeLogs";
 import { MOBILE_SCROLL_TARGETS } from "@/app/lib/mobileNavigation";
 import {
@@ -25,6 +26,7 @@ import {
 } from "@/app/lib/records";
 import { formatTime } from "@/app/lib/time";
 import { isAutomaticCompletionEvent } from "@/app/lib/autoCompletion";
+import { isStudyCategory } from "@/app/lib/studyTime";
 import type {
   CalendarEvent,
   LifeLog,
@@ -96,6 +98,7 @@ function MobileEventCard({
   onMoveToTomorrow,
   onOpenLifeLog,
   onRequestPostpone,
+  onRequestStudyCompletion,
   onResetStatus,
   onToggleCompleted,
   onToggleSkipped,
@@ -106,6 +109,7 @@ function MobileEventCard({
   onMoveToTomorrow: (eventId: string) => void;
   onOpenLifeLog: (log: LifeLog) => void;
   onRequestPostpone: (event: CalendarEvent) => void;
+  onRequestStudyCompletion: (event: CalendarEvent, title: string) => void;
   onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
@@ -118,6 +122,7 @@ function MobileEventCard({
     event,
     category,
   );
+  const isStudy = isStudyCategory(category);
   const canMoveToTomorrow = isSkipped && isCarryoverEligibleEvent(event);
   const showsActionFooter =
     !(isAutomaticallyCompleted && isCompleted) &&
@@ -253,7 +258,11 @@ function MobileEventCard({
               {!isAutomaticallyCompleted && (
                 <button
                   type="button"
-                  onClick={() => onToggleCompleted(event.id)}
+                  onClick={() =>
+                    isStudy
+                      ? onRequestStudyCompletion(event, displayTitle)
+                      : onToggleCompleted(event.id)
+                  }
                   aria-label={`${displayTitle}を完了`}
                   className="mobile-interactive min-h-11 rounded-xl bg-emerald-600 px-4 text-xs font-bold text-white shadow-sm"
                 >
@@ -278,6 +287,7 @@ type MobileScheduleProps = {
   onOpenActualsSummary: () => void;
   onOpenFutureLogsSummary: () => void;
   onMoveToTomorrow: (eventId: string) => void;
+  onCompleteStudy: (eventId: string, minutes: number) => void;
   onOpenLifeLog: (log: LifeLog) => void;
   onPostpone: (eventId: string, targetDate: string) => void;
   onOpenScheduleSummary: () => void;
@@ -299,6 +309,7 @@ export default function MobileSchedule({
   onOpenActualsSummary,
   onOpenFutureLogsSummary,
   onMoveToTomorrow,
+  onCompleteStudy,
   onOpenLifeLog,
   onPostpone,
   onOpenScheduleSummary,
@@ -311,6 +322,10 @@ export default function MobileSchedule({
 }: MobileScheduleProps) {
   const [postponingEvent, setPostponingEvent] =
     useState<CalendarEvent | null>(null);
+  const [studyCompletion, setStudyCompletion] = useState<{
+    event: CalendarEvent;
+    title: string;
+  } | null>(null);
   const [customPostponeDate, setCustomPostponeDate] = useState("");
   const currentMinutes =
     currentTime === null
@@ -436,6 +451,9 @@ export default function MobileSchedule({
                 onMoveToTomorrow={onMoveToTomorrow}
                 onOpenLifeLog={onOpenLifeLog}
                 onRequestPostpone={openPostponeOptions}
+                onRequestStudyCompletion={(event, title) =>
+                  setStudyCompletion({ event, title })
+                }
                 onResetStatus={onResetStatus}
                 onToggleCompleted={onToggleCompleted}
                 onToggleSkipped={onToggleSkipped}
@@ -468,6 +486,9 @@ export default function MobileSchedule({
                     onMoveToTomorrow={onMoveToTomorrow}
                     onOpenLifeLog={onOpenLifeLog}
                     onRequestPostpone={openPostponeOptions}
+                    onRequestStudyCompletion={(event, title) =>
+                      setStudyCompletion({ event, title })
+                    }
                     onResetStatus={onResetStatus}
                     onToggleCompleted={onToggleCompleted}
                     onToggleSkipped={onToggleSkipped}
@@ -483,6 +504,17 @@ export default function MobileSchedule({
             actuals={todayActuals}
           />
         </div>
+      )}
+
+      {studyCompletion && (
+        <StudyCompletionDialog
+          title={studyCompletion.title}
+          onCancel={() => setStudyCompletion(null)}
+          onConfirm={(minutes) => {
+            onCompleteStudy(studyCompletion.event.id, minutes);
+            setStudyCompletion(null);
+          }}
+        />
       )}
 
       {postponingEvent && (

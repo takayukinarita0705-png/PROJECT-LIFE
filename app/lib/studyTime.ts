@@ -3,9 +3,9 @@ import {
   addDaysToCalendarDate,
   formatCalendarDate,
   getWeekStart,
-  resolveEventDate,
+  isCalendarDate,
 } from "@/app/lib/date";
-import type { CalendarEvent, Category } from "@/app/types/calendar";
+import type { Category, StudyTimeRecord } from "@/app/types/calendar";
 
 export const DAILY_STUDY_TARGET_MINUTES = 120;
 
@@ -35,39 +35,127 @@ export function isStudyCategory(category: Category) {
   );
 }
 
-function getRecordedEventMinutes(event: CalendarEvent) {
-  const rawMinutes = event.end - event.start;
-  return Math.max(0, rawMinutes >= 0 ? rawMinutes : 24 * 60 + rawMinutes);
+export function normalizeStudyTimeRecord(
+  value: unknown,
+): StudyTimeRecord | null {
+  if (typeof value !== "object" || value === null) return null;
+  const record = value as Record<string, unknown>;
+  if (
+    typeof record.id !== "string" ||
+    !isCalendarDate(record.date) ||
+    typeof record.taskId !== "string" ||
+    typeof record.minutes !== "number" ||
+    !Number.isInteger(record.minutes) ||
+    record.minutes <= 0 ||
+    typeof record.createdAt !== "string" ||
+    Number.isNaN(Date.parse(record.createdAt))
+  ) {
+    return null;
+  }
+  return record as StudyTimeRecord;
 }
 
-export function getStudyTimeSummary(
-  events: CalendarEvent[],
-  categories: Category[],
-  referenceDate = new Date(),
-): StudyTimeSummary {
-  const categoriesById = new Map(
-    categories.map((category) => [category.id, category]),
-  );
-  const minutesByDate = new Map<string, number>();
+export function createStudyTimeRecord(
+  taskId: string,
+  date: string,
+  minutes: number,
+  id: string,
+  createdAt: string,
+) {
+  return normalizeStudyTimeRecord({
+    id,
+    date,
+    taskId,
+    minutes,
+    createdAt,
+  });
+}
 
-  events.forEach((event) => {
-    const category = categoriesById.get(event.categoryId);
+function getMinutesForDates(
+  records: StudyTimeRecord[],
+  dates: ReadonlySet<string>,
+) {
+  return records.reduce(
+    (total, record) =>
+      dates.has(record.date) ? total + record.minutes : total,
+    0,
+  );
+}
+
+export function getTodayStudyMinutes(
+  records: StudyTimeRecord[],
+  referenceDate = new Date(),
+) {
+  return getMinutesForDates(
+    records,
+    new Set([formatCalendarDate(referenceDate)]),
+  );
+}
+
+export function getWeekStudyMinutes(
+  records: StudyTimeRecord[],
+  referenceDate = new Date(),
+) {
+  const weekStart = formatCalendarDate(getWeekStart(referenceDate));
+  return getMinutesForDates(
+    records,
+    new Set(
+      DAYS.map((_, index) => addDaysToCalendarDate(weekStart, index)),
+    ),
+  );
+}
+
+export function getMonthStudyMinutes(
+  records: StudyTimeRecord[],
+  referenceDate = new Date(),
+) {
+  const monthPrefix = formatCalendarDate(referenceDate).slice(0, 7);
+  return records.reduce(
+    (total, record) =>
+      record.date.startsWith(monthPrefix) ? total + record.minutes : total,
+    0,
+  );
+}
+
+export function getTotalStudyMinutes(records: StudyTimeRecord[]) {
+  return records.reduce((total, record) => total + record.minutes, 0);
+}
+
+export function mergeStudyTimeRecords(
+  localRecords: StudyTimeRecord[],
+  remoteRecords: StudyTimeRecord[],
+  locallyChangedTaskIds: ReadonlySet<string>,
+) {
+  const localByTaskId = new Map(
+    localRecords.map((record) => [record.taskId, record]),
+  );
+  remoteRecords.forEach((record) => {
     if (
-      event.status !== "completed" ||
-      !category ||
-      !isStudyCategory(category)
+      locallyChangedTaskIds.has(record.taskId) ||
+      localByTaskId.has(record.taskId)
     ) {
       return;
     }
-    const date = resolveEventDate(event, referenceDate);
+    localByTaskId.set(record.taskId, record);
+  });
+  return [...localByTaskId.values()];
+}
+
+export function getStudyTimeSummary(
+  records: StudyTimeRecord[],
+  referenceDate = new Date(),
+): StudyTimeSummary {
+  const minutesByDate = new Map<string, number>();
+
+  records.forEach((record) => {
     minutesByDate.set(
-      date,
-      (minutesByDate.get(date) ?? 0) + getRecordedEventMinutes(event),
+      record.date,
+      (minutesByDate.get(record.date) ?? 0) + record.minutes,
     );
   });
 
   const today = formatCalendarDate(referenceDate);
-  const todayMinutes = minutesByDate.get(today) ?? 0;
+  const todayMinutes = getTodayStudyMinutes(records, referenceDate);
   const weekStart = formatCalendarDate(getWeekStart(referenceDate));
   const days = DAYS.map((label, index) => {
     const date = addDaysToCalendarDate(weekStart, index);
@@ -85,7 +173,7 @@ export function getStudyTimeSummary(
 
   return {
     todayMinutes,
-    weekMinutes: days.reduce((total, day) => total + day.minutes, 0),
+    weekMinutes: getWeekStudyMinutes(records, referenceDate),
     streakDays,
     nextStreakDays: studiedToday ? streakDays : streakDays + 1,
     studiedToday,

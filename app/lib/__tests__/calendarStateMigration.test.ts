@@ -8,6 +8,7 @@ import {
   migrateStateV4ToV5,
   migrateStateV5ToV6,
   migrateStateV6ToV7,
+  migrateStateV7ToV8,
 } from "@/app/lib/migrations/calendarState";
 
 describe("保存StateのSchema Migration", () => {
@@ -54,6 +55,46 @@ describe("保存StateのSchema Migration", () => {
       | Array<{ events: Array<Record<string, unknown>> }>
       | undefined;
     expect(templates?.[0].events[0]).not.toHaveProperty("date");
+  });
+
+  it("V7の完了済み勉強EventをStudy Time記録へ移行する", () => {
+    expect(
+      migrateStateV7ToV8({
+        schemaVersion: 7,
+        categories: [
+          { id: "study", name: "宅建", group: "study" },
+          { id: "work", name: "仕事", group: "work" },
+        ],
+        events: [
+          {
+            id: "study-event",
+            categoryId: "study",
+            status: "completed",
+            date: "2026-07-18",
+            start: 540,
+            end: 625,
+          },
+          {
+            id: "work-event",
+            categoryId: "work",
+            status: "completed",
+            date: "2026-07-18",
+            start: 540,
+            end: 600,
+          },
+        ],
+      }),
+    ).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      studyRecords: [
+        {
+          id: "study-study-event",
+          date: "2026-07-18",
+          taskId: "study-event",
+          minutes: 85,
+        },
+      ],
+    });
   });
 
   it("V2の既存ログへinboxを補完してV3へ変換する", () => {
@@ -228,7 +269,7 @@ describe("保存StateのSchema Migration", () => {
         ],
       }),
     ).toMatchObject({
-      schemaVersion: CURRENT_SCHEMA_VERSION,
+      schemaVersion: 7,
       events: [
         { id: "legacy-event", notificationMinutes: null },
         { id: "notify-event", notificationMinutes: 10 },
@@ -304,6 +345,6 @@ describe("保存StateのSchema Migration", () => {
   });
 
   it("未対応のVersionを現在の形式として扱わない", () => {
-    expect(migrateState({ schemaVersion: 8 })).toBeNull();
+    expect(migrateState({ schemaVersion: 9 })).toBeNull();
   });
 });

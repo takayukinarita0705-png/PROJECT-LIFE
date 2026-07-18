@@ -10,6 +10,7 @@ import {
   migrateState,
 } from "@/app/lib/migrations/calendarState";
 import { getSupabaseClient } from "@/app/lib/supabase";
+import { normalizeStudyTimeRecord } from "@/app/lib/studyTime";
 import type { SharedCalendarState } from "@/app/types/calendar";
 
 const TABLE_NAME = "project_life_state";
@@ -24,6 +25,7 @@ function createEmptySharedState(): SharedCalendarState {
     events: [],
     templates: [],
     logs: [],
+    studyRecords: [],
   };
 }
 
@@ -54,11 +56,15 @@ export function normalizeSharedCalendarState(
   const logs = Array.isArray(state.logs)
     ? state.logs.map(normalizeLifeLog)
     : [];
+  const studyRecords = Array.isArray(state.studyRecords)
+    ? state.studyRecords.map(normalizeStudyTimeRecord)
+    : [];
   if (
     !hasNoNull(categories) ||
     !hasNoNull(events) ||
     !hasNoNull(templates) ||
-    !hasNoNull(logs)
+    !hasNoNull(logs) ||
+    !hasNoNull(studyRecords)
   ) {
     return null;
   }
@@ -70,6 +76,7 @@ export function normalizeSharedCalendarState(
     events,
     templates,
     logs,
+    studyRecords,
   };
 }
 

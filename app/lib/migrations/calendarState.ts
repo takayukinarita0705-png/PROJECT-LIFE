@@ -5,13 +5,14 @@ import {
   parseCalendarDate,
 } from "@/app/lib/date";
 
-export const CURRENT_SCHEMA_VERSION = 7 as const;
+export const CURRENT_SCHEMA_VERSION = 8 as const;
 const LEGACY_SCHEMA_VERSION = 1;
 const DATE_SCHEMA_VERSION = 2;
 const LIFE_LOG_STATUS_SCHEMA_VERSION = 3;
 const LIFE_LOG_FOCUS_SCHEMA_VERSION = 4;
 const TUESDAY_WEEK_SCHEMA_VERSION = 5;
 const LIFE_LOG_LINK_SCHEMA_VERSION = 6;
+const REMINDER_SCHEMA_VERSION = 7;
 
 export type MigratableState = Record<string, unknown> & {
   schemaVersion?: unknown;
@@ -241,7 +242,7 @@ export function migrateStateV5ToV6(
 
 export function migrateStateV6ToV7(
   state: MigratableState,
-): MigratedState {
+): MigratableState & { schemaVersion: typeof REMINDER_SCHEMA_VERSION } {
   const events = Array.isArray(state.events)
     ? state.events.map((value) => {
         if (typeof value !== "object" || value === null) return value;
@@ -263,8 +264,79 @@ export function migrateStateV6ToV7(
   return {
     ...state,
     events,
+    schemaVersion: REMINDER_SCHEMA_VERSION,
+  };
+}
+
+export function migrateStateV7ToV8(
+  state: MigratableState,
+): MigratedState {
+  const categories = Array.isArray(state.categories)
+    ? state.categories
+    : [];
+  const studyCategoryIds = new Set(
+    categories.flatMap((value) => {
+      if (typeof value !== "object" || value === null) return [];
+      const category = value as Record<string, unknown>;
+      const name = typeof category.name === "string" ? category.name.trim() : "";
+      const isStudy =
+        category.group === "study" ||
+        name.includes("宅建") ||
+        name.includes("勉強") ||
+        name.includes("学習");
+      return isStudy && typeof category.id === "string"
+        ? [category.id]
+        : [];
+    }),
+  );
+  const studyRecords = Array.isArray(state.events)
+    ? state.events.flatMap((value) => {
+        if (typeof value !== "object" || value === null) return [];
+        const event = value as Record<string, unknown>;
+        if (
+          event.status !== "completed" ||
+          typeof event.id !== "string" ||
+          typeof event.categoryId !== "string" ||
+          !studyCategoryIds.has(event.categoryId) ||
+          typeof event.date !== "string" ||
+          parseCalendarDate(event.date) === null ||
+          typeof event.start !== "number" ||
+          typeof event.end !== "number"
+        ) {
+          return [];
+        }
+        const rawMinutes = event.end - event.start;
+        const minutes = Math.max(
+          0,
+          rawMinutes >= 0 ? rawMinutes : 24 * 60 + rawMinutes,
+        );
+        if (!Number.isInteger(minutes) || minutes <= 0) return [];
+        const completedAt =
+          typeof event.completedAt === "string" &&
+          !Number.isNaN(Date.parse(event.completedAt))
+            ? event.completedAt
+            : `${event.date}T00:00:00.000Z`;
+        return [
+          {
+            id: `study-${event.id}`,
+            date: event.date,
+            taskId: event.id,
+            minutes,
+            createdAt: completedAt,
+          },
+        ];
+      })
+    : [];
+
+  return {
+    ...state,
+    studyRecords,
     schemaVersion: CURRENT_SCHEMA_VERSION,
   };
+}
+
+function migrateReminderStateToCurrent(state: MigratableState) {
+  return migrateStateV7ToV8(migrateStateV6ToV7(state));
 }
 
 // V1のdayは月曜始まりで保存されていたため、絶対日付へ直すまでは
@@ -291,7 +363,7 @@ export function migrateState(
     state.schemaVersion ?? LEGACY_SCHEMA_VERSION;
 
   if (schemaVersion === LEGACY_SCHEMA_VERSION) {
-    return migrateStateV6ToV7(
+    return migrateReminderStateToCurrent(
       migrateStateV5ToV6(
         migrateStateV4ToV5(
           migrateStateV3ToV4(
@@ -308,7 +380,7 @@ export function migrateState(
     );
   }
   if (schemaVersion === DATE_SCHEMA_VERSION) {
-    return migrateStateV6ToV7(
+    return migrateReminderStateToCurrent(
       migrateStateV5ToV6(
         migrateStateV4ToV5(
           migrateStateV3ToV4(migrateStateV2ToV3(state)),
@@ -318,7 +390,7 @@ export function migrateState(
     );
   }
   if (schemaVersion === LIFE_LOG_STATUS_SCHEMA_VERSION) {
-    return migrateStateV6ToV7(
+    return migrateReminderStateToCurrent(
       migrateStateV5ToV6(
         migrateStateV4ToV5(
           migrateStateV3ToV4(state),
@@ -328,17 +400,20 @@ export function migrateState(
     );
   }
   if (schemaVersion === LIFE_LOG_FOCUS_SCHEMA_VERSION) {
-    return migrateStateV6ToV7(
+    return migrateReminderStateToCurrent(
       migrateStateV5ToV6(
         migrateStateV4ToV5(state, referenceDate),
       ),
     );
   }
   if (schemaVersion === TUESDAY_WEEK_SCHEMA_VERSION) {
-    return migrateStateV6ToV7(migrateStateV5ToV6(state));
+    return migrateReminderStateToCurrent(migrateStateV5ToV6(state));
   }
   if (schemaVersion === LIFE_LOG_LINK_SCHEMA_VERSION) {
-    return migrateStateV6ToV7(state);
+    return migrateReminderStateToCurrent(state);
+  }
+  if (schemaVersion === REMINDER_SCHEMA_VERSION) {
+    return migrateStateV7ToV8(state);
   }
   if (schemaVersion !== CURRENT_SCHEMA_VERSION) return null;
 
