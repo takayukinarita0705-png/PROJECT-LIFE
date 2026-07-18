@@ -26,7 +26,7 @@ import {
 } from "@/app/lib/records";
 import { formatTime } from "@/app/lib/time";
 import { isAutomaticCompletionEvent } from "@/app/lib/autoCompletion";
-import { isStudyCategory } from "@/app/lib/studyTime";
+import { isStudyTask } from "@/app/lib/studyTime";
 import type {
   CalendarEvent,
   LifeLog,
@@ -122,7 +122,7 @@ function MobileEventCard({
     event,
     category,
   );
-  const isStudy = isStudyCategory(category);
+  const isStudy = isStudyTask(event, category);
   const canMoveToTomorrow = isSkipped && isCarryoverEligibleEvent(event);
   const showsActionFooter =
     !(isAutomaticallyCompleted && isCompleted) &&
@@ -287,7 +287,13 @@ type MobileScheduleProps = {
   onOpenActualsSummary: () => void;
   onOpenFutureLogsSummary: () => void;
   onMoveToTomorrow: (eventId: string) => void;
-  onCompleteStudy: (eventId: string, minutes: number) => void;
+  onCompleteStudy: (
+    eventId: string,
+    minutes?: number,
+  ) =>
+    | { status: "completed" }
+    | { status: "needs_input" }
+    | { status: "error"; message: string };
   onOpenLifeLog: (log: LifeLog) => void;
   onPostpone: (eventId: string, targetDate: string) => void;
   onOpenScheduleSummary: () => void;
@@ -326,6 +332,9 @@ export default function MobileSchedule({
     event: CalendarEvent;
     title: string;
   } | null>(null);
+  const [studyCompletionError, setStudyCompletionError] = useState<
+    string | null
+  >(null);
   const [customPostponeDate, setCustomPostponeDate] = useState("");
   const currentMinutes =
     currentTime === null
@@ -365,6 +374,16 @@ export default function MobileSchedule({
     if (!postponingEvent) return;
     onPostpone(postponingEvent.id, targetDate);
     setPostponingEvent(null);
+  }
+
+  function requestStudyCompletion(event: CalendarEvent, title: string) {
+    setStudyCompletionError(null);
+    const result = onCompleteStudy(event.id);
+    if (result.status === "needs_input") {
+      setStudyCompletion({ event, title });
+    } else if (result.status === "error") {
+      setStudyCompletionError(result.message);
+    }
   }
 
   return (
@@ -451,9 +470,7 @@ export default function MobileSchedule({
                 onMoveToTomorrow={onMoveToTomorrow}
                 onOpenLifeLog={onOpenLifeLog}
                 onRequestPostpone={openPostponeOptions}
-                onRequestStudyCompletion={(event, title) =>
-                  setStudyCompletion({ event, title })
-                }
+                onRequestStudyCompletion={requestStudyCompletion}
                 onResetStatus={onResetStatus}
                 onToggleCompleted={onToggleCompleted}
                 onToggleSkipped={onToggleSkipped}
@@ -486,9 +503,7 @@ export default function MobileSchedule({
                     onMoveToTomorrow={onMoveToTomorrow}
                     onOpenLifeLog={onOpenLifeLog}
                     onRequestPostpone={openPostponeOptions}
-                    onRequestStudyCompletion={(event, title) =>
-                      setStudyCompletion({ event, title })
-                    }
+                    onRequestStudyCompletion={requestStudyCompletion}
                     onResetStatus={onResetStatus}
                     onToggleCompleted={onToggleCompleted}
                     onToggleSkipped={onToggleSkipped}
@@ -509,12 +524,33 @@ export default function MobileSchedule({
       {studyCompletion && (
         <StudyCompletionDialog
           title={studyCompletion.title}
-          onCancel={() => setStudyCompletion(null)}
-          onConfirm={(minutes) => {
-            onCompleteStudy(studyCompletion.event.id, minutes);
+          errorMessage={studyCompletionError}
+          onCancel={() => {
             setStudyCompletion(null);
+            setStudyCompletionError(null);
+          }}
+          onConfirm={(minutes) => {
+            const result = onCompleteStudy(
+              studyCompletion.event.id,
+              minutes,
+            );
+            if (result.status === "completed") {
+              setStudyCompletion(null);
+              setStudyCompletionError(null);
+            } else if (result.status === "error") {
+              setStudyCompletionError(result.message);
+            }
           }}
         />
+      )}
+
+      {studyCompletionError && !studyCompletion && (
+        <p
+          role="alert"
+          className="fixed inset-x-4 bottom-24 z-[170] rounded-2xl bg-rose-700 px-4 py-3 text-sm font-bold text-white shadow-xl md:hidden"
+        >
+          {studyCompletionError}
+        </p>
       )}
 
       {postponingEvent && (

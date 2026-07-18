@@ -47,7 +47,7 @@ export function getEventDialogTimeDetails(
   return { details: { start, end }, error: "" };
 }
 
-function useMobileModalEnvironment() {
+export function useMobileModalEnvironment() {
   useEffect(() => {
     if (!window.matchMedia("(max-width: 767px)").matches) return;
 

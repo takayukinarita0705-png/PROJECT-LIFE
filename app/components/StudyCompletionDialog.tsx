@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useMobileModalEnvironment } from "@/app/components/EventDialog";
 
-const QUICK_MINUTES = [15, 30, 60] as const;
+const QUICK_MINUTES = [15, 30, 45, 60, 90, 120] as const;
 
 export function parseStudyMinutes(value: string) {
   const minutes = Number(value);
@@ -9,35 +10,34 @@ export function parseStudyMinutes(value: string) {
     : null;
 }
 
-export function addQuickStudyMinutes(value: string, amount: number) {
-  const current = parseStudyMinutes(value) ?? 0;
-  return String(Math.min(24 * 60, current + amount));
+export function selectQuickStudyMinutes(amount: number) {
+  return String(Math.min(24 * 60, Math.max(1, Math.round(amount))));
 }
 
 export default function StudyCompletionDialog({
   title,
+  errorMessage,
   onCancel,
   onConfirm,
 }: {
   title: string;
+  errorMessage?: string | null;
   onCancel: () => void;
   onConfirm: (minutes: number) => void;
 }) {
+  useMobileModalEnvironment();
   const [minutesValue, setMinutesValue] = useState("");
   const minutes = parseStudyMinutes(minutesValue);
 
-  function addMinutes(amount: number) {
-    setMinutesValue(addQuickStudyMinutes(minutesValue, amount));
-  }
-
   return (
     <div
-      className="fixed inset-0 z-[160] flex items-end justify-center bg-slate-950/50 p-3 backdrop-blur-sm md:items-center md:p-4"
+      className="mobile-modal-layer fixed inset-0 z-[180] flex items-end justify-center bg-slate-950/50 p-3 backdrop-blur-sm md:items-center md:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="study-completion-title"
     >
-      <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-2xl dark:bg-slate-900">
+      <div className="mobile-modal-panel flex w-full max-w-sm flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-900">
+        <div className="mobile-modal-body p-5">
         <p className="text-xs font-bold text-indigo-600 dark:text-indigo-300">
           📚 勉強時間を記録
         </p>
@@ -56,10 +56,12 @@ export default function StudyCompletionDialog({
             <button
               key={amount}
               type="button"
-              onClick={() => addMinutes(amount)}
+              onClick={() =>
+                setMinutesValue(selectQuickStudyMinutes(amount))
+              }
               className="mobile-interactive min-h-12 rounded-xl bg-indigo-50 px-3 text-sm font-bold text-indigo-700 dark:bg-indigo-950 dark:text-indigo-200"
             >
-              +{amount}分
+              {amount}分
             </button>
           ))}
         </div>
@@ -80,6 +82,15 @@ export default function StudyCompletionDialog({
           />
         </label>
 
+        {errorMessage && (
+          <p
+            role="alert"
+            className="mt-3 rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700 dark:bg-rose-950 dark:text-rose-200"
+          >
+            {errorMessage}
+          </p>
+        )}
+
         <div className="mt-5 flex gap-3">
           <button
             type="button"
@@ -98,6 +109,7 @@ export default function StudyCompletionDialog({
           >
             完了して記録
           </button>
+        </div>
         </div>
       </div>
     </div>

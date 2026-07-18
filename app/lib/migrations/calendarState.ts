@@ -5,7 +5,7 @@ import {
   parseCalendarDate,
 } from "@/app/lib/date";
 
-export const CURRENT_SCHEMA_VERSION = 8 as const;
+export const CURRENT_SCHEMA_VERSION = 9 as const;
 const LEGACY_SCHEMA_VERSION = 1;
 const DATE_SCHEMA_VERSION = 2;
 const LIFE_LOG_STATUS_SCHEMA_VERSION = 3;
@@ -13,6 +13,7 @@ const LIFE_LOG_FOCUS_SCHEMA_VERSION = 4;
 const TUESDAY_WEEK_SCHEMA_VERSION = 5;
 const LIFE_LOG_LINK_SCHEMA_VERSION = 6;
 const REMINDER_SCHEMA_VERSION = 7;
+const STUDY_RECORD_SCHEMA_VERSION = 8;
 
 export type MigratableState = Record<string, unknown> & {
   schemaVersion?: unknown;
@@ -270,7 +271,7 @@ export function migrateStateV6ToV7(
 
 export function migrateStateV7ToV8(
   state: MigratableState,
-): MigratedState {
+): MigratableState & { schemaVersion: typeof STUDY_RECORD_SCHEMA_VERSION } {
   const categories = Array.isArray(state.categories)
     ? state.categories
     : [];
@@ -331,12 +332,42 @@ export function migrateStateV7ToV8(
   return {
     ...state,
     studyRecords,
+    schemaVersion: STUDY_RECORD_SCHEMA_VERSION,
+  };
+}
+
+export function migrateStateV8ToV9(
+  state: MigratableState,
+): MigratedState {
+  const studyRecords = Array.isArray(state.studyRecords)
+    ? state.studyRecords.map((value) => {
+        if (typeof value !== "object" || value === null) return value;
+        const record = value as Record<string, unknown>;
+        const { date: legacyDate, ...rest } = record;
+        const createdAt =
+          typeof record.createdAt === "string"
+            ? record.createdAt
+            : new Date(0).toISOString();
+        return {
+          ...rest,
+          studyDate: record.studyDate ?? legacyDate,
+          source: record.source ?? "scheduled_duration",
+          updatedAt: record.updatedAt ?? createdAt,
+        };
+      })
+    : [];
+
+  return {
+    ...state,
+    studyRecords,
     schemaVersion: CURRENT_SCHEMA_VERSION,
   };
 }
 
 function migrateReminderStateToCurrent(state: MigratableState) {
-  return migrateStateV7ToV8(migrateStateV6ToV7(state));
+  return migrateStateV8ToV9(
+    migrateStateV7ToV8(migrateStateV6ToV7(state)),
+  );
 }
 
 // V1のdayは月曜始まりで保存されていたため、絶対日付へ直すまでは
@@ -413,7 +444,10 @@ export function migrateState(
     return migrateReminderStateToCurrent(state);
   }
   if (schemaVersion === REMINDER_SCHEMA_VERSION) {
-    return migrateStateV7ToV8(state);
+    return migrateStateV8ToV9(migrateStateV7ToV8(state));
+  }
+  if (schemaVersion === STUDY_RECORD_SCHEMA_VERSION) {
+    return migrateStateV8ToV9(state);
   }
   if (schemaVersion !== CURRENT_SCHEMA_VERSION) return null;
 

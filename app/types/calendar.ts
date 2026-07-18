@@ -29,6 +29,13 @@ export type CalendarEvent = {
   completedAt?: string;
   routineRelation?: RoutineRelation;
   routineDetached?: boolean;
+  /** 外部タイマーや将来のタスク連携で利用する任意の学習メタデータ */
+  tags?: string[];
+  routineId?: string;
+  taskType?: string;
+  durationMinutes?: number;
+  actualStudyMinutes?: number;
+  timerStudyDate?: string;
 };
 
 export type Category = {
@@ -92,17 +99,26 @@ export type LifeLog = {
   updatedAt: string;
 };
 
+export type StudyTimeSource =
+  | "manual"
+  | "task_completion"
+  | "timer"
+  | "scheduled_duration";
+
 export type StudyTimeRecord = {
   id: string;
-  date: string;
+  userId?: string;
   taskId: string;
+  studyDate: string;
   minutes: number;
+  source: StudyTimeSource;
   createdAt: string;
+  updatedAt: string;
 };
 
 export type SharedCalendarState = {
   version: 1;
-  schemaVersion: 8;
+  schemaVersion: 9;
   categories: Category[];
   events: CalendarEvent[];
   templates: CalendarTemplate[];
@@ -166,7 +182,7 @@ export type EventMove = {
   grabOffsetMinutes: number;
 };
 
-export type SaveStatus = "saving" | "saved" | null;
+export type SaveStatus = "saving" | "saved" | "error" | null;
 
 export type UndoSnapshot = {
   id: number;

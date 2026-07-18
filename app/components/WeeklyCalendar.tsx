@@ -1108,9 +1108,13 @@ export default function WeeklyCalendar() {
             saveStatus === "saved"
               ? "save-toast-lifetime"
               : "toast-enter"
-          }`}
+          } ${saveStatus === "error" ? "border-rose-200 text-rose-700" : ""}`}
         >
-          {saveStatus === "saving" ? "💾 保存中..." : "✅ 保存しました"}
+          {saveStatus === "saving"
+            ? "💾 保存中..."
+            : saveStatus === "error"
+              ? "同期できません。端末に保存し、再試行します"
+              : "✅ 保存しました"}
         </div>
       )}
 

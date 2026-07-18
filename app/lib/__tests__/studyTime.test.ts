@@ -1,18 +1,30 @@
 import { describe, expect, it } from "vitest";
 import {
   createStudyTimeRecord,
+  getDailyStudyMinutes,
+  getJapanStudyDate,
   getMonthStudyMinutes,
+  getStudyStreak,
   getStudyTimeSummary,
   getTodayStudyMinutes,
   getTotalStudyMinutes,
   getWeekStudyMinutes,
-  isStudyCategory,
+  isStudyTask,
+  isTakkenTask,
   mergeStudyTimeRecords,
   normalizeStudyTimeRecord,
+  removeCompletionStudyTimeRecords,
+  resolveStudyDuration,
+  upsertStudyTimeRecord,
 } from "@/app/lib/studyTime";
-import type { Category, StudyTimeRecord } from "@/app/types/calendar";
+import type {
+  CalendarEvent,
+  Category,
+  StudyTimeRecord,
+  StudyTimeSource,
+} from "@/app/types/calendar";
 
-const studyCategory: Category = {
+const categoryBase: Category = {
   id: "takken-law",
   name: "宅建業法",
   color: "#ef4444",
@@ -22,42 +34,120 @@ const studyCategory: Category = {
   updatedAt: "2026-07-01T00:00:00.000Z",
 };
 
-const workCategory: Category = {
-  ...studyCategory,
-  id: "work",
-  name: "仕事",
-  group: "work",
-};
-
-function createRecord(
-  id: string,
-  date: string,
-  minutes: number,
-): StudyTimeRecord {
+function createTask(
+  overrides: Partial<CalendarEvent> = {},
+): CalendarEvent {
   return {
-    id,
-    date,
-    taskId: `${id}-task`,
-    minutes,
-    createdAt: `${date}T01:00:00.000Z`,
+    id: "task-1",
+    categoryId: "takken-law",
+    mode: "fixed",
+    status: "pending",
+    linkType: "none",
+    offsetMinutes: 0,
+    date: "2026-07-18",
+    day: 4,
+    start: 540,
+    end: 625,
+    weekOffset: 0,
+    notificationMinutes: null,
+    ...overrides,
   };
 }
 
-describe("Study Time集計", () => {
-  it("studyグループと宅建・勉強・学習カテゴリを勉強系として扱う", () => {
-    expect(isStudyCategory(studyCategory)).toBe(true);
+function createRecord(
+  id: string,
+  studyDate: string,
+  minutes: number,
+  source: StudyTimeSource = "scheduled_duration",
+  taskId = `${id}-task`,
+): StudyTimeRecord {
+  return {
+    id,
+    taskId,
+    studyDate,
+    minutes,
+    source,
+    createdAt: `${studyDate}T01:00:00.000Z`,
+    updatedAt: `${studyDate}T01:00:00.000Z`,
+  };
+}
+
+describe("勉強タスク判定", () => {
+  it("構造化された宅建カテゴリと既存宅建ルーティンを優先判定する", () => {
+    expect(isTakkenTask(createTask(), categoryBase)).toBe(true);
     expect(
-      isStudyCategory({ ...workCategory, name: "資格の勉強" }),
+      isTakkenTask(
+        createTask({ categoryId: "other", routineId: "takken-morning" }),
+        { ...categoryBase, id: "other", name: "資格", group: "life" },
+      ),
     ).toBe(true);
-    expect(
-      isStudyCategory({ ...workCategory, name: "英語学習" }),
-    ).toBe(true);
-    expect(isStudyCategory(workCategory)).toBe(false);
   });
 
-  it("保存済み記録から今日・今週・日別・継続日数を集計する", () => {
+  it("一般の勉強カテゴリ・studyタグを判定する", () => {
+    const general = { ...categoryBase, id: "general", name: "英語", group: "study" };
+    expect(isStudyTask(createTask({ categoryId: general.id }), general)).toBe(true);
+    expect(
+      isStudyTask(
+        createTask({ categoryId: "other", tags: ["study"] }),
+        { ...general, id: "other", group: "life" },
+      ),
+    ).toBe(true);
+  });
+
+  it("旧データは宅建関連語を補助判定し、仕事・食事は対象外にする", () => {
+    const other = { ...categoryBase, id: "other", name: "その他", group: "life" };
+    expect(isTakkenTask(createTask({ categoryId: "other", title: "民法 過去問" }), other)).toBe(true);
+    expect(isStudyTask(createTask({ categoryId: "work", title: "仕事" }), { ...other, id: "work", name: "仕事" })).toBe(false);
+    expect(isStudyTask(createTask({ categoryId: "lunch", title: "昼ご飯" }), { ...other, id: "lunch", name: "昼ご飯" })).toBe(false);
+  });
+});
+
+describe("完了時の勉強時間決定", () => {
+  it("実測、入力、予定時間、所要時間の優先順位で決定する", () => {
+    expect(resolveStudyDuration(createTask({ actualStudyMinutes: 50 }), 30)).toEqual({ minutes: 50, source: "timer", studyDate: undefined });
+    expect(resolveStudyDuration(createTask(), 45)).toEqual({ minutes: 45, source: "task_completion" });
+    expect(resolveStudyDuration(createTask())).toEqual({ minutes: 85, source: "scheduled_duration" });
+    expect(resolveStudyDuration(createTask({ start: 600, end: 600, durationMinutes: 30 }))).toEqual({ minutes: 30, source: "scheduled_duration" });
+  });
+
+  it("日付またぎを明示した正の時間は計算し、逆転・過大時間は入力へフォールバックする", () => {
+    expect(resolveStudyDuration(createTask({ start: 23 * 60, end: 25 * 60 }))).toMatchObject({ minutes: 120 });
+    expect(resolveStudyDuration(createTask({ start: 23 * 60, end: 60 }))).toBeNull();
+    expect(resolveStudyDuration(createTask({ start: 0, end: 1441 }))).toBeNull();
+  });
+});
+
+describe("Study Time保存と集計", () => {
+  it("保存レコードを検証し、同一タスク・sourceはupsertして二重登録しない", () => {
+    const first = createRecord("first", "2026-07-18", 30, "task_completion", "task-1");
+    const updated = createRecord("updated", "2026-07-18", 45, "scheduled_duration", "task-1");
+    expect(normalizeStudyTimeRecord(first)).toEqual(first);
+    expect(upsertStudyTimeRecord([first], updated)).toEqual([updated]);
+    expect(normalizeStudyTimeRecord({ ...first, minutes: 0 })).toBeNull();
+    expect(
+      createStudyTimeRecord({
+        id: "record-1",
+        taskId: "task-1",
+        studyDate: "2026-07-18",
+        minutes: 45,
+        source: "task_completion",
+        createdAt: "2026-07-18T01:00:00.000Z",
+      }),
+    ).toMatchObject({ updatedAt: "2026-07-18T01:00:00.000Z" });
+  });
+
+  it("完了取り消しでは自動記録だけ削除し、manualとtimerは保持する", () => {
     const records = [
-      createRecord("sun", "2026-07-12", 10),
+      createRecord("completion", "2026-07-18", 30, "task_completion", "task-1"),
+      createRecord("scheduled", "2026-07-18", 30, "scheduled_duration", "task-1"),
+      createRecord("manual", "2026-07-18", 10, "manual", "task-1"),
+      createRecord("timer", "2026-07-18", 20, "timer", "task-1"),
+    ];
+    expect(removeCompletionStudyTimeRecords(records, "task-1")).toEqual(records.slice(2));
+  });
+
+  it("火曜日始まりで今日・週・月・累計・日別・連続日数を集計する", () => {
+    const records = [
       createRecord("mon", "2026-07-13", 10),
       createRecord("tue", "2026-07-14", 90),
       createRecord("wed", "2026-07-15", 60),
@@ -65,94 +155,25 @@ describe("Study Time集計", () => {
       createRecord("fri", "2026-07-17", 120),
       createRecord("sat", "2026-07-18", 85),
     ];
-
-    expect(
-      getStudyTimeSummary(
-        records,
-        new Date(2026, 6, 18, 12),
-      ),
-    ).toMatchObject({
-      todayMinutes: 85,
-      weekMinutes: 380,
-      streakDays: 7,
-      nextStreakDays: 7,
-      studiedToday: true,
-      progressPercentage: 71,
-      days: [
-        { date: "2026-07-14", label: "火", minutes: 90 },
-        { date: "2026-07-15", label: "水", minutes: 60 },
-        { date: "2026-07-16", label: "木", minutes: 25 },
-        { date: "2026-07-17", label: "金", minutes: 120 },
-        { date: "2026-07-18", label: "土", minutes: 85 },
-        { date: "2026-07-19", label: "日", minutes: 0 },
-        { date: "2026-07-20", label: "月", minutes: 0 },
-      ],
-    });
-  });
-
-  it("今日が未記録なら昨日までの継続日数と今日達成時の日数を返す", () => {
-    const summary = getStudyTimeSummary(
-      [
-        createRecord("yesterday", "2026-07-17", 60),
-        createRecord("two-days-ago", "2026-07-16", 60),
-      ],
-      new Date(2026, 6, 18, 12),
-    );
-
-    expect(summary).toMatchObject({
-      todayMinutes: 0,
-      streakDays: 2,
-      nextStreakDays: 3,
-      studiedToday: false,
-    });
-  });
-
-  it("今日・今週・今月・累計の再利用可能な集計APIを提供する", () => {
-    const records = [
-      createRecord("today", "2026-07-18", 85),
-      createRecord("week", "2026-07-15", 60),
-      createRecord("month", "2026-07-01", 30),
-      createRecord("past", "2026-06-30", 120),
-    ];
-    const referenceDate = new Date(2026, 6, 18, 12);
-
+    const referenceDate = new Date("2026-07-18T03:00:00.000Z");
     expect(getTodayStudyMinutes(records, referenceDate)).toBe(85);
-    expect(getWeekStudyMinutes(records, referenceDate)).toBe(145);
-    expect(getMonthStudyMinutes(records, referenceDate)).toBe(175);
-    expect(getTotalStudyMinutes(records)).toBe(295);
+    expect(getDailyStudyMinutes(records, "2026-07-15")).toBe(60);
+    expect(getWeekStudyMinutes(records, referenceDate)).toBe(380);
+    expect(getMonthStudyMinutes(records, referenceDate)).toBe(390);
+    expect(getTotalStudyMinutes(records)).toBe(390);
+    expect(getStudyStreak(records, referenceDate)).toBe(6);
+    expect(getStudyTimeSummary(records, referenceDate)).toMatchObject({ todayMinutes: 85, weekMinutes: 380, streakDays: 6 });
   });
 
-  it("保存レコードの形式を検証する", () => {
-    const record = createRecord("valid", "2026-07-18", 45);
-    expect(normalizeStudyTimeRecord(record)).toEqual(record);
-    expect(normalizeStudyTimeRecord({ ...record, minutes: 0 })).toBeNull();
-    expect(normalizeStudyTimeRecord({ ...record, date: "invalid" })).toBeNull();
-    expect(
-      createStudyTimeRecord(
-        "task-1",
-        "2026-07-18",
-        45,
-        "record-1",
-        "2026-07-18T01:00:00.000Z",
-      ),
-    ).toEqual({
-      id: "record-1",
-      date: "2026-07-18",
-      taskId: "task-1",
-      minutes: 45,
-      createdAt: "2026-07-18T01:00:00.000Z",
-    });
+  it("日本時間の日付境界をUTC時刻から正しく求め、タイマーの日付を優先する", () => {
+    expect(getJapanStudyDate(new Date("2026-07-17T15:30:00.000Z"))).toBe("2026-07-18");
+    expect(resolveStudyDuration(createTask({ actualStudyMinutes: 40, timerStudyDate: "2026-07-17" }))).toEqual({ minutes: 40, source: "timer", studyDate: "2026-07-17" });
   });
 
-  it("端末間の記録をtaskIdで重複なく統合し、ローカル削除を復活させない", () => {
-    const local = createRecord("local", "2026-07-18", 45);
-    const remote = createRecord("remote", "2026-07-18", 60);
-    expect(mergeStudyTimeRecords([local], [local, remote], new Set())).toEqual([
-      local,
-      remote,
-    ]);
-    expect(
-      mergeStudyTimeRecords([], [remote], new Set([remote.taskId])),
-    ).toEqual([]);
+  it("端末間の自動記録を重複なく統合し、ローカル取り消しを復活させない", () => {
+    const local = createRecord("local", "2026-07-18", 45, "scheduled_duration", "task-1");
+    const remoteDuplicate = createRecord("remote", "2026-07-18", 60, "scheduled_duration", "task-1");
+    expect(mergeStudyTimeRecords([local], [remoteDuplicate], new Set())).toEqual([local]);
+    expect(mergeStudyTimeRecords([], [remoteDuplicate], new Set(["task-1"]))).toEqual([]);
   });
 });

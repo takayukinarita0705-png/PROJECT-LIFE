@@ -96,7 +96,20 @@ export function normalizeCalendarEvent(
       event.routineRelation === "after-work-meal" ||
       event.routineRelation === "after-work-bath") &&
     (event.routineDetached === undefined ||
-      typeof event.routineDetached === "boolean");
+      typeof event.routineDetached === "boolean") &&
+    (event.tags === undefined ||
+      (Array.isArray(event.tags) &&
+        event.tags.every((tag) => typeof tag === "string"))) &&
+    (event.routineId === undefined || typeof event.routineId === "string") &&
+    (event.taskType === undefined || typeof event.taskType === "string") &&
+    (event.durationMinutes === undefined ||
+      (typeof event.durationMinutes === "number" &&
+        Number.isInteger(event.durationMinutes))) &&
+    (event.actualStudyMinutes === undefined ||
+      (typeof event.actualStudyMinutes === "number" &&
+        Number.isInteger(event.actualStudyMinutes))) &&
+    (event.timerStudyDate === undefined ||
+      isCalendarDate(event.timerStudyDate));
 
   if (!isValid) return null;
 

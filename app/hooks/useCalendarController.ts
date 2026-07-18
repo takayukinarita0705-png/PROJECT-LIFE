@@ -61,8 +61,12 @@ import {
 import { completeEndedAutomaticEvents } from "@/app/lib/autoCompletion";
 import {
   createStudyTimeRecord,
-  isStudyCategory,
+  getJapanStudyDate,
+  isStudyTask,
   mergeStudyTimeRecords,
+  removeCompletionStudyTimeRecords,
+  resolveStudyDuration,
+  upsertStudyTimeRecord,
 } from "@/app/lib/studyTime";
 import type {
   CalendarEvent,
@@ -104,6 +108,7 @@ export default function useCalendarController(weekOffset: number) {
   const [isSyncingSharedState, setIsSyncingSharedState] = useState(false);
   const [canPersistSharedState, setCanPersistSharedState] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>(null);
+  const [syncRetryNonce, setSyncRetryNonce] = useState(0);
   const [undoSnapshot, setUndoSnapshot] = useState<UndoSnapshot | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
     WORKDAY_ROUTINE.workCategoryId,
@@ -217,6 +222,7 @@ export default function useCalendarController(weekOffset: number) {
 
     let cancelled = false;
     let hideTimer: number | undefined;
+    let retryTimer: number | undefined;
     const persistTimer = window.setTimeout(() => {
       setSaveStatus("saving");
 
@@ -265,8 +271,12 @@ export default function useCalendarController(weekOffset: number) {
         })
         .catch((error: unknown) => {
           if (cancelled) return;
-          setSaveStatus(null);
+          setSaveStatus("error");
           console.error("Supabaseへ予定データを保存できませんでした。", error);
+          retryTimer = window.setTimeout(
+            () => setSyncRetryNonce((current) => current + 1),
+            5000,
+          );
         });
     }, 120);
 
@@ -274,6 +284,7 @@ export default function useCalendarController(weekOffset: number) {
       cancelled = true;
       window.clearTimeout(persistTimer);
       if (hideTimer !== undefined) window.clearTimeout(hideTimer);
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
     };
   }, [
     canPersistSharedState,
@@ -284,6 +295,7 @@ export default function useCalendarController(weekOffset: number) {
     templates,
     logs,
     studyRecords,
+    syncRetryNonce,
   ]);
 
   useEffect(() => {
@@ -454,7 +466,7 @@ export default function useCalendarController(weekOffset: number) {
       if (event.status === "completed") {
         locallyChangedStudyTaskIdsRef.current.add(id);
         setStudyRecords((current) =>
-          current.filter((record) => record.taskId !== id),
+          removeCompletionStudyTimeRecords(current, id),
         );
       }
     }
@@ -479,12 +491,12 @@ export default function useCalendarController(weekOffset: number) {
     if (event) syncLinkedLifeLogStatus(event, "pending");
     locallyChangedStudyTaskIdsRef.current.add(id);
     setStudyRecords((current) =>
-      current.filter((record) => record.taskId !== id),
+      removeCompletionStudyTimeRecords(current, id),
     );
     setEvents((current) => resetEventStatus(current, id));
   }
 
-  function completeStudyEvent(id: string, minutes: number) {
+  function completeStudyEvent(id: string, enteredMinutes?: number) {
     const event = events.find((item) => item.id === id);
     const category = event
       ? categories.find((item) => item.id === event.categoryId)
@@ -494,30 +506,35 @@ export default function useCalendarController(weekOffset: number) {
       !category ||
       event.status === "completed" ||
       event.status === "skipped" ||
-      !isStudyCategory(category) ||
-      !Number.isInteger(minutes) ||
-      minutes <= 0 ||
-      minutes > 24 * 60
+      !isStudyTask(event, category)
     ) {
-      return false;
+      return {
+        status: "error" as const,
+        message: "この予定は勉強時間の記録対象ではありません。",
+      };
     }
 
+    const duration = resolveStudyDuration(event, enteredMinutes);
+    if (!duration) return { status: "needs_input" as const };
     const createdAt = new Date().toISOString();
-    const record = createStudyTimeRecord(
-      event.id,
-      resolveEventDate(event),
-      minutes,
-      crypto.randomUUID(),
+    const record = createStudyTimeRecord({
+      id: `study-${event.id}-${duration.source}`,
+      taskId: event.id,
+      studyDate: duration.studyDate ?? getJapanStudyDate(new Date(createdAt)),
+      minutes: duration.minutes,
+      source: duration.source,
       createdAt,
-    );
-    if (!record) return false;
+    });
+    if (!record) {
+      return {
+        status: "error" as const,
+        message: "勉強時間を保存できませんでした。もう一度お試しください。",
+      };
+    }
     locallyChangedStatusIdsRef.current.add(id);
     locallyChangedStudyTaskIdsRef.current.add(id);
     syncLinkedLifeLogStatus(event, "completed");
-    setStudyRecords((current) => [
-      ...current.filter((item) => item.taskId !== id),
-      record,
-    ]);
+    setStudyRecords((current) => upsertStudyTimeRecord(current, record));
     setEvents((current) =>
       current.map((item) =>
         item.id === id &&
@@ -531,7 +548,7 @@ export default function useCalendarController(weekOffset: number) {
           : item,
       ),
     );
-    return true;
+    return { status: "completed" as const };
   }
 
   const autoCompleteEndedEvents = useCallback(
