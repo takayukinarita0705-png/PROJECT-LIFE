@@ -109,6 +109,9 @@ export type StudyTimeRecord = {
   id: string;
   userId?: string;
   taskId: string;
+  taskTitle?: string;
+  categoryId?: string;
+  categoryName?: string;
   studyDate: string;
   minutes: number;
   source: StudyTimeSource;

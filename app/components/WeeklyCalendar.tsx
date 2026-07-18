@@ -19,11 +19,14 @@ import MobileBottomTabs from "./MobileBottomTabs";
 import type { MobilePage } from "./MobileBottomTabs";
 import MobileSchedule from "./MobileSchedule";
 import MobileLifeLog from "./MobileLifeLog";
+import MobileStudyHistory from "./MobileStudyHistory";
 import MobileSettings from "./MobileSettings";
 import MobileWeekReview from "./MobileWeekReview";
 import {
   getJapanStudyDate,
+  getMonthStudyMinutes,
   getStudyCalendarDays,
+  getStudyHistoryEntries,
   getStudyTimeSummary,
 } from "@/app/lib/studyTime";
 import LifeLogDialog from "./LifeLogDialog";
@@ -127,6 +130,7 @@ export default function WeeklyCalendar() {
     deleteEvent: deleteCalendarEvent,
     deleteTemplate,
     deleteLifeLog,
+    deleteStudyRecord,
     events,
     hasCheckedLocalCache,
     hasLoadedEvents,
@@ -154,10 +158,12 @@ export default function WeeklyCalendar() {
     toggleEventCompleted,
     toggleEventSkip,
     updateLifeLog,
+    updateStudyRecordMinutes,
     undoLastOperation,
     undoSnapshot,
   } = useCalendarController(weekOffset);
   const [mobilePage, setMobilePage] = useState<MobilePage>("today");
+  const [isStudyHistoryOpen, setIsStudyHistoryOpen] = useState(false);
   const [mobileView, setMobileView] = useState<"today" | "week">("today");
   const [lifeLogInitialFilter, setLifeLogInitialFilter] =
     useState<LifeLogFocusFilter>("all");
@@ -344,6 +350,14 @@ export default function WeeklyCalendar() {
   );
   const studyCalendarToday =
     currentTime === null ? null : getJapanStudyDate(currentTime);
+  const studyHistoryEntries = useMemo(
+    () => getStudyHistoryEntries(studyRecords, events, categories),
+    [categories, events, studyRecords],
+  );
+  const studyMonthMinutes =
+    currentTime === null
+      ? 0
+      : getMonthStudyMinutes(studyRecords, currentTime);
   const currentWeekLogs =
     currentTime === null || !hasLoadedEvents
       ? []
@@ -678,6 +692,7 @@ export default function WeeklyCalendar() {
 
   function handleMobilePageChange(page: MobilePage) {
     if (page === "log") setLifeLogInitialFilter("all");
+    setIsStudyHistoryOpen(false);
     setMobilePage(page);
     if (page === "today") setMobileView("today");
   }
@@ -811,7 +826,7 @@ export default function WeeklyCalendar() {
   return (
     <div className="weekly-calendar">
       <div className="pb-[calc(7rem+env(safe-area-inset-bottom))] md:hidden">
-        {mobilePage === "today" && (
+        {mobilePage === "today" && !isStudyHistoryOpen && (
           <div className="mb-4 inline-flex rounded-xl bg-slate-200/70 p-1">
             <button
               type="button"
@@ -876,6 +891,17 @@ export default function WeeklyCalendar() {
           />
         ) : mobilePage === "settings" ? (
           <MobileSettings />
+        ) : isStudyHistoryOpen ? (
+          <MobileStudyHistory
+            entries={studyHistoryEntries}
+            todayMinutes={studyTimeSummary?.todayMinutes ?? 0}
+            weekMinutes={studyTimeSummary?.weekMinutes ?? 0}
+            monthMinutes={studyMonthMinutes}
+            totalMinutes={studyTimeSummary?.totalMinutes ?? 0}
+            onBack={() => setIsStudyHistoryOpen(false)}
+            onDelete={deleteStudyRecord}
+            onUpdateMinutes={updateStudyRecordMinutes}
+          />
         ) : mobileView === "today" ? (
           <MobileSchedule
             completionStreak={completionStreak}
@@ -890,6 +916,7 @@ export default function WeeklyCalendar() {
             onOpenFutureLogsSummary={() =>
               handleMorningSummaryAction("futureLogs")
             }
+            onOpenStudyHistory={() => setIsStudyHistoryOpen(true)}
             onOpenLifeLog={openLifeLogEditor}
             onPostpone={postponeEvent}
             onOpenScheduleSummary={() =>

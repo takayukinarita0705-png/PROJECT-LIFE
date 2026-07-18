@@ -62,11 +62,13 @@ import { completeEndedAutomaticEvents } from "@/app/lib/autoCompletion";
 import {
   createStudyTimeRecord,
   DEFAULT_DAILY_STUDY_GOAL_MINUTES,
+  editStudyTimeRecordMinutes,
   getJapanStudyDate,
   isStudyTask,
   mergeStudyTimeRecords,
   normalizeStudyDailyGoalMinutes,
   removeCompletionStudyTimeRecords,
+  removeStudyTimeRecord,
   resolveStudyDuration,
   upsertStudyTimeRecord,
 } from "@/app/lib/studyTime";
@@ -529,6 +531,9 @@ export default function useCalendarController(weekOffset: number) {
     const record = createStudyTimeRecord({
       id: `study-${event.id}-${duration.source}`,
       taskId: event.id,
+      taskTitle: event.title?.trim() || category.name,
+      categoryId: category.id,
+      categoryName: category.name,
       studyDate: duration.studyDate ?? getJapanStudyDate(new Date(createdAt)),
       minutes: duration.minutes,
       source: duration.source,
@@ -562,6 +567,30 @@ export default function useCalendarController(weekOffset: number) {
 
   function saveStudyDailyGoal(minutes: number) {
     setStudyDailyGoalMinutes(normalizeStudyDailyGoalMinutes(minutes));
+  }
+
+  function updateStudyRecordMinutes(id: string, minutes: number) {
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 24 * 60) {
+      return false;
+    }
+    const record = studyRecords.find((item) => item.id === id);
+    if (!record) return false;
+    locallyChangedStudyTaskIdsRef.current.add(record.taskId);
+    const updatedAt = new Date().toISOString();
+    setStudyRecords((current) =>
+      editStudyTimeRecordMinutes(current, id, minutes, updatedAt) ?? current,
+    );
+    return true;
+  }
+
+  function deleteStudyRecord(id: string) {
+    const record = studyRecords.find((item) => item.id === id);
+    if (!record) return false;
+    locallyChangedStudyTaskIdsRef.current.add(record.taskId);
+    setStudyRecords((current) =>
+      removeStudyTimeRecord(current, id) ?? current,
+    );
+    return true;
   }
 
   const autoCompleteEndedEvents = useCallback(
@@ -1061,6 +1090,7 @@ export default function useCalendarController(weekOffset: number) {
     deleteEvent,
     deleteTemplate,
     deleteLifeLog,
+    deleteStudyRecord,
     events,
     hasCheckedLocalCache,
     hasLoadedEvents,
@@ -1088,6 +1118,7 @@ export default function useCalendarController(weekOffset: number) {
     toggleEventCompleted,
     toggleEventSkip,
     updateLifeLog,
+    updateStudyRecordMinutes,
     undoLastOperation,
     undoSnapshot,
   };

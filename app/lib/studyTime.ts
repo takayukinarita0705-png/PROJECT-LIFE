@@ -87,6 +87,20 @@ export type StudyCalendarDay = {
 
 export type StudyHeatmapLevel = 0 | 1 | 2 | 3 | 4;
 
+export type StudyHistoryEntry = {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  categoryId?: string;
+  categoryName: string;
+  categoryGroup: "takken" | "study";
+  studyDate: string;
+  minutes: number;
+  createdAt: string;
+  updatedAt: string;
+  source: StudyTimeSource;
+};
+
 export type StudyTimeSummary = {
   todayMinutes: number;
   weekMinutes: number;
@@ -221,6 +235,12 @@ export function normalizeStudyTimeRecord(
     typeof record.id !== "string" ||
     (record.userId !== undefined && typeof record.userId !== "string") ||
     typeof record.taskId !== "string" ||
+    (record.taskTitle !== undefined &&
+      typeof record.taskTitle !== "string") ||
+    (record.categoryId !== undefined &&
+      typeof record.categoryId !== "string") ||
+    (record.categoryName !== undefined &&
+      typeof record.categoryName !== "string") ||
     !isCalendarDate(record.studyDate) ||
     !validMinutes(record.minutes) ||
     !STUDY_TIME_SOURCES.includes(record.source as StudyTimeSource) ||
@@ -238,6 +258,9 @@ export function createStudyTimeRecord(input: {
   id: string;
   userId?: string;
   taskId: string;
+  taskTitle?: string;
+  categoryId?: string;
+  categoryName?: string;
   studyDate: string;
   minutes: number;
   source: StudyTimeSource;
@@ -275,6 +298,32 @@ export function removeCompletionStudyTimeRecords(
     (record) =>
       record.taskId !== taskId || !COMPLETION_SOURCES.has(record.source),
   );
+}
+
+export function editStudyTimeRecordMinutes(
+  records: StudyTimeRecord[],
+  id: string,
+  minutes: number,
+  updatedAt: string,
+) {
+  if (!validMinutes(minutes) || Number.isNaN(Date.parse(updatedAt))) {
+    return null;
+  }
+  let found = false;
+  const nextRecords = records.map((record) => {
+    if (record.id !== id) return record;
+    found = true;
+    return { ...record, minutes, updatedAt };
+  });
+  return found ? nextRecords : null;
+}
+
+export function removeStudyTimeRecord(
+  records: StudyTimeRecord[],
+  id: string,
+) {
+  const nextRecords = records.filter((record) => record.id !== id);
+  return nextRecords.length === records.length ? null : nextRecords;
 }
 
 function getMinutesForDates(
@@ -394,11 +443,13 @@ export function getStudyCalendarDays(
     const tasksById = new Map<string, StudyCalendarTask>();
     dayRecords.forEach((record) => {
       const event = eventsById.get(record.taskId);
-      const category = event
-        ? categoriesById.get(event.categoryId)
-        : undefined;
+      const category = categoriesById.get(
+        record.categoryId ?? event?.categoryId ?? "",
+      );
       const title =
+        record.taskTitle?.trim() ||
         event?.title?.trim() ||
+        record.categoryName?.trim() ||
         category?.name ||
         (record.source === "manual"
           ? "手動記録"
@@ -424,6 +475,61 @@ export function getStudyCalendarDays(
       ),
     };
   });
+}
+
+export function getStudyHistoryEntries(
+  records: StudyTimeRecord[],
+  events: CalendarEvent[],
+  categories: Category[],
+): StudyHistoryEntry[] {
+  const eventsById = new Map(events.map((event) => [event.id, event]));
+  const categoriesById = new Map(
+    categories.map((category) => [category.id, category]),
+  );
+
+  return records
+    .map((record) => {
+      const event = eventsById.get(record.taskId);
+      const categoryId = record.categoryId ?? event?.categoryId;
+      const category = categoryId
+        ? categoriesById.get(categoryId)
+        : undefined;
+      const taskTitle =
+        record.taskTitle?.trim() ||
+        event?.title?.trim() ||
+        category?.name ||
+        "記録済みタスク";
+      const categoryName =
+        record.categoryName?.trim() || category?.name || "勉強";
+      const taskForClassification: StudyTask = event ?? {
+        id: record.taskId,
+        categoryId: categoryId ?? "study",
+        title: taskTitle,
+        start: 0,
+        end: 0,
+      };
+
+      return {
+        id: record.id,
+        taskId: record.taskId,
+        taskTitle,
+        categoryId,
+        categoryName,
+        categoryGroup: isTakkenTask(taskForClassification, category)
+          ? ("takken" as const)
+          : ("study" as const),
+        studyDate: record.studyDate,
+        minutes: record.minutes,
+        createdAt: record.createdAt,
+        updatedAt: record.updatedAt,
+        source: record.source,
+      };
+    })
+    .sort(
+      (first, second) =>
+        second.studyDate.localeCompare(first.studyDate) ||
+        second.createdAt.localeCompare(first.createdAt),
+    );
 }
 
 export function mergeStudyTimeRecords(

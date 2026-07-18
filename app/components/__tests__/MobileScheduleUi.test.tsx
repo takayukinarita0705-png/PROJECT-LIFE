@@ -46,6 +46,7 @@ function renderSchedule(category: Category, event: CalendarEvent) {
       logs={[]}
       onOpenActualsSummary={() => undefined}
       onOpenFutureLogsSummary={() => undefined}
+      onOpenStudyHistory={() => undefined}
       onMoveToTomorrow={() => undefined}
       onCompleteStudy={() => ({ status: "completed" })}
       onChangeStudyDailyGoal={() => undefined}

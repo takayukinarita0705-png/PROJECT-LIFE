@@ -290,6 +290,7 @@ type MobileScheduleProps = {
   logs: LifeLog[];
   onOpenActualsSummary: () => void;
   onOpenFutureLogsSummary: () => void;
+  onOpenStudyHistory: () => void;
   onMoveToTomorrow: (eventId: string) => void;
   onCompleteStudy: (
     eventId: string,
@@ -321,6 +322,7 @@ export default function MobileSchedule({
   logs,
   onOpenActualsSummary,
   onOpenFutureLogsSummary,
+  onOpenStudyHistory,
   onMoveToTomorrow,
   onCompleteStudy,
   onChangeStudyDailyGoal,
@@ -436,6 +438,7 @@ export default function MobileSchedule({
             <StudyTimeCard
               summary={studyTimeSummary}
               onChangeDailyGoal={onChangeStudyDailyGoal}
+              onOpenHistory={onOpenStudyHistory}
             />
           )}
 

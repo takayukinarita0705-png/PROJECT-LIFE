@@ -36,6 +36,7 @@ describe("勉強ダッシュボード", () => {
       <StudyTimeCard
         summary={createSummary()}
         onChangeDailyGoal={() => undefined}
+        onOpenHistory={() => undefined}
       />,
     );
 
@@ -45,6 +46,7 @@ describe("勉強ダッシュボード", () => {
     expect(markup).toContain("6時間20分");
     expect(markup).toContain("128時間40分");
     expect(markup).toContain("🔥 7日継続");
+    expect(markup).toContain("勉強履歴を見る");
     expect(markup).toContain("✅ 今日の目標達成！");
     expect(markup).toContain("142%");
     expect(markup).toContain("火曜はじまり");
@@ -69,6 +71,7 @@ describe("勉強ダッシュボード", () => {
           progressPercentage: 0,
         })}
         onChangeDailyGoal={() => undefined}
+        onOpenHistory={() => undefined}
       />,
     );
 

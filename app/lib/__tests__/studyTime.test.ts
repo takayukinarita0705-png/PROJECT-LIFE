@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   createStudyTimeRecord,
+  editStudyTimeRecordMinutes,
   getDailyStudyMinutes,
   getStudyCalendarDays,
   getStudyHeatmapLevel,
+  getStudyHistoryEntries,
   getJapanStudyDate,
   getMonthStudyMinutes,
   getStudyStreak,
@@ -17,6 +19,7 @@ import {
   normalizeStudyDailyGoalMinutes,
   normalizeStudyTimeRecord,
   removeCompletionStudyTimeRecords,
+  removeStudyTimeRecord,
   resolveStudyDuration,
   upsertStudyTimeRecord,
 } from "@/app/lib/studyTime";
@@ -247,5 +250,71 @@ describe("勉強カレンダー集計", () => {
     expect(getStudyHeatmapLevel(60)).toBe(3);
     expect(getStudyHeatmapLevel(119)).toBe(3);
     expect(getStudyHeatmapLevel(120)).toBe(4);
+  });
+});
+
+describe("勉強履歴", () => {
+  it("新しい順に並べ、タスク名・カテゴリと宅建分類を復元する", () => {
+    const event = createTask({ title: "宅建業法 過去問" });
+    const entries = getStudyHistoryEntries(
+      [
+        {
+          ...createRecord(
+            "old",
+            "2026-07-17",
+            45,
+            "scheduled_duration",
+            event.id,
+          ),
+        },
+        {
+          ...createRecord(
+            "new",
+            "2026-07-18",
+            60,
+            "manual",
+            "deleted-task",
+          ),
+          taskTitle: "英語学習",
+          categoryId: "english",
+          categoryName: "勉強",
+        },
+      ],
+      [event],
+      [categoryBase],
+    );
+
+    expect(entries).toMatchObject([
+      {
+        id: "new",
+        taskTitle: "英語学習",
+        categoryName: "勉強",
+        categoryGroup: "study",
+        minutes: 60,
+      },
+      {
+        id: "old",
+        taskTitle: "宅建業法 過去問",
+        categoryName: "宅建業法",
+        categoryGroup: "takken",
+        minutes: 45,
+      },
+    ]);
+  });
+
+  it("勉強時間だけを編集でき、指定した履歴だけを削除する", () => {
+    const first = createRecord("first", "2026-07-18", 30);
+    const second = createRecord("second", "2026-07-17", 45);
+    const updatedAt = "2026-07-18T12:00:00.000Z";
+    expect(
+      editStudyTimeRecordMinutes([first, second], first.id, 60, updatedAt),
+    ).toEqual([{ ...first, minutes: 60, updatedAt }, second]);
+    expect(
+      editStudyTimeRecordMinutes([first], first.id, 0, updatedAt),
+    ).toBeNull();
+    expect(removeStudyTimeRecord([first, second], first.id)).toEqual([
+      second,
+    ]);
+    expect(removeStudyTimeRecord([first], "missing")).toBeNull();
   });
 });

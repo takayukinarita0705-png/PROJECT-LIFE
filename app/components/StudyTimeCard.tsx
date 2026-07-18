@@ -50,9 +50,11 @@ function parseGoal(value: string) {
 export default function StudyTimeCard({
   summary,
   onChangeDailyGoal,
+  onOpenHistory,
 }: {
   summary: StudyTimeSummary;
   onChangeDailyGoal: (minutes: number) => void;
+  onOpenHistory: () => void;
 }) {
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [goalValue, setGoalValue] = useState(
@@ -253,6 +255,13 @@ export default function StudyTimeCard({
       <p className="mt-4 text-sm font-bold tabular-nums text-orange-700 dark:text-orange-300">
         🔥 {summary.streakDays}日継続
       </p>
+      <button
+        type="button"
+        onClick={onOpenHistory}
+        className="mobile-interactive mt-3 min-h-11 w-full rounded-xl bg-slate-100 px-4 text-sm font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+      >
+        勉強履歴を見る →
+      </button>
     </section>
   );
 }

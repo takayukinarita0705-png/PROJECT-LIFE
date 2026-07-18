@@ -73,6 +73,26 @@ export function normalizeSharedCalendarState(
   ) {
     return null;
   }
+  const eventsById = new Map(events.map((event) => [event.id, event]));
+  const categoriesById = new Map(
+    categories.map((category) => [category.id, category]),
+  );
+  const enrichedStudyRecords = studyRecords.map((record) => {
+    const event = eventsById.get(record.taskId);
+    const category = event
+      ? categoriesById.get(event.categoryId)
+      : undefined;
+    const taskTitle =
+      record.taskTitle || event?.title?.trim() || category?.name;
+    const categoryId = record.categoryId ?? category?.id;
+    const categoryName = record.categoryName ?? category?.name;
+    return {
+      ...record,
+      ...(taskTitle ? { taskTitle } : {}),
+      ...(categoryId ? { categoryId } : {}),
+      ...(categoryName ? { categoryName } : {}),
+    };
+  });
 
   return {
     version: SHARED_STATE_VERSION,
@@ -81,7 +101,7 @@ export function normalizeSharedCalendarState(
     events,
     templates,
     logs,
-    studyRecords,
+    studyRecords: enrichedStudyRecords,
     studyDailyGoalMinutes: normalizeStudyDailyGoalMinutes(
       state.studyDailyGoalMinutes,
     ),
