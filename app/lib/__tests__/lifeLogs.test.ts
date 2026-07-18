@@ -139,21 +139,20 @@ describe("ライフログ", () => {
     ).toEqual(["sooner-log", "later-log", "legacy-log"]);
   });
 
-  it("分類フィルター後も同じ表示順を維持する", () => {
-    const groups = getLifeLogDisplayGroups(
-      [
-        { ...newerLog, id: "future-done", focusArea: "future", status: "done" },
-        { ...olderLog, id: "future-inbox", focusArea: "future" },
-        { ...newerLog, id: "now", focusArea: "now" },
-      ],
-      "future",
-    );
+  it("完了ログをデータから削除せず一覧対象外にする", () => {
+    const logs: LifeLog[] = [
+      { ...newerLog, id: "future-done", focusArea: "future", status: "done" },
+      { ...olderLog, id: "future-inbox", focusArea: "future" },
+      { ...newerLog, id: "now", focusArea: "now" },
+    ];
+    const groups = getLifeLogDisplayGroups(logs, "future");
 
-    expect(groups.map(({ key }) => key)).toEqual(["future", "done"]);
+    expect(groups.map(({ key }) => key)).toEqual(["future"]);
     expect(groups.flatMap(({ logs }) => logs.map(({ id }) => id))).toEqual([
       "future-inbox",
-      "future-done",
     ]);
+    expect(logs).toHaveLength(3);
+    expect(logs.find((log) => log.id === "future-done")?.status).toBe("done");
   });
 
   it("予定からタイトルをコピーした未分類ログを作成しeventIdを保存する", () => {
@@ -404,7 +403,7 @@ describe("ライフログ", () => {
     });
   });
 
-  it("Inboxでは全ログを新しい順で一覧対象にする", () => {
+  it("Inboxでは未完了ログだけを新しい順で一覧対象にする", () => {
     expect(normalizeLifeLog(olderLog)?.status).toBe("inbox");
     expect(
       normalizeLifeLog({
@@ -426,13 +425,13 @@ describe("ライフログ", () => {
         { ...newerLog, status: "scheduled" },
         { ...newerLog, id: "done", status: "done" },
       ]).map(({ id }) => id),
-    ).toEqual(["newer", "done", "older"]);
+    ).toEqual(["newer", "older"]);
     expect(getLifeLogStatusLabel("inbox")).toBe("未完了");
     expect(getLifeLogStatusLabel("scheduled")).toBe("予定化済み");
     expect(getLifeLogStatusLabel("done")).toBe("ライフログ完了");
   });
 
-  it("未来を作るログだけを新しい順で取得する", () => {
+  it("未来を作る未完了ログだけを新しい順で取得する", () => {
     expect(
       getFutureLifeLogs([
         { ...olderLog, focusArea: "future" },
@@ -443,7 +442,7 @@ describe("ライフログ", () => {
         { ...newerLog, id: "discard", focusArea: "discard" },
         newerLog,
       ]).map(({ id }) => id),
-    ).toEqual(["newer", "done", "older"]);
+    ).toEqual(["newer", "older"]);
   });
 
   it("未来を作るかつInboxのログ件数だけを数える", () => {
@@ -464,6 +463,12 @@ describe("ライフログ", () => {
       { ...newerLog, id: "future", focusArea: "future" as const },
       { ...newerLog, id: "review", focusArea: "review" as const },
       { ...newerLog, id: "discard", focusArea: "discard" as const },
+      {
+        ...newerLog,
+        id: "done",
+        focusArea: "future" as const,
+        status: "done" as const,
+      },
     ];
 
     expect(getLifeLogsByFocusFilter(logs, "all").map(({ id }) => id)).toEqual([
@@ -490,6 +495,12 @@ describe("ライフログ", () => {
         { ...olderLog, id: "old-unset", focusArea: "unset" },
         { ...newerLog, id: "future", focusArea: "future" },
         { ...newerLog, id: "new-unset", focusArea: "unset" },
+        {
+          ...newerLog,
+          id: "done-unset",
+          focusArea: "unset",
+          status: "done",
+        },
       ]).map(({ id }) => id),
     ).toEqual(["new-unset", "old-unset"]);
   });

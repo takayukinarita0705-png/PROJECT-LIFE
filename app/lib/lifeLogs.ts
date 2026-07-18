@@ -251,6 +251,10 @@ export function sortLifeLogsNewestFirst(logs: LifeLog[]) {
   );
 }
 
+export function getIncompleteLifeLogs(logs: LifeLog[]) {
+  return logs.filter((log) => log.status !== "done");
+}
+
 const LIFE_LOG_DISPLAY_GROUPS: ReadonlyArray<{
   key: LifeLogDisplayGroup["key"];
   label: string;
@@ -338,10 +342,11 @@ export function getLifeLogDisplayGroups(
   events: CalendarEvent[] = [],
   referenceDate = new Date(),
 ): LifeLogDisplayGroup[] {
+  const incompleteLogs = getIncompleteLifeLogs(logs);
   const filteredLogs =
     filter === "all"
-      ? logs
-      : logs.filter((log) => log.focusArea === filter);
+      ? incompleteLogs
+      : incompleteLogs.filter((log) => log.focusArea === filter);
   const sortedLogs = sortLifeLogsForDisplay(
     filteredLogs,
     events,
@@ -357,7 +362,9 @@ export function getLifeLogDisplayGroups(
 }
 
 export function getInboxLifeLogs(logs: LifeLog[]) {
-  return sortLifeLogsNewestFirst(logs);
+  return sortLifeLogsNewestFirst(
+    getIncompleteLifeLogs(logs),
+  );
 }
 
 export function getLifeLogStatusLabel(status: LifeLog["status"]) {
@@ -373,7 +380,9 @@ export function getLifeLogStatusLabel(status: LifeLog["status"]) {
 
 export function getFutureLifeLogs(logs: LifeLog[]) {
   return sortLifeLogsNewestFirst(
-    logs.filter((log) => log.focusArea === "future"),
+    logs.filter(
+      (log) => log.focusArea === "future" && log.status !== "done",
+    ),
   );
 }
 
@@ -388,16 +397,19 @@ export function getLifeLogsByFocusFilter(
   filter: LifeLogFocusFilter,
   events: CalendarEvent[] = [],
 ) {
+  const incompleteLogs = getIncompleteLifeLogs(logs);
   const filteredLogs =
     filter === "all"
-      ? logs
-      : logs.filter((log) => log.focusArea === filter);
+      ? incompleteLogs
+      : incompleteLogs.filter((log) => log.focusArea === filter);
   return sortLifeLogsForDisplay(filteredLogs, events);
 }
 
 export function getUnclassifiedLifeLogs(logs: LifeLog[]) {
   return sortLifeLogsNewestFirst(
-    logs.filter((log) => log.focusArea === "unset"),
+    logs.filter(
+      (log) => log.focusArea === "unset" && log.status !== "done",
+    ),
   );
 }
 

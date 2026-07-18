@@ -54,6 +54,7 @@ function renderSchedule(category: Category, event: CalendarEvent) {
       onResetStatus={() => undefined}
       onToggleCompleted={() => undefined}
       onToggleSkipped={() => undefined}
+      studyTimeSummary={null}
       todaySchedule={[{ category, event }]}
     />,
   );

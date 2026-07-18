@@ -9,6 +9,7 @@ import {
 } from "@/app/lib/calendar";
 import ActualsList from "./ActualsList";
 import MorningSummaryCard from "./MorningSummaryCard";
+import StudyTimeCard from "./StudyTimeCard";
 import { getLifeLogsForEvent } from "@/app/lib/lifeLogs";
 import { MOBILE_SCROLL_TARGETS } from "@/app/lib/mobileNavigation";
 import {
@@ -29,6 +30,7 @@ import type {
   LifeLog,
   ScheduleItem,
 } from "@/app/types/calendar";
+import type { StudyTimeSummary } from "@/app/lib/studyTime";
 
 const MINUTES_PER_DAY = 24 * 60;
 
@@ -283,6 +285,7 @@ type MobileScheduleProps = {
   onResetStatus: (eventId: string) => void;
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
+  studyTimeSummary: StudyTimeSummary | null;
   todaySchedule: ScheduleItem[];
 };
 
@@ -303,6 +306,7 @@ export default function MobileSchedule({
   onResetStatus,
   onToggleCompleted,
   onToggleSkipped,
+  studyTimeSummary,
   todaySchedule,
 }: MobileScheduleProps) {
   const [postponingEvent, setPostponingEvent] =
@@ -383,6 +387,10 @@ export default function MobileSchedule({
             onOpenStreak={onOpenStreakSummary}
             todaySchedule={todaySchedule}
           />
+
+          {studyTimeSummary && (
+            <StudyTimeCard summary={studyTimeSummary} />
+          )}
 
           <section
             aria-label="今日の達成状況"

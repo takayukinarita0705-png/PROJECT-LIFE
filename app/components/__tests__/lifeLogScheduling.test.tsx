@@ -55,7 +55,7 @@ describe("ライフログ予定化UI", () => {
     expect(markup.match(/予定にする/g)).toHaveLength(5);
   });
 
-  it("予定化済みと完了済みには予定化ボタンを表示しない", () => {
+  it("予定化済みは表示し、完了済みは一覧から非表示にする", () => {
     const markup = renderToStaticMarkup(
       <MobileLifeLog
         hasCheckedLocalCache
@@ -81,7 +81,8 @@ describe("ライフログ予定化UI", () => {
 
     expect(markup).not.toContain("予定にする");
     expect(markup).toContain("予定化済み");
-    expect(markup).toContain("完了");
+    expect(markup).not.toContain("reviewのログ");
+    expect(markup).not.toContain("ライフログ完了");
   });
 
   it("ライフログ作成・編集画面に既存予定への紐付けUIを表示しない", () => {

@@ -20,6 +20,7 @@ import MobileSchedule from "./MobileSchedule";
 import MobileLifeLog from "./MobileLifeLog";
 import MobileSettings from "./MobileSettings";
 import MobileWeekReview from "./MobileWeekReview";
+import { getStudyTimeSummary } from "@/app/lib/studyTime";
 import LifeLogDialog from "./LifeLogDialog";
 import RoutineDetachDialog from "./RoutineDetachDialog";
 import WeekToolbar from "./WeekToolbar";
@@ -312,6 +313,10 @@ export default function WeeklyCalendar() {
     currentTime === null || !hasLoadedEvents
       ? []
       : getHabitHeatmap(events, categories, currentTime);
+  const studyTimeSummary =
+    currentTime === null || !hasLoadedEvents
+      ? null
+      : getStudyTimeSummary(events, categories, currentTime);
   const currentWeekLogs =
     currentTime === null || !hasLoadedEvents
       ? []
@@ -870,6 +875,7 @@ export default function WeeklyCalendar() {
             onMoveToTomorrow={moveEventToTomorrow}
             onToggleCompleted={toggleEventCompleted}
             onToggleSkipped={toggleEventSkip}
+            studyTimeSummary={studyTimeSummary}
             todaySchedule={todaySchedule}
           />
         ) : (

@@ -1,6 +1,7 @@
 import LifeLogEventLink from "./LifeLogEventLink";
 import {
   formatLifeLogTime,
+  getIncompleteLifeLogs,
   sortLifeLogsForDisplay,
 } from "@/app/lib/lifeLogs";
 import type {
@@ -20,7 +21,11 @@ export default function WeeklyLifeLogs({
   logs: LifeLog[];
   onViewAll: () => void;
 }) {
-  const latestLogs = sortLifeLogsForDisplay(logs, events).slice(0, 3);
+  const incompleteLogs = getIncompleteLifeLogs(logs);
+  const latestLogs = sortLifeLogsForDisplay(
+    incompleteLogs,
+    events,
+  ).slice(0, 3);
 
   return (
     <section
@@ -29,9 +34,9 @@ export default function WeeklyLifeLogs({
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold text-slate-500">
-          📝 今週のログ {logs.length}件
+          📝 今週のログ {incompleteLogs.length}件
         </p>
-        {logs.length >= 3 && (
+        {incompleteLogs.length >= 3 && (
           <button
             type="button"
             onClick={onViewAll}
