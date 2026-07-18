@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   createStudyTimeRecord,
   getDailyStudyMinutes,
+  getStudyCalendarDays,
+  getStudyHeatmapLevel,
   getJapanStudyDate,
   getMonthStudyMinutes,
   getStudyStreak,
@@ -190,5 +192,60 @@ describe("Study Time保存と集計", () => {
     const remoteDuplicate = createRecord("remote", "2026-07-18", 60, "scheduled_duration", "task-1");
     expect(mergeStudyTimeRecords([local], [remoteDuplicate], new Set())).toEqual([local]);
     expect(mergeStudyTimeRecords([], [remoteDuplicate], new Set(["task-1"]))).toEqual([]);
+  });
+});
+
+describe("勉強カレンダー集計", () => {
+  it("直近90日を0分の日も含め、タスク別に集計する", () => {
+    const event = createTask({ title: "宅建業法 過去問" });
+    const days = getStudyCalendarDays(
+      [
+        createRecord(
+          "today-1",
+          "2026-07-18",
+          45,
+          "scheduled_duration",
+          event.id,
+        ),
+        createRecord(
+          "today-2",
+          "2026-07-18",
+          30,
+          "timer",
+          event.id,
+        ),
+        createRecord("yesterday", "2026-07-17", 20),
+        createRecord("too-old", "2026-01-01", 120),
+      ],
+      [event],
+      [categoryBase],
+      new Date("2026-07-18T03:00:00.000Z"),
+    );
+
+    expect(days).toHaveLength(90);
+    expect(days.at(-1)).toEqual({
+      date: "2026-07-18",
+      minutes: 75,
+      tasks: [
+        {
+          taskId: event.id,
+          title: "宅建業法 過去問",
+          minutes: 75,
+        },
+      ],
+    });
+    expect(days.at(-3)).toMatchObject({ minutes: 0, tasks: [] });
+    expect(days.some((day) => day.date === "2026-01-01")).toBe(false);
+  });
+
+  it("0・1・30・60・120分の5段階へ分類する", () => {
+    expect(getStudyHeatmapLevel(0)).toBe(0);
+    expect(getStudyHeatmapLevel(1)).toBe(1);
+    expect(getStudyHeatmapLevel(29)).toBe(1);
+    expect(getStudyHeatmapLevel(30)).toBe(2);
+    expect(getStudyHeatmapLevel(59)).toBe(2);
+    expect(getStudyHeatmapLevel(60)).toBe(3);
+    expect(getStudyHeatmapLevel(119)).toBe(3);
+    expect(getStudyHeatmapLevel(120)).toBe(4);
   });
 });

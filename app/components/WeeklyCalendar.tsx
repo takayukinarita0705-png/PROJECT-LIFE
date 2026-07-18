@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -20,7 +21,11 @@ import MobileSchedule from "./MobileSchedule";
 import MobileLifeLog from "./MobileLifeLog";
 import MobileSettings from "./MobileSettings";
 import MobileWeekReview from "./MobileWeekReview";
-import { getStudyTimeSummary } from "@/app/lib/studyTime";
+import {
+  getJapanStudyDate,
+  getStudyCalendarDays,
+  getStudyTimeSummary,
+} from "@/app/lib/studyTime";
 import LifeLogDialog from "./LifeLogDialog";
 import RoutineDetachDialog from "./RoutineDetachDialog";
 import WeekToolbar from "./WeekToolbar";
@@ -325,6 +330,20 @@ export default function WeeklyCalendar() {
           currentTime,
           studyDailyGoalMinutes,
         );
+  const studyCalendarDays = useMemo(
+    () =>
+      currentTime === null || !hasLoadedEvents
+        ? []
+        : getStudyCalendarDays(
+            studyRecords,
+            events,
+            categories,
+            currentTime,
+          ),
+    [categories, currentTime, events, hasLoadedEvents, studyRecords],
+  );
+  const studyCalendarToday =
+    currentTime === null ? null : getJapanStudyDate(currentTime);
   const currentWeekLogs =
     currentTime === null || !hasLoadedEvents
       ? []
@@ -886,6 +905,8 @@ export default function WeeklyCalendar() {
             onToggleCompleted={toggleEventCompleted}
             onToggleSkipped={toggleEventSkip}
             studyTimeSummary={studyTimeSummary}
+            studyCalendarDays={studyCalendarDays}
+            studyCalendarToday={studyCalendarToday}
             todaySchedule={todaySchedule}
           />
         ) : (

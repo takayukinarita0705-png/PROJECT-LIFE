@@ -57,6 +57,8 @@ function renderSchedule(category: Category, event: CalendarEvent) {
       onToggleCompleted={() => undefined}
       onToggleSkipped={() => undefined}
       studyTimeSummary={null}
+      studyCalendarDays={[]}
+      studyCalendarToday="2026-07-17"
       todaySchedule={[{ category, event }]}
     />,
   );

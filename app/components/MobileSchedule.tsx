@@ -10,6 +10,7 @@ import {
 import ActualsList from "./ActualsList";
 import MorningSummaryCard from "./MorningSummaryCard";
 import StudyTimeCard from "./StudyTimeCard";
+import StudyCalendar from "./StudyCalendar";
 import StudyCompletionDialog from "./StudyCompletionDialog";
 import { getLifeLogsForEvent } from "@/app/lib/lifeLogs";
 import { MOBILE_SCROLL_TARGETS } from "@/app/lib/mobileNavigation";
@@ -32,7 +33,10 @@ import type {
   LifeLog,
   ScheduleItem,
 } from "@/app/types/calendar";
-import type { StudyTimeSummary } from "@/app/lib/studyTime";
+import type {
+  StudyCalendarDay,
+  StudyTimeSummary,
+} from "@/app/lib/studyTime";
 
 const MINUTES_PER_DAY = 24 * 60;
 
@@ -303,6 +307,8 @@ type MobileScheduleProps = {
   onToggleCompleted: (eventId: string) => void;
   onToggleSkipped: (eventId: string) => void;
   studyTimeSummary: StudyTimeSummary | null;
+  studyCalendarDays: StudyCalendarDay[];
+  studyCalendarToday: string | null;
   todaySchedule: ScheduleItem[];
 };
 
@@ -326,6 +332,8 @@ export default function MobileSchedule({
   onToggleCompleted,
   onToggleSkipped,
   studyTimeSummary,
+  studyCalendarDays,
+  studyCalendarToday,
   todaySchedule,
 }: MobileScheduleProps) {
   const [postponingEvent, setPostponingEvent] =
@@ -428,6 +436,14 @@ export default function MobileSchedule({
             <StudyTimeCard
               summary={studyTimeSummary}
               onChangeDailyGoal={onChangeStudyDailyGoal}
+            />
+          )}
+
+          {studyTimeSummary && studyCalendarToday && (
+            <StudyCalendar
+              days={studyCalendarDays}
+              today={studyCalendarToday}
+              streakDays={studyTimeSummary.streakDays}
             />
           )}
 

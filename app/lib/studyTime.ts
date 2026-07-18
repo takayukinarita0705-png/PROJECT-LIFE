@@ -73,6 +73,20 @@ export type StudyTimeDay = {
   minutes: number;
 };
 
+export type StudyCalendarTask = {
+  taskId: string;
+  title: string;
+  minutes: number;
+};
+
+export type StudyCalendarDay = {
+  date: string;
+  minutes: number;
+  tasks: StudyCalendarTask[];
+};
+
+export type StudyHeatmapLevel = 0 | 1 | 2 | 3 | 4;
+
 export type StudyTimeSummary = {
   todayMinutes: number;
   weekMinutes: number;
@@ -341,6 +355,75 @@ export function getStudyStreak(
     date = addDaysToCalendarDate(date, -1);
   }
   return streak;
+}
+
+export function getStudyHeatmapLevel(minutes: number): StudyHeatmapLevel {
+  if (minutes >= 120) return 4;
+  if (minutes >= 60) return 3;
+  if (minutes >= 30) return 2;
+  if (minutes >= 1) return 1;
+  return 0;
+}
+
+export function getStudyCalendarDays(
+  records: StudyTimeRecord[],
+  events: CalendarEvent[],
+  categories: Category[],
+  referenceDate = new Date(),
+  numberOfDays = 90,
+): StudyCalendarDay[] {
+  const dayCount = Math.max(1, Math.floor(numberOfDays));
+  const lastDate = getJapanStudyDate(referenceDate);
+  const firstDate = addDaysToCalendarDate(lastDate, -(dayCount - 1));
+  const eventsById = new Map(events.map((event) => [event.id, event]));
+  const categoriesById = new Map(
+    categories.map((category) => [category.id, category]),
+  );
+  const recordsByDate = new Map<string, StudyTimeRecord[]>();
+
+  records.forEach((record) => {
+    if (record.studyDate < firstDate || record.studyDate > lastDate) return;
+    const current = recordsByDate.get(record.studyDate) ?? [];
+    current.push(record);
+    recordsByDate.set(record.studyDate, current);
+  });
+
+  return Array.from({ length: dayCount }, (_, index) => {
+    const date = addDaysToCalendarDate(firstDate, index);
+    const dayRecords = recordsByDate.get(date) ?? [];
+    const tasksById = new Map<string, StudyCalendarTask>();
+    dayRecords.forEach((record) => {
+      const event = eventsById.get(record.taskId);
+      const category = event
+        ? categoriesById.get(event.categoryId)
+        : undefined;
+      const title =
+        event?.title?.trim() ||
+        category?.name ||
+        (record.source === "manual"
+          ? "手動記録"
+          : record.source === "timer"
+            ? "タイマー記録"
+            : "記録済みタスク");
+      const existing = tasksById.get(record.taskId);
+      tasksById.set(record.taskId, {
+        taskId: record.taskId,
+        title,
+        minutes: (existing?.minutes ?? 0) + record.minutes,
+      });
+    });
+
+    return {
+      date,
+      minutes: dayRecords.reduce(
+        (total, record) => total + record.minutes,
+        0,
+      ),
+      tasks: [...tasksById.values()].sort(
+        (first, second) => second.minutes - first.minutes,
+      ),
+    };
+  });
 }
 
 export function mergeStudyTimeRecords(
