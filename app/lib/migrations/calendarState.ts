@@ -5,7 +5,7 @@ import {
   parseCalendarDate,
 } from "@/app/lib/date";
 
-export const CURRENT_SCHEMA_VERSION = 9 as const;
+export const CURRENT_SCHEMA_VERSION = 10 as const;
 const LEGACY_SCHEMA_VERSION = 1;
 const DATE_SCHEMA_VERSION = 2;
 const LIFE_LOG_STATUS_SCHEMA_VERSION = 3;
@@ -14,6 +14,7 @@ const TUESDAY_WEEK_SCHEMA_VERSION = 5;
 const LIFE_LOG_LINK_SCHEMA_VERSION = 6;
 const REMINDER_SCHEMA_VERSION = 7;
 const STUDY_RECORD_SCHEMA_VERSION = 8;
+const STUDY_RECORD_SOURCE_SCHEMA_VERSION = 9;
 
 export type MigratableState = Record<string, unknown> & {
   schemaVersion?: unknown;
@@ -338,7 +339,9 @@ export function migrateStateV7ToV8(
 
 export function migrateStateV8ToV9(
   state: MigratableState,
-): MigratedState {
+): MigratableState & {
+  schemaVersion: typeof STUDY_RECORD_SOURCE_SCHEMA_VERSION;
+} {
   const studyRecords = Array.isArray(state.studyRecords)
     ? state.studyRecords.map((value) => {
         if (typeof value !== "object" || value === null) return value;
@@ -360,13 +363,32 @@ export function migrateStateV8ToV9(
   return {
     ...state,
     studyRecords,
+    schemaVersion: STUDY_RECORD_SOURCE_SCHEMA_VERSION,
+  };
+}
+
+export function migrateStateV9ToV10(
+  state: MigratableState,
+): MigratedState {
+  const goal = state.studyDailyGoalMinutes;
+  return {
+    ...state,
+    studyDailyGoalMinutes:
+      typeof goal === "number" &&
+      Number.isInteger(goal) &&
+      goal >= 1 &&
+      goal <= 24 * 60
+        ? goal
+        : 60,
     schemaVersion: CURRENT_SCHEMA_VERSION,
   };
 }
 
 function migrateReminderStateToCurrent(state: MigratableState) {
-  return migrateStateV8ToV9(
-    migrateStateV7ToV8(migrateStateV6ToV7(state)),
+  return migrateStateV9ToV10(
+    migrateStateV8ToV9(
+      migrateStateV7ToV8(migrateStateV6ToV7(state)),
+    ),
   );
 }
 
@@ -444,10 +466,15 @@ export function migrateState(
     return migrateReminderStateToCurrent(state);
   }
   if (schemaVersion === REMINDER_SCHEMA_VERSION) {
-    return migrateStateV8ToV9(migrateStateV7ToV8(state));
+    return migrateStateV9ToV10(
+      migrateStateV8ToV9(migrateStateV7ToV8(state)),
+    );
   }
   if (schemaVersion === STUDY_RECORD_SCHEMA_VERSION) {
-    return migrateStateV8ToV9(state);
+    return migrateStateV9ToV10(migrateStateV8ToV9(state));
+  }
+  if (schemaVersion === STUDY_RECORD_SOURCE_SCHEMA_VERSION) {
+    return migrateStateV9ToV10(state);
   }
   if (schemaVersion !== CURRENT_SCHEMA_VERSION) return null;
 

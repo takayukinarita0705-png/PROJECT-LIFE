@@ -12,6 +12,7 @@ import {
   isStudyTask,
   isTakkenTask,
   mergeStudyTimeRecords,
+  normalizeStudyDailyGoalMinutes,
   normalizeStudyTimeRecord,
   removeCompletionStudyTimeRecords,
   resolveStudyDuration,
@@ -162,7 +163,21 @@ describe("Study Time保存と集計", () => {
     expect(getMonthStudyMinutes(records, referenceDate)).toBe(390);
     expect(getTotalStudyMinutes(records)).toBe(390);
     expect(getStudyStreak(records, referenceDate)).toBe(6);
-    expect(getStudyTimeSummary(records, referenceDate)).toMatchObject({ todayMinutes: 85, weekMinutes: 380, streakDays: 6 });
+    expect(getStudyTimeSummary(records, referenceDate, 60)).toMatchObject({
+      todayMinutes: 85,
+      weekMinutes: 380,
+      totalMinutes: 390,
+      dailyGoalMinutes: 60,
+      achievedDailyGoal: true,
+      progressPercentage: 142,
+      streakDays: 6,
+    });
+  });
+
+  it("1日の目標は1〜1440分を受け付け、不正値を初期値60分へ戻す", () => {
+    expect(normalizeStudyDailyGoalMinutes(90)).toBe(90);
+    expect(normalizeStudyDailyGoalMinutes(0)).toBe(60);
+    expect(normalizeStudyDailyGoalMinutes(1441)).toBe(60);
   });
 
   it("日本時間の日付境界をUTC時刻から正しく求め、タイマーの日付を優先する", () => {

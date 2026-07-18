@@ -294,6 +294,7 @@ type MobileScheduleProps = {
     | { status: "completed" }
     | { status: "needs_input" }
     | { status: "error"; message: string };
+  onChangeStudyDailyGoal: (minutes: number) => void;
   onOpenLifeLog: (log: LifeLog) => void;
   onPostpone: (eventId: string, targetDate: string) => void;
   onOpenScheduleSummary: () => void;
@@ -316,6 +317,7 @@ export default function MobileSchedule({
   onOpenFutureLogsSummary,
   onMoveToTomorrow,
   onCompleteStudy,
+  onChangeStudyDailyGoal,
   onOpenLifeLog,
   onPostpone,
   onOpenScheduleSummary,
@@ -423,7 +425,10 @@ export default function MobileSchedule({
           />
 
           {studyTimeSummary && (
-            <StudyTimeCard summary={studyTimeSummary} />
+            <StudyTimeCard
+              summary={studyTimeSummary}
+              onChangeDailyGoal={onChangeStudyDailyGoal}
+            />
           )}
 
           <section

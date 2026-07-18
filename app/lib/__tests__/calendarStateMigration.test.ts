@@ -10,6 +10,7 @@ import {
   migrateStateV6ToV7,
   migrateStateV7ToV8,
   migrateStateV8ToV9,
+  migrateStateV9ToV10,
 } from "@/app/lib/migrations/calendarState";
 
 describe("保存StateのSchema Migration", () => {
@@ -58,6 +59,24 @@ describe("保存StateのSchema Migration", () => {
     expect(templates?.[0].events[0]).not.toHaveProperty("date");
   });
 
+  it("V9の保存データへ初期勉強目標60分を補完する", () => {
+    expect(
+      migrateStateV9ToV10({
+        schemaVersion: 9,
+        studyRecords: [],
+      }),
+    ).toMatchObject({
+      schemaVersion: CURRENT_SCHEMA_VERSION,
+      studyDailyGoalMinutes: 60,
+    });
+    expect(
+      migrateStateV9ToV10({
+        schemaVersion: 9,
+        studyDailyGoalMinutes: 90,
+      }),
+    ).toMatchObject({ studyDailyGoalMinutes: 90 });
+  });
+
   it("V8のStudy Time記録へsource・更新日時・新しい日付名を補完する", () => {
     expect(
       migrateStateV8ToV9({
@@ -73,7 +92,7 @@ describe("保存StateのSchema Migration", () => {
         ],
       }),
     ).toMatchObject({
-      schemaVersion: CURRENT_SCHEMA_VERSION,
+      schemaVersion: 9,
       studyRecords: [
         {
           id: "study-task-1",
@@ -376,6 +395,6 @@ describe("保存StateのSchema Migration", () => {
   });
 
   it("未対応のVersionを現在の形式として扱わない", () => {
-    expect(migrateState({ schemaVersion: 10 })).toBeNull();
+    expect(migrateState({ schemaVersion: 11 })).toBeNull();
   });
 });

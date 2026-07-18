@@ -48,6 +48,7 @@ function renderSchedule(category: Category, event: CalendarEvent) {
       onOpenFutureLogsSummary={() => undefined}
       onMoveToTomorrow={() => undefined}
       onCompleteStudy={() => ({ status: "completed" })}
+      onChangeStudyDailyGoal={() => undefined}
       onOpenLifeLog={() => undefined}
       onPostpone={() => undefined}
       onOpenScheduleSummary={() => undefined}

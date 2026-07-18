@@ -61,9 +61,11 @@ import {
 import { completeEndedAutomaticEvents } from "@/app/lib/autoCompletion";
 import {
   createStudyTimeRecord,
+  DEFAULT_DAILY_STUDY_GOAL_MINUTES,
   getJapanStudyDate,
   isStudyTask,
   mergeStudyTimeRecords,
+  normalizeStudyDailyGoalMinutes,
   removeCompletionStudyTimeRecords,
   resolveStudyDuration,
   upsertStudyTimeRecord,
@@ -103,6 +105,9 @@ export default function useCalendarController(weekOffset: number) {
   const [templates, setTemplates] = useState<CalendarTemplate[]>([]);
   const [logs, setLogs] = useState<LifeLog[]>([]);
   const [studyRecords, setStudyRecords] = useState<StudyTimeRecord[]>([]);
+  const [studyDailyGoalMinutes, setStudyDailyGoalMinutes] = useState(
+    DEFAULT_DAILY_STUDY_GOAL_MINUTES,
+  );
   const [hasLoadedTemplates, setHasLoadedTemplates] = useState(false);
   const [hasCheckedLocalCache, setHasCheckedLocalCache] = useState(false);
   const [isSyncingSharedState, setIsSyncingSharedState] = useState(false);
@@ -149,6 +154,7 @@ export default function useCalendarController(weekOffset: number) {
         setTemplates(preparedCache.templates);
         setLogs(preparedCache.logs);
         setStudyRecords(preparedCache.studyRecords);
+        setStudyDailyGoalMinutes(preparedCache.studyDailyGoalMinutes);
         setHasLoadedEvents(true);
         setHasLoadedTemplates(true);
       }
@@ -176,6 +182,7 @@ export default function useCalendarController(weekOffset: number) {
           setTemplates(sharedState.templates);
           setLogs(sharedState.logs);
           setStudyRecords(sharedState.studyRecords);
+          setStudyDailyGoalMinutes(sharedState.studyDailyGoalMinutes);
         }
         setCanPersistSharedState(true);
       } catch (error) {
@@ -208,6 +215,7 @@ export default function useCalendarController(weekOffset: number) {
       templates,
       logs,
       studyRecords,
+      studyDailyGoalMinutes,
     } as const;
     const serializedState = serializeSharedCalendarState(sharedState);
     currentSharedStateRef.current = sharedState;
@@ -295,6 +303,7 @@ export default function useCalendarController(weekOffset: number) {
     templates,
     logs,
     studyRecords,
+    studyDailyGoalMinutes,
     syncRetryNonce,
   ]);
 
@@ -549,6 +558,10 @@ export default function useCalendarController(weekOffset: number) {
       ),
     );
     return { status: "completed" as const };
+  }
+
+  function saveStudyDailyGoal(minutes: number) {
+    setStudyDailyGoalMinutes(normalizeStudyDailyGoalMinutes(minutes));
   }
 
   const autoCompleteEndedEvents = useCallback(
@@ -1062,6 +1075,7 @@ export default function useCalendarController(weekOffset: number) {
     saveCurrentWeekAsTemplate,
     saveEventEdit,
     saveStatus,
+    saveStudyDailyGoal,
     saveWeeklyCategoryGoal,
     scheduleLifeLog,
     setCategoryDraft,
@@ -1069,6 +1083,7 @@ export default function useCalendarController(weekOffset: number) {
     startAddingCategory,
     startEditingCategory,
     studyRecords,
+    studyDailyGoalMinutes,
     templates,
     toggleEventCompleted,
     toggleEventSkip,

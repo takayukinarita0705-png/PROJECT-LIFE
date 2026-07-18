@@ -118,12 +118,13 @@ export type StudyTimeRecord = {
 
 export type SharedCalendarState = {
   version: 1;
-  schemaVersion: 9;
+  schemaVersion: 10;
   categories: Category[];
   events: CalendarEvent[];
   templates: CalendarTemplate[];
   logs: LifeLog[];
   studyRecords: StudyTimeRecord[];
+  studyDailyGoalMinutes: number;
 };
 
 export type CalendarDayColumn = {

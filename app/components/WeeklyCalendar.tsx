@@ -136,6 +136,7 @@ export default function WeeklyCalendar() {
     saveCurrentWeekAsTemplate,
     saveEventEdit,
     saveStatus,
+    saveStudyDailyGoal,
     saveWeeklyCategoryGoal,
     scheduleLifeLog,
     setCategoryDraft,
@@ -143,6 +144,7 @@ export default function WeeklyCalendar() {
     startAddingCategory,
     startEditingCategory,
     studyRecords,
+    studyDailyGoalMinutes,
     templates,
     toggleEventCompleted,
     toggleEventSkip,
@@ -318,7 +320,11 @@ export default function WeeklyCalendar() {
   const studyTimeSummary =
     currentTime === null || !hasLoadedEvents
       ? null
-      : getStudyTimeSummary(studyRecords, currentTime);
+      : getStudyTimeSummary(
+          studyRecords,
+          currentTime,
+          studyDailyGoalMinutes,
+        );
   const currentWeekLogs =
     currentTime === null || !hasLoadedEvents
       ? []
@@ -876,6 +882,7 @@ export default function WeeklyCalendar() {
             onResetStatus={resetEventToPending}
             onMoveToTomorrow={moveEventToTomorrow}
             onCompleteStudy={completeStudyEvent}
+            onChangeStudyDailyGoal={saveStudyDailyGoal}
             onToggleCompleted={toggleEventCompleted}
             onToggleSkipped={toggleEventSkip}
             studyTimeSummary={studyTimeSummary}

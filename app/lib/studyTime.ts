@@ -13,7 +13,7 @@ import type {
   StudyTimeSource,
 } from "@/app/types/calendar";
 
-export const DAILY_STUDY_TARGET_MINUTES = 120;
+export const DEFAULT_DAILY_STUDY_GOAL_MINUTES = 60;
 export const STUDY_TIME_SOURCES: readonly StudyTimeSource[] = [
   "manual",
   "task_completion",
@@ -76,6 +76,10 @@ export type StudyTimeDay = {
 export type StudyTimeSummary = {
   todayMinutes: number;
   weekMinutes: number;
+  totalMinutes: number;
+  dailyGoalMinutes: number;
+  remainingGoalMinutes: number;
+  achievedDailyGoal: boolean;
   streakDays: number;
   nextStreakDays: number;
   studiedToday: boolean;
@@ -358,6 +362,7 @@ export function mergeStudyTimeRecords(
 export function getStudyTimeSummary(
   records: StudyTimeRecord[],
   referenceDate = new Date(),
+  dailyGoalMinutes = DEFAULT_DAILY_STUDY_GOAL_MINUTES,
 ): StudyTimeSummary {
   const minutesByDate = new Map<string, number>();
   records.forEach((record) => {
@@ -377,17 +382,30 @@ export function getStudyTimeSummary(
   });
   const studiedToday = todayMinutes > 0;
   const streakDays = getStudyStreak(records, referenceDate);
+  const normalizedGoal = normalizeStudyDailyGoalMinutes(dailyGoalMinutes);
 
   return {
     todayMinutes,
     weekMinutes: getWeekStudyMinutes(records, referenceDate),
+    totalMinutes: getTotalStudyMinutes(records),
+    dailyGoalMinutes: normalizedGoal,
+    remainingGoalMinutes: Math.max(0, normalizedGoal - todayMinutes),
+    achievedDailyGoal: todayMinutes >= normalizedGoal,
     streakDays,
     nextStreakDays: studiedToday ? streakDays : streakDays + 1,
     studiedToday,
-    progressPercentage: Math.min(
-      100,
-      Math.round((todayMinutes / DAILY_STUDY_TARGET_MINUTES) * 100),
+    progressPercentage: Math.round(
+      (todayMinutes / normalizedGoal) * 100,
     ),
     days,
   };
+}
+
+export function normalizeStudyDailyGoalMinutes(value: unknown) {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= 24 * 60
+    ? value
+    : DEFAULT_DAILY_STUDY_GOAL_MINUTES;
 }

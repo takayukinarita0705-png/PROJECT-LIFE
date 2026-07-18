@@ -10,7 +10,11 @@ import {
   migrateState,
 } from "@/app/lib/migrations/calendarState";
 import { getSupabaseClient } from "@/app/lib/supabase";
-import { normalizeStudyTimeRecord } from "@/app/lib/studyTime";
+import {
+  DEFAULT_DAILY_STUDY_GOAL_MINUTES,
+  normalizeStudyDailyGoalMinutes,
+  normalizeStudyTimeRecord,
+} from "@/app/lib/studyTime";
 import type { SharedCalendarState } from "@/app/types/calendar";
 
 const TABLE_NAME = "project_life_state";
@@ -26,6 +30,7 @@ function createEmptySharedState(): SharedCalendarState {
     templates: [],
     logs: [],
     studyRecords: [],
+    studyDailyGoalMinutes: DEFAULT_DAILY_STUDY_GOAL_MINUTES,
   };
 }
 
@@ -77,6 +82,9 @@ export function normalizeSharedCalendarState(
     templates,
     logs,
     studyRecords,
+    studyDailyGoalMinutes: normalizeStudyDailyGoalMinutes(
+      state.studyDailyGoalMinutes,
+    ),
   };
 }
 
