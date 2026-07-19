@@ -71,6 +71,7 @@ describe("旧データ補完処理", () => {
 
     expect(log).toMatchObject({
       status: "done",
+      completed: true,
       completedAt: "2026-07-19T01:00:00.000Z",
     });
   });

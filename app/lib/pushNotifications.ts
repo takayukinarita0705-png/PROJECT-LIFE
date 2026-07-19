@@ -115,7 +115,7 @@ function isPushSupported() {
   );
 }
 
-const SERVICE_WORKER_VERSION = "20260714-1";
+const SERVICE_WORKER_VERSION = "20260719-2";
 const SERVICE_WORKER_URL = `/sw.js?v=${SERVICE_WORKER_VERSION}`;
 
 async function getServiceWorkerRegistration() {

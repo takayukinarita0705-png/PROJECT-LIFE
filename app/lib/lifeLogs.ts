@@ -122,6 +122,17 @@ export type InboxReviewState = {
   isComplete: boolean;
 };
 
+export type LifeLogLinkDiagnostic = {
+  lifeLogId: string;
+  status: LifeLog["status"];
+  completed: boolean;
+  completedAt: string | null;
+  linkedScheduleId: string | null;
+  scheduleStatus: CalendarEvent["status"] | null;
+  scheduleCompletedAt: string | null;
+  isInconsistent: boolean;
+};
+
 export const LIFE_LOG_FOCUS_AREA_OPTIONS: ReadonlyArray<{
   value: LifeLogFocusArea;
   label: string;
@@ -154,22 +165,38 @@ export function markLifeLogAsScheduled(
   updatedAt: string,
   eventId?: string,
 ): LifeLog {
+  const hadCompletionState =
+    log.completed !== undefined ||
+    log.completedAt !== undefined ||
+    log.completionSource !== undefined ||
+    log.completedByScheduleId !== undefined;
   const incompleteLog = { ...log };
   delete incompleteLog.completedAt;
+  delete incompleteLog.completionSource;
+  delete incompleteLog.completedByScheduleId;
   return {
     ...incompleteLog,
     status: "scheduled",
+    ...(hadCompletionState ? { completed: false } : {}),
     eventId: eventId ?? log.eventId,
     updatedAt,
   };
 }
 
 export function markLifeLogAsInbox(log: LifeLog, updatedAt: string): LifeLog {
+  const hadCompletionState =
+    log.completed !== undefined ||
+    log.completedAt !== undefined ||
+    log.completionSource !== undefined ||
+    log.completedByScheduleId !== undefined;
   const incompleteLog = { ...log };
   delete incompleteLog.completedAt;
+  delete incompleteLog.completionSource;
+  delete incompleteLog.completedByScheduleId;
   return {
     ...incompleteLog,
     status: "inbox",
+    ...(hadCompletionState ? { completed: false } : {}),
     eventId: undefined,
     updatedAt,
   };
@@ -241,6 +268,113 @@ export function getLifeLogStatusForEventStatus(
   eventStatus: "pending" | "active" | "completed" | "skipped",
 ): LifeLog["status"] {
   return eventStatus === "completed" ? "done" : "scheduled";
+}
+
+function isLifeLogOriginSchedule(log: LifeLog, event: CalendarEvent) {
+  return (
+    log.origin !== "event" &&
+    (log.eventId === event.id || event.lifeLogId === log.id)
+  );
+}
+
+export function updateLifeLogsForScheduleStatus(
+  logs: LifeLog[],
+  event: CalendarEvent,
+  status: CalendarEvent["status"],
+  updatedAt: string,
+) {
+  const nextStatus = getLifeLogStatusForEventStatus(status);
+  let hasChanged = false;
+  const nextLogs = logs.map((log) => {
+    if (!isLifeLogOriginSchedule(log, event)) return log;
+
+    if (nextStatus === "done") {
+      if (
+        log.status === "done" &&
+        log.completed === true &&
+        log.completedAt &&
+        (log.completionSource !== "schedule" ||
+          log.completedByScheduleId === event.id)
+      ) {
+        return log;
+      }
+      hasChanged = true;
+      return {
+        ...log,
+        status: "done" as const,
+        completed: true,
+        completedAt: event.completedAt ?? log.completedAt ?? updatedAt,
+        completionSource: "schedule" as const,
+        completedByScheduleId: event.id,
+        eventId: event.id,
+        updatedAt,
+      };
+    }
+
+    if (
+      log.status !== "done" ||
+      log.completionSource !== "schedule" ||
+      log.completedByScheduleId !== event.id
+    ) {
+      return log;
+    }
+
+    hasChanged = true;
+    return markLifeLogAsScheduled(log, updatedAt, event.id);
+  });
+
+  return hasChanged ? nextLogs : logs;
+}
+
+export function reconcileLifeLogsWithScheduleStatuses(
+  logs: LifeLog[],
+  events: CalendarEvent[],
+) {
+  return events.reduce((currentLogs, event) => {
+    if (!event.lifeLogId && !currentLogs.some((log) => log.eventId === event.id)) {
+      return currentLogs;
+    }
+    const linkedLog = currentLogs.find((log) =>
+      isLifeLogOriginSchedule(log, event),
+    );
+    if (!linkedLog) return currentLogs;
+    const updatedAt =
+      event.status === "completed"
+        ? event.completedAt ?? linkedLog.completedAt ?? linkedLog.updatedAt
+        : linkedLog.updatedAt;
+    return updateLifeLogsForScheduleStatus(
+      currentLogs,
+      event,
+      event.status,
+      updatedAt,
+    );
+  }, logs);
+}
+
+export function getLifeLogLinkDiagnostics(
+  logs: LifeLog[],
+  events: CalendarEvent[],
+): LifeLogLinkDiagnostic[] {
+  const eventsById = new Map(events.map((event) => [event.id, event]));
+  return logs.flatMap((log) => {
+    const event =
+      (log.eventId ? eventsById.get(log.eventId) : undefined) ??
+      events.find((item) => item.lifeLogId === log.id);
+    if (!event || !isLifeLogOriginSchedule(log, event)) return [];
+    const completed = isCompletedLifeLog(log);
+    return [
+      {
+        lifeLogId: log.id,
+        status: log.status,
+        completed,
+        completedAt: log.completedAt ?? null,
+        linkedScheduleId: event.id,
+        scheduleStatus: event.status,
+        scheduleCompletedAt: event.completedAt ?? null,
+        isInconsistent: event.status === "completed" && !completed,
+      },
+    ];
+  });
 }
 
 export function normalizeLifeLogBody(body: string) {

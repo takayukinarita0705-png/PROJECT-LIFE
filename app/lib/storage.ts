@@ -190,6 +190,11 @@ export function normalizeLifeLog(value: unknown): LifeLog | null {
     (log.title !== undefined && typeof log.title !== "string") ||
     (log.eventId !== undefined && typeof log.eventId !== "string") ||
     (log.origin !== undefined && log.origin !== "event") ||
+    (log.completed !== undefined && typeof log.completed !== "boolean") ||
+    (log.completionSource !== undefined &&
+      log.completionSource !== "schedule") ||
+    (log.completedByScheduleId !== undefined &&
+      typeof log.completedByScheduleId !== "string") ||
     typeof log.createdAt !== "string" ||
     Number.isNaN(Date.parse(log.createdAt)) ||
     typeof log.updatedAt !== "string" ||
@@ -220,8 +225,19 @@ export function normalizeLifeLog(value: unknown): LifeLog | null {
     eventId: typeof log.eventId === "string" ? log.eventId : undefined,
     origin: log.origin === "event" ? "event" : undefined,
     ...(status === "done"
-      ? { completedAt: storedCompletedAt ?? log.updatedAt }
-      : {}),
+      ? {
+          completed: true,
+          completedAt: storedCompletedAt ?? log.updatedAt,
+          ...(log.completionSource === "schedule"
+            ? { completionSource: "schedule" as const }
+            : {}),
+          ...(typeof log.completedByScheduleId === "string"
+            ? { completedByScheduleId: log.completedByScheduleId }
+            : {}),
+        }
+      : log.completed === false
+        ? { completed: false }
+        : {}),
     createdAt: log.createdAt,
     updatedAt: log.updatedAt,
   };

@@ -51,13 +51,15 @@ import {
   createLifeLogFromEvent,
   createLifeLogScheduledEvent,
   getLifeLogForEvent,
-  getLifeLogStatusForEventStatus,
+  getLifeLogLinkDiagnostics,
   linkEventToLifeLog,
   markLifeLogAsScheduled,
   mergeLifeLogsPreservingLocalCompletion,
   normalizeLifeLogBody,
+  reconcileLifeLogsWithScheduleStatuses,
   unlinkLifeLogFromEvent,
   unlinkEventFromLifeLog,
+  updateLifeLogsForScheduleStatus,
 } from "@/app/lib/lifeLogs";
 import { completeEndedAutomaticEvents } from "@/app/lib/autoCompletion";
 import {
@@ -97,6 +99,7 @@ function prepareSharedCalendarState(
     ...state,
     categories: ensureFreeCategory(state.categories),
     events: state.events,
+    logs: reconcileLifeLogsWithScheduleStatuses(state.logs, state.events),
   };
 }
 
@@ -168,9 +171,19 @@ export default function useCalendarController(weekOffset: number) {
         const loadedState = await loadSharedCalendarState();
         if (cancelled) return;
 
-        const remoteState = prepareSharedCalendarState(loadedState);
         const serializedRemoteState =
-          serializeSharedCalendarState(remoteState);
+          serializeSharedCalendarState(loadedState);
+        const inconsistentLinks = getLifeLogLinkDiagnostics(
+          loadedState.logs,
+          loadedState.events,
+        ).filter(({ isInconsistent }) => isInconsistent);
+        if (inconsistentLinks.length > 0) {
+          console.warn(
+            "完了予定とLifeLogの状態不整合を修復しました。",
+            inconsistentLinks,
+          );
+        }
+        const remoteState = prepareSharedCalendarState(loadedState);
         const currentState = currentSharedStateRef.current;
         const mergedLogs = currentState
           ? mergeLifeLogsPreservingLocalCompletion(
@@ -192,6 +205,12 @@ export default function useCalendarController(weekOffset: number) {
             )
             .map((event) => [event.id, event]),
         );
+        localCompletedEvents.forEach((event, id) => {
+          const remoteEvent = remoteState.events.find((item) => item.id === id);
+          if (remoteEvent?.status !== event.status) {
+            locallyChangedStatusIdsRef.current.add(id);
+          }
+        });
         const mergedEvents = remoteState.events.map(
           (event) => localCompletedEvents.get(event.id) ?? event,
         );
@@ -273,12 +292,17 @@ export default function useCalendarController(weekOffset: number) {
 
       const persistSharedState = async () => {
         const remoteState = await loadSharedCalendarState();
+        const mergedEvents = preserveRemoteEventStatuses(
+          sharedState.events,
+          remoteState.events,
+          locallyChangedStatusIdsRef.current,
+        );
         const stateToSave = {
           ...sharedState,
-          events: preserveRemoteEventStatuses(
-            sharedState.events,
-            remoteState.events,
-            locallyChangedStatusIdsRef.current,
+          events: mergedEvents,
+          logs: reconcileLifeLogsWithScheduleStatuses(
+            sharedState.logs,
+            mergedEvents,
           ),
           studyRecords: mergeStudyTimeRecords(
             sharedState.studyRecords,
@@ -310,6 +334,7 @@ export default function useCalendarController(weekOffset: number) {
               locallyChangedStatusIdsRef.current,
             ),
           );
+          setLogs(savedState.logs);
           setStudyRecords(savedState.studyRecords);
           setSaveStatus("saved");
           hideTimer = window.setTimeout(() => setSaveStatus(null), 2000);
@@ -386,23 +411,20 @@ export default function useCalendarController(weekOffset: number) {
   function syncLinkedLifeLogStatus(
     event: CalendarEvent,
     status: CalendarEvent["status"],
+    completedAt?: string,
   ) {
-    const updatedAt = new Date().toISOString();
-    const nextStatus = getLifeLogStatusForEventStatus(status);
+    const updatedAt = completedAt ?? new Date().toISOString();
+    const eventWithStatus = {
+      ...event,
+      status,
+      ...(status === "completed" && completedAt ? { completedAt } : {}),
+    };
     setLogs((current) =>
-      current.map((log) =>
-        log.id === event.lifeLogId || log.eventId === event.id
-          ? {
-              ...log,
-              status: nextStatus,
-              eventId: event.id,
-              completedAt:
-                nextStatus === "done"
-                  ? event.completedAt ?? updatedAt
-                  : undefined,
-              updatedAt,
-            }
-          : log,
+      updateLifeLogsForScheduleStatus(
+        current,
+        eventWithStatus,
+        status,
+        updatedAt,
       ),
     );
   }
@@ -509,9 +531,12 @@ export default function useCalendarController(weekOffset: number) {
     locallyChangedStatusIdsRef.current.add(id);
     const event = events.find((item) => item.id === id);
     if (event) {
+      const isCompleting = event.status !== "completed";
+      const completedAt = isCompleting ? new Date().toISOString() : undefined;
       syncLinkedLifeLogStatus(
         event,
-        event.status === "completed" ? "pending" : "completed",
+        isCompleting ? "completed" : "pending",
+        completedAt,
       );
       if (event.status === "completed") {
         locallyChangedStudyTaskIdsRef.current.add(id);
@@ -519,6 +544,10 @@ export default function useCalendarController(weekOffset: number) {
           removeCompletionStudyTimeRecords(current, id),
         );
       }
+      setEvents((current) =>
+        toggleEventCompletion(current, id, completedAt),
+      );
+      return;
     }
     setEvents((current) => toggleEventCompletion(current, id));
   }
@@ -586,7 +615,7 @@ export default function useCalendarController(weekOffset: number) {
     }
     locallyChangedStatusIdsRef.current.add(id);
     locallyChangedStudyTaskIdsRef.current.add(id);
-    syncLinkedLifeLogStatus(event, "completed");
+    syncLinkedLifeLogStatus(event, "completed", createdAt);
     setStudyRecords((current) => upsertStudyTimeRecord(current, record));
     setEvents((current) =>
       current.map((item) =>

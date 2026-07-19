@@ -14,6 +14,7 @@ import {
   getLifeLogFocusAreaLabel,
   getLifeLogDisplayGroups,
   getLifeLogForEvent,
+  getLifeLogLinkDiagnostics,
   getLifeLogStatusLabel,
   getLifeLogStatusForEventStatus,
   getLifeLogTimelineGroups,
@@ -27,11 +28,13 @@ import {
   mergeLifeLogsPreservingLocalCompletion,
   linkEventToLifeLog,
   normalizeLifeLogBody,
+  reconcileLifeLogsWithScheduleStatuses,
   restoreLifeLogFocusArea,
   sortLifeLogsNewestFirst,
   sortLifeLogsForDisplay,
   unlinkEventFromLifeLog,
   unlinkLifeLogFromEvent,
+  updateLifeLogsForScheduleStatus,
 } from "@/app/lib/lifeLogs";
 import { normalizeLifeLog } from "@/app/lib/storage";
 import type { CalendarEvent, LifeLog } from "@/app/types/calendar";
@@ -140,6 +143,170 @@ describe("ライフログ", () => {
         new Date(2026, 6, 14),
       ).map(({ id }) => id),
     ).toEqual(["sooner-log", "later-log", "legacy-log"]);
+  });
+
+  it("LifeLog由来予定の完了と取り消しを共通処理で同期する", () => {
+    const scheduledAt = "2026-07-18T00:00:00.000Z";
+    const completedAt = "2026-07-19T01:23:00.000Z";
+    const initialLog = {
+      ...newerLog,
+      id: "source-log",
+      focusArea: "future" as const,
+    };
+    const linkedEvent = createLifeLogScheduledEvent(
+      initialLog,
+      initialLog.body,
+      {
+        date: "2026-07-19",
+        start: 9 * 60,
+        end: 9 * 60 + 30,
+        endDate: "2026-07-19",
+        notificationMinutes: 10,
+      },
+      event.id,
+    );
+    expect(linkedEvent?.lifeLogId).toBe(initialLog.id);
+    if (!linkedEvent) throw new Error("LifeLog由来予定を作成できませんでした。");
+    const sourceLog = markLifeLogAsScheduled(
+      initialLog,
+      scheduledAt,
+      event.id,
+    );
+    const completedEvent = {
+      ...linkedEvent,
+      status: "completed" as const,
+      completedAt,
+    };
+
+    const completedLogs = updateLifeLogsForScheduleStatus(
+      [sourceLog],
+      completedEvent,
+      "completed",
+      completedAt,
+    );
+
+    expect(completedLogs).toEqual([
+      {
+        ...sourceLog,
+        status: "done",
+        completed: true,
+        completedAt,
+        completionSource: "schedule",
+        completedByScheduleId: event.id,
+        updatedAt: completedAt,
+      },
+    ]);
+    expect(getLifeLogDisplayGroups(completedLogs, "all")).toEqual([]);
+    expect(completedLogs).toHaveLength(1);
+    expect(
+      updateLifeLogsForScheduleStatus(
+        completedLogs,
+        completedEvent,
+        "completed",
+        "2026-07-19T02:00:00.000Z",
+      ),
+    ).toBe(completedLogs);
+
+    const restoredLogs = updateLifeLogsForScheduleStatus(
+      completedLogs,
+      linkedEvent,
+      "pending",
+      "2026-07-19T02:30:00.000Z",
+    );
+    expect(restoredLogs).toEqual([
+      {
+        ...sourceLog,
+        completed: false,
+        updatedAt: "2026-07-19T02:30:00.000Z",
+      },
+    ]);
+  });
+
+  it("再取得時に完了予定とscheduledのLifeLogをdoneへ修復する", () => {
+    const sourceLog = markLifeLogAsScheduled(
+      { ...newerLog, id: "source-log" },
+      "2026-07-18T00:00:00.000Z",
+      event.id,
+    );
+    const completedEvent = {
+      ...event,
+      lifeLogId: sourceLog.id,
+      status: "completed" as const,
+      completedAt: "2026-07-19T01:23:00.000Z",
+    };
+
+    const diagnostics = getLifeLogLinkDiagnostics(
+      [sourceLog],
+      [completedEvent],
+    );
+    expect(diagnostics).toEqual([
+      {
+        lifeLogId: sourceLog.id,
+        status: "scheduled",
+        completed: false,
+        completedAt: null,
+        linkedScheduleId: event.id,
+        scheduleStatus: "completed",
+        scheduleCompletedAt: completedEvent.completedAt,
+        isInconsistent: true,
+      },
+    ]);
+
+    const reconciled = reconcileLifeLogsWithScheduleStatuses(
+      [sourceLog],
+      [completedEvent],
+    );
+    expect(reconciled[0]).toMatchObject({
+      status: "done",
+      completed: true,
+      completedAt: completedEvent.completedAt,
+      completionSource: "schedule",
+      completedByScheduleId: event.id,
+    });
+    expect(getLifeLogDisplayGroups(reconciled, "all")).toEqual([]);
+  });
+
+  it("通常予定と予定から作成したLifeLogは予定完了で変更しない", () => {
+    const completedEvent = {
+      ...event,
+      status: "completed" as const,
+      completedAt: "2026-07-19T01:23:00.000Z",
+    };
+    const eventOriginLog: LifeLog = {
+      ...newerLog,
+      id: "event-origin-log",
+      eventId: event.id,
+      origin: "event",
+    };
+    const logs = [newerLog, eventOriginLog];
+
+    expect(
+      updateLifeLogsForScheduleStatus(
+        logs,
+        completedEvent,
+        "completed",
+        completedEvent.completedAt,
+      ),
+    ).toBe(logs);
+  });
+
+  it("LifeLog側で完了したログは予定の完了取り消しで復元しない", () => {
+    const manuallyCompleted: LifeLog = {
+      ...newerLog,
+      status: "done",
+      completed: true,
+      completedAt: "2026-07-19T01:00:00.000Z",
+      eventId: event.id,
+    };
+
+    expect(
+      updateLifeLogsForScheduleStatus(
+        [manuallyCompleted],
+        event,
+        "pending",
+        "2026-07-19T02:00:00.000Z",
+      ),
+    ).toEqual([manuallyCompleted]);
   });
 
   it("完了ログをデータから削除せず一覧対象外にする", () => {

@@ -420,6 +420,17 @@ describe("Event完了状態", () => {
     ]);
   });
 
+  it("完了操作で指定したcompletedAtをEventへ保存する", () => {
+    const pending = createEvent({ id: "target", status: "pending" });
+    const completedAt = "2026-07-19T01:23:00.000Z";
+
+    expect(
+      toggleEventCompletion([pending], pending.id, completedAt),
+    ).toEqual([
+      { ...pending, status: "completed", completedAt },
+    ]);
+  });
+
   it("対象Eventをpendingとskippedの間で切り替える", () => {
     const pending = createEvent({ id: "target", status: "pending" });
 

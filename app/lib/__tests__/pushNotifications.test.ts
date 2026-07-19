@@ -168,7 +168,7 @@ describe("Push通知設定", () => {
     await expect(enablePushNotifications()).resolves.toEqual({
       status: "subscribed",
     });
-    expect(register).toHaveBeenCalledWith("/sw.js?v=20260714-1", {
+    expect(register).toHaveBeenCalledWith("/sw.js?v=20260719-2", {
       scope: "/",
       updateViaCache: "none",
     });

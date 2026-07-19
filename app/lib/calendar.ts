@@ -277,11 +277,16 @@ export function filterEventsByDates(
 export function toggleEventCompletion(
   events: CalendarEvent[],
   eventId: string,
+  completedAt?: string,
 ) {
   return events.map((event) => {
     if (event.id !== eventId) return event;
     if (event.status !== "completed") {
-      return { ...event, status: "completed" as const };
+      return {
+        ...event,
+        status: "completed" as const,
+        ...(completedAt ? { completedAt } : {}),
+      };
     }
 
     const pendingEvent = { ...event, status: "pending" as const };
