@@ -9,6 +9,7 @@ import {
   getFutureLifeLogWeeklyRecord,
   getCurrentWeekLifeLogs,
   getInboxLifeLogs,
+  getIncompleteLifeLogs,
   getInboxReviewState,
   getLifeLogFocusAreaLabel,
   getLifeLogDisplayGroups,
@@ -20,6 +21,7 @@ import {
   getLifeLogsByFocusFilter,
   getLifeLogScheduleTiming,
   getUnclassifiedLifeLogs,
+  isCompletedLifeLog,
   markLifeLogAsInbox,
   markLifeLogAsScheduled,
   mergeLifeLogsPreservingLocalCompletion,
@@ -154,6 +156,33 @@ describe("ライフログ", () => {
     ]);
     expect(logs).toHaveLength(3);
     expect(logs.find((log) => log.id === "future-done")?.status).toBe("done");
+  });
+
+  it("完了形式にかかわらず全分類と予定化済みから除外する", () => {
+    const legacyCompleted = {
+      ...newerLog,
+      id: "legacy-completed",
+      status: "scheduled",
+      completed: true,
+      completedAt: "2026-07-19T01:00:00.000Z",
+    } as LifeLog;
+    const doneLogs: LifeLog[] = [
+      { ...newerLog, id: "done-unset", focusArea: "unset", status: "done" },
+      { ...newerLog, id: "done-now", focusArea: "now", status: "done" },
+      { ...newerLog, id: "done-future", focusArea: "future", status: "done" },
+      { ...newerLog, id: "done-review", focusArea: "review", status: "done" },
+      { ...newerLog, id: "done-discard", focusArea: "discard", status: "done" },
+      legacyCompleted,
+    ];
+
+    expect(isCompletedLifeLog(legacyCompleted)).toBe(true);
+    expect(getIncompleteLifeLogs(doneLogs)).toEqual([]);
+    expect(getLifeLogDisplayGroups(doneLogs, "all")).toEqual([]);
+    expect(getLifeLogDisplayGroups(doneLogs, "unset")).toEqual([]);
+    expect(getLifeLogDisplayGroups(doneLogs, "now")).toEqual([]);
+    expect(getLifeLogDisplayGroups(doneLogs, "future")).toEqual([]);
+    expect(getLifeLogDisplayGroups(doneLogs, "review")).toEqual([]);
+    expect(getLifeLogDisplayGroups(doneLogs, "discard")).toEqual([]);
   });
 
   it("端末キャッシュの完了状態を古い同期データで未完了へ戻さない", () => {

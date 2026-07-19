@@ -255,8 +255,20 @@ export function sortLifeLogsNewestFirst(logs: LifeLog[]) {
   );
 }
 
+export function isCompletedLifeLog(log: LifeLog) {
+  const legacyStatus = (log as { status: unknown }).status;
+  const legacyCompleted = (log as { completed?: unknown }).completed;
+  return (
+    legacyStatus === "done" ||
+    legacyStatus === "completed" ||
+    legacyCompleted === true ||
+    (typeof log.completedAt === "string" &&
+      !Number.isNaN(Date.parse(log.completedAt)))
+  );
+}
+
 export function getIncompleteLifeLogs(logs: LifeLog[]) {
-  return logs.filter((log) => log.status !== "done");
+  return logs.filter((log) => !isCompletedLifeLog(log));
 }
 
 export function mergeLifeLogsPreservingLocalCompletion(
@@ -404,14 +416,17 @@ export function getLifeLogStatusLabel(status: LifeLog["status"]) {
 export function getFutureLifeLogs(logs: LifeLog[]) {
   return sortLifeLogsNewestFirst(
     logs.filter(
-      (log) => log.focusArea === "future" && log.status !== "done",
+      (log) => log.focusArea === "future" && !isCompletedLifeLog(log),
     ),
   );
 }
 
 export function getFutureInboxLifeLogCount(logs: LifeLog[]) {
   return logs.filter(
-    (log) => log.focusArea === "future" && log.status === "inbox",
+    (log) =>
+      log.focusArea === "future" &&
+      log.status === "inbox" &&
+      !isCompletedLifeLog(log),
   ).length;
 }
 
@@ -431,7 +446,7 @@ export function getLifeLogsByFocusFilter(
 export function getUnclassifiedLifeLogs(logs: LifeLog[]) {
   return sortLifeLogsNewestFirst(
     logs.filter(
-      (log) => log.focusArea === "unset" && log.status !== "done",
+      (log) => log.focusArea === "unset" && !isCompletedLifeLog(log),
     ),
   );
 }
