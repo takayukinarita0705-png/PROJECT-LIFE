@@ -85,6 +85,40 @@ describe("カレンダーのローカルキャッシュ", () => {
     ]);
   });
 
+  it("編集後のLifeLog内容と分類をローカルキャッシュから復元する", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+    };
+    const editedState: SharedCalendarState = {
+      ...state,
+      logs: [
+        {
+          id: "edited-log",
+          title: "編集後タイトル",
+          body: "編集後本文",
+          status: "inbox",
+          focusArea: "future",
+          createdAt: "2026-07-25T01:00:00.000Z",
+          updatedAt: "2026-07-26T01:00:00.000Z",
+        },
+      ],
+    };
+
+    saveCachedCalendarState(editedState, storage);
+
+    expect(loadCachedCalendarState(storage)?.logs).toMatchObject([
+      {
+        id: "edited-log",
+        title: "編集後タイトル",
+        body: "編集後本文",
+        focusArea: "future",
+        updatedAt: "2026-07-26T01:00:00.000Z",
+      },
+    ]);
+  });
+
   it("Supabase取得Stateの差分を判定する", () => {
     expect(areSharedCalendarStatesEqual(state, { ...state })).toBe(true);
     expect(

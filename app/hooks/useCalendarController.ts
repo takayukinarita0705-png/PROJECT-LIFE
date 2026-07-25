@@ -60,6 +60,7 @@ import {
   unlinkLifeLogFromEvent,
   unlinkEventFromLifeLog,
   updateLifeLogsForScheduleStatus,
+  updateLifeLogInCollection,
 } from "@/app/lib/lifeLogs";
 import { completeEndedAutomaticEvents } from "@/app/lib/autoCompletion";
 import {
@@ -334,7 +335,12 @@ export default function useCalendarController(weekOffset: number) {
               locallyChangedStatusIdsRef.current,
             ),
           );
-          setLogs(savedState.logs);
+          setLogs((current) =>
+            reconcileLifeLogsWithScheduleStatuses(
+              current,
+              savedState.events,
+            ),
+          );
           setStudyRecords(savedState.studyRecords);
           setSaveStatus("saved");
           hideTimer = window.setTimeout(() => setSaveStatus(null), 2000);
@@ -1039,27 +1045,12 @@ export default function useCalendarController(weekOffset: number) {
     focusArea: LifeLogFocusArea,
     title?: string,
   ) {
-    const normalizedBody = body.trim();
-    const normalizedTitle = title?.trim();
-    const existingLog = logs.find((log) => log.id === id);
-    const effectiveTitle =
-      title === undefined ? existingLog?.title : normalizedTitle;
-    if (!normalizedBody && !effectiveTitle) return false;
+    const updatedAt = new Date().toISOString();
+    const update = { title, body, focusArea };
+    if (!updateLifeLogInCollection(logs, id, update, updatedAt)) return false;
 
     setLogs((current) =>
-      current.map((log) =>
-        log.id === id
-          ? {
-              ...log,
-              body: normalizedBody,
-              ...(title !== undefined
-                ? { title: normalizedTitle || undefined }
-                : {}),
-              focusArea,
-              updatedAt: new Date().toISOString(),
-            }
-          : log,
-      ),
+      updateLifeLogInCollection(current, id, update, updatedAt)?.logs ?? current,
     );
     return true;
   }

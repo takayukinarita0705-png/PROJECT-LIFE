@@ -35,6 +35,7 @@ import {
   unlinkEventFromLifeLog,
   unlinkLifeLogFromEvent,
   updateLifeLogsForScheduleStatus,
+  updateLifeLogInCollection,
 } from "@/app/lib/lifeLogs";
 import { normalizeLifeLog } from "@/app/lib/storage";
 import type { CalendarEvent, LifeLog } from "@/app/types/calendar";
@@ -708,6 +709,154 @@ describe("ライフログ", () => {
     expect(getLifeLogsByFocusFilter(logs, "discard").map(({ id }) => id)).toEqual([
       "discard",
     ]);
+  });
+
+  it("タイトルと本文の編集を一覧へ即時反映し、別ログは変更しない", () => {
+    const target: LifeLog = {
+      ...olderLog,
+      id: "target",
+      title: "変更前タイトル",
+      body: "変更前本文",
+      focusArea: "future",
+    };
+    const other = { ...newerLog, id: "other", focusArea: "now" as const };
+    const result = updateLifeLogInCollection(
+      [target, other],
+      target.id,
+      {
+        title: "  変更後タイトル  ",
+        body: "  変更後本文  ",
+        focusArea: "future",
+      },
+      "2026-07-26T01:00:00.000Z",
+    );
+
+    expect(result?.updatedLog).toMatchObject({
+      id: target.id,
+      title: "変更後タイトル",
+      body: "変更後本文",
+      focusArea: "future",
+      updatedAt: "2026-07-26T01:00:00.000Z",
+    });
+    expect(result?.logs[1]).toBe(other);
+    expect(
+      getLifeLogDisplayGroups(result?.logs ?? [], "future")
+        .flatMap(({ logs }) => logs)
+        .find(({ id }) => id === target.id),
+    ).toMatchObject({
+      title: "変更後タイトル",
+      body: "変更後本文",
+    });
+  });
+
+  it("分類変更で未分類一覧から未来を作る一覧へ即時移動する", () => {
+    const target = { ...newerLog, id: "target", focusArea: "unset" as const };
+    const result = updateLifeLogInCollection(
+      [target],
+      target.id,
+      { body: target.body, focusArea: "future" },
+      "2026-07-26T01:00:00.000Z",
+    );
+    const updatedLogs = result?.logs ?? [];
+
+    expect(getLifeLogDisplayGroups(updatedLogs, "unset")).toEqual([]);
+    expect(
+      getLifeLogDisplayGroups(updatedLogs, "future").flatMap(
+        ({ logs }) => logs.map(({ id }) => id),
+      ),
+    ).toEqual([target.id]);
+    expect(getInboxReviewState(updatedLogs).remainingCount).toBe(0);
+    expect(getFutureInboxLifeLogCount(updatedLogs)).toBe(1);
+  });
+
+  it("予定化済みLifeLogの編集内容をstatusとリンクを保って反映する", () => {
+    const scheduled: LifeLog = {
+      ...newerLog,
+      id: "scheduled-log",
+      title: "変更前",
+      body: "変更前本文",
+      status: "scheduled",
+      focusArea: "future",
+      eventId: event.id,
+    };
+    const result = updateLifeLogInCollection(
+      [scheduled],
+      scheduled.id,
+      {
+        title: "変更後",
+        body: "変更後本文",
+        focusArea: "review",
+      },
+      "2026-07-26T01:00:00.000Z",
+    );
+
+    expect(result?.updatedLog).toMatchObject({
+      title: "変更後",
+      body: "変更後本文",
+      status: "scheduled",
+      focusArea: "review",
+      eventId: event.id,
+    });
+    expect(getLifeLogDisplayGroups(result?.logs ?? [], "future")).toEqual([]);
+    expect(getLifeLogDisplayGroups(result?.logs ?? [], "review")).toMatchObject([
+      { key: "scheduled", logs: [{ id: scheduled.id, title: "変更後" }] },
+    ]);
+  });
+
+  it("古い保存応答の予定statusだけを最新LifeLog内容へ反映する", () => {
+    const edited = updateLifeLogInCollection(
+      [
+        {
+          ...newerLog,
+          id: "scheduled-log",
+          title: "変更前",
+          status: "scheduled",
+          eventId: event.id,
+        },
+      ],
+      "scheduled-log",
+      {
+        title: "最新タイトル",
+        body: "最新本文",
+        focusArea: "future",
+      },
+      "2026-07-26T01:00:00.000Z",
+    );
+    const currentLogs = edited?.logs ?? [];
+    const reconciled = reconcileLifeLogsWithScheduleStatuses(
+      currentLogs,
+      [{ ...event, lifeLogId: "scheduled-log" }],
+    );
+
+    expect(reconciled[0]).toMatchObject({
+      title: "最新タイトル",
+      body: "最新本文",
+      status: "scheduled",
+    });
+  });
+
+  it("不正な編集は元配列を変更せず、対象不在も失敗にする", () => {
+    const logs: LifeLog[] = [
+      { ...newerLog, id: "target", title: "変更前", body: "変更前本文" },
+    ];
+
+    expect(
+      updateLifeLogInCollection(
+        logs,
+        "target",
+        { title: " ", body: " ", focusArea: "future" },
+        "2026-07-26T01:00:00.000Z",
+      ),
+    ).toBeNull();
+    expect(
+      updateLifeLogInCollection(
+        logs,
+        "missing",
+        { title: "更新", body: "本文", focusArea: "future" },
+        "2026-07-26T01:00:00.000Z",
+      ),
+    ).toBeNull();
+    expect(logs[0]).toMatchObject({ title: "変更前", body: "変更前本文" });
   });
 
   it("Inbox整理対象として未分類ログだけを作成日時の新しい順で取得する", () => {

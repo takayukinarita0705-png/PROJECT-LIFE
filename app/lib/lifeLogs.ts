@@ -133,6 +133,12 @@ export type LifeLogLinkDiagnostic = {
   isInconsistent: boolean;
 };
 
+export type LifeLogContentUpdate = {
+  title?: string;
+  body: string;
+  focusArea: LifeLogFocusArea;
+};
+
 export const LIFE_LOG_FOCUS_AREA_OPTIONS: ReadonlyArray<{
   value: LifeLogFocusArea;
   label: string;
@@ -380,6 +386,37 @@ export function getLifeLogLinkDiagnostics(
 export function normalizeLifeLogBody(body: string) {
   const normalized = body.trim();
   return normalized || null;
+}
+
+export function updateLifeLogInCollection(
+  logs: LifeLog[],
+  id: string,
+  update: LifeLogContentUpdate,
+  updatedAt: string,
+) {
+  const existingLog = logs.find((log) => log.id === id);
+  if (!existingLog) return null;
+
+  const normalizedBody = update.body.trim();
+  const normalizedTitle = update.title?.trim();
+  const effectiveTitle =
+    update.title === undefined ? existingLog.title : normalizedTitle;
+  if (!normalizedBody && !effectiveTitle) return null;
+
+  const updatedLog: LifeLog = {
+    ...existingLog,
+    body: normalizedBody,
+    ...(update.title !== undefined
+      ? { title: normalizedTitle || undefined }
+      : {}),
+    focusArea: update.focusArea,
+    updatedAt,
+  };
+
+  return {
+    updatedLog,
+    logs: logs.map((log) => (log.id === id ? updatedLog : log)),
+  };
 }
 
 export function sortLifeLogsNewestFirst(logs: LifeLog[]) {
